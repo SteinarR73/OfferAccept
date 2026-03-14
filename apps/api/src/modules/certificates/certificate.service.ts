@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import {
@@ -202,7 +202,19 @@ export class CertificateService {
   // Returns the full certificate payload for the given certificate.
   // Used for JSON export / archiving / third-party independent verification.
   // Does NOT recompute the hash.
-  async exportPayload(certificateId: string): Promise<{
+  //
+  // Access control (enforced at service level):
+  //   - callerRole === 'INTERNAL_SUPPORT' → always allowed (cross-org support access)
+  //   - callerOrgId === offer.organizationId → allowed (own-org access)
+  //   - otherwise → ForbiddenException
+  //
+  // The public /verify endpoint does NOT call this method. It calls verify() which
+  // returns only integrity hashes and booleans — no sensitive payload content.
+  async exportPayload(
+    certificateId: string,
+    callerOrgId: string,
+    callerRole: string,
+  ): Promise<{
     certificateId: string;
     certificateHash: string;
     issuedAt: string;
@@ -211,9 +223,12 @@ export class CertificateService {
   }> {
     const cert = await this.db.acceptanceCertificate.findUnique({
       where: { id: certificateId },
+      include: { offer: { select: { organizationId: true } } },
     });
 
     if (!cert) throw new NotFoundException('Certificate not found');
+
+    this.assertCanAccess(cert.offer.organizationId, callerOrgId, callerRole);
 
     const built = await this.builder.build(
       cert.acceptanceRecordId,
@@ -228,5 +243,17 @@ export class CertificateService {
       payload: built.payload,
       canonicalJson: built.canonicalJson,
     };
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────────
+
+  // Enforces tenant-scoped access to certificate data.
+  // INTERNAL_SUPPORT bypasses the org check — they have explicit cross-tenant access.
+  // Any other caller must belong to the same organization that owns the offer.
+  private assertCanAccess(resourceOrgId: string, callerOrgId: string, callerRole: string): void {
+    if (callerRole === 'INTERNAL_SUPPORT') return;
+    if (resourceOrgId !== callerOrgId) {
+      throw new ForbiddenException('You do not have access to this certificate.');
+    }
   }
 }

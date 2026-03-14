@@ -46,6 +46,20 @@ export interface SupportCaseView {
     tokenExpiresAt: string;
     tokenInvalidatedAt: string | null;
   } | null;
+  // Delivery attempt history for this offer. Each row represents one email provider call.
+  //
+  // Delivery truth semantics (important for dispute review):
+  //   DELIVERED_TO_PROVIDER — the provider accepted the message for delivery.
+  //                           This does NOT prove inbox delivery, spam-free receipt,
+  //                           or that the recipient opened the email.
+  //   FAILED                — the provider rejected the message or a network error occurred.
+  //
+  // To establish that the recipient engaged with the offer, use the signing event chain
+  // (signingSession events), NOT delivery status alone. A SESSION_STARTED event proves
+  // the recipient clicked the link. OTP_VERIFIED proves email control. OFFER_ACCEPTED
+  // proves final acceptance.
+  //
+  // See docs/delivery.md §8 for the full interpretation guide.
   deliveryAttempts: Array<{
     id: string;
     outcome: string;

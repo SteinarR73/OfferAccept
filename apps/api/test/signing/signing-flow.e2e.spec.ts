@@ -204,8 +204,11 @@ describe('Public Signing Flow (e2e)', () => {
       });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
-      db.signingSession.findFirst.mockResolvedValue(session as never);
       db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      // New flow: verifyAndAdvanceSession() loads session via findUnique (from challenge.sessionId),
+      // not findFirst. findFirst is still set for other uses (e.g., decline).
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findFirst.mockResolvedValue(session as never);
       db.signingOtpChallenge.update.mockResolvedValue({ ...challenge, status: 'VERIFIED', verifiedAt: new Date() } as never);
       db.signingSession.update.mockResolvedValue({ ...session, status: 'OTP_VERIFIED' } as never);
       db.offerRecipient.update.mockResolvedValue({ ...recipient, status: 'OTP_VERIFIED' } as never);
@@ -299,8 +302,13 @@ describe('Public Signing Flow (e2e)', () => {
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
-      db.signingSession.findFirst.mockResolvedValue(session as never);
+      // New flow: accept() calls getSessionFromVerifiedChallenge():
+      //   1. signingOtpChallenge.findUnique → load challenge (to confirm VERIFIED + recipientId match)
+      //   2. signingSession.findUnique → load session from challenge.sessionId
+      // signingSession.findFirst is still set for decline tests.
       db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findFirst.mockResolvedValue(session as never);
       db.offer.findUniqueOrThrow.mockResolvedValue(makeOffer() as never);
       db.offerSnapshot.findUniqueOrThrow.mockResolvedValue(makeSnapshot() as never);
       db.acceptanceRecord.create.mockResolvedValue(record as never);
@@ -331,19 +339,22 @@ describe('Public Signing Flow (e2e)', () => {
       );
     });
 
-    it('rejects acceptance when session is still AWAITING_OTP (OTP not verified)', async () => {
+    it('rejects acceptance when the challenge has not been verified (OTP not yet done)', async () => {
       const recipient = makeRecipient({ status: 'VIEWED' });
-      const session = makeSession({ status: 'AWAITING_OTP' });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
-      db.signingSession.findFirst.mockResolvedValue(session as never);
+      // New flow: getSessionFromVerifiedChallenge checks challenge.status === 'VERIFIED'.
+      // A PENDING challenge means OTP was never verified → OtpChallengeMismatchError.
+      db.signingOtpChallenge.findUnique.mockResolvedValue(
+        makeChallenge({ status: 'PENDING' }) as never,
+      );
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/signing/${VALID_RAW_TOKEN}/accept`)
         .send({ challengeId: 'challenge-1' })
         .expect(422);
 
-      expect(res.body.code).toBe('SESSION_NOT_VERIFIED');
+      expect(res.body.code).toBe('OTP_CHALLENGE_MISMATCH');
     });
 
     it('rejects a second acceptance attempt when offer is already ACCEPTED', async () => {
@@ -353,8 +364,10 @@ describe('Public Signing Flow (e2e)', () => {
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
-      db.signingSession.findFirst.mockResolvedValue(session as never);
+      // New flow: getSessionFromVerifiedChallenge uses findUnique for both challenge and session
       db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findFirst.mockResolvedValue(session as never);
       // Offer is already ACCEPTED — second attempt
       db.offer.findUniqueOrThrow.mockResolvedValue(makeOffer({ status: 'ACCEPTED' }) as never);
 
@@ -366,16 +379,14 @@ describe('Public Signing Flow (e2e)', () => {
       expect(res.body.code).toBe('OFFER_ALREADY_ACCEPTED');
     });
 
-    it('rejects acceptance when session has no active OTP challenge for the provided ID', async () => {
+    it('rejects acceptance when challenge belongs to a different recipient', async () => {
       const recipient = makeRecipient({ status: 'OTP_VERIFIED' });
-      const session = makeSession({ status: 'OTP_VERIFIED' });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
-      db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
-      db.signingSession.findFirst.mockResolvedValue(session as never);
-      // Challenge belongs to a DIFFERENT session
+      // New flow: getSessionFromVerifiedChallenge() checks challenge.recipientId === recipient.id.
+      // Challenge with wrong recipientId → OtpChallengeMismatchError.
       db.signingOtpChallenge.findUnique.mockResolvedValue(
-        makeChallenge({ sessionId: 'other-session', status: 'VERIFIED', verifiedAt: new Date() }) as never,
+        makeChallenge({ recipientId: 'other-recipient', status: 'VERIFIED', verifiedAt: new Date() }) as never,
       );
 
       const res = await request(app.getHttpServer())
@@ -426,17 +437,19 @@ describe('Public Signing Flow (e2e)', () => {
   // ── No session guard ────────────────────────────────────────────────────────
 
   describe('Session required endpoints without a session', () => {
-    it('returns session expired when verifyOtp is called before requestOtp', async () => {
+    it('returns challenge mismatch when verifyOtp is called with an unknown challengeId', async () => {
       const recipient = makeRecipient();
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
-      db.signingSession.findFirst.mockResolvedValue(null as never); // no session
+      // New flow: verifyAndAdvanceSession() loads the challenge first.
+      // If the challenge does not exist or recipientId does not match → OtpChallengeMismatchError.
+      db.signingOtpChallenge.findUnique.mockResolvedValue(null as never); // no challenge
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/signing/${VALID_RAW_TOKEN}/otp/verify`)
         .send({ challengeId: 'challenge-1', code: '123456' })
         .expect(422);
 
-      expect(res.body.code).toBe('SESSION_EXPIRED');
+      expect(res.body.code).toBe('OTP_CHALLENGE_MISMATCH');
     });
   });
 });

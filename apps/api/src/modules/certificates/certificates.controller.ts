@@ -1,5 +1,6 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
+import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { CertificateService } from './certificate.service';
 
 // ─── CertificatesController ────────────────────────────────────────────────────
@@ -11,6 +12,12 @@ import { CertificateService } from './certificate.service';
 // GET /certificates/:id           → JWT-required — metadata + stored hash
 // GET /certificates/:id/verify    → PUBLIC — full integrity result (no sensitive data)
 // GET /certificates/:id/export    → JWT-required — full payload + canonicalJson
+//
+// Authorization model (enforced at service level, not only here):
+//   - Authenticated endpoints: caller must belong to the same org as the offer,
+//     or have the INTERNAL_SUPPORT role. Cross-tenant access is rejected.
+//   - Public verify endpoint: returns only integrity check results (hashes +
+//     booleans). No offer content, no email addresses, no acceptance statement.
 //
 // The public verify endpoint is intentionally read-only and free of sensitive data:
 //   - No acceptance statement text (verbatim statement is internal)
@@ -24,10 +31,11 @@ export class CertificatesController {
 
   // Returns certificate metadata for authenticated callers (sender, support).
   // Does not recompute the hash — returns stored hash.
+  // Access is scoped to the owning organization. INTERNAL_SUPPORT may access any.
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async getCertificate(@Param('id') id: string) {
-    const exported = await this.certificates.exportPayload(id);
+  async getCertificate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    const exported = await this.certificates.exportPayload(id, user.orgId, user.role);
     return {
       certificateId: exported.certificateId,
       certificateHash: exported.certificateHash,
@@ -74,10 +82,10 @@ export class CertificatesController {
 
   // Returns the full canonical payload + the exact JSON string that was hashed.
   // Suitable for archiving or third-party independent verification.
-  // JWT-required to prevent casual enumeration of offer content.
+  // Access is scoped to the owning organization. INTERNAL_SUPPORT may access any.
   @Get(':id/export')
   @UseGuards(JwtAuthGuard)
-  async exportCertificate(@Param('id') id: string) {
-    return this.certificates.exportPayload(id);
+  async exportCertificate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.certificates.exportPayload(id, user.orgId, user.role);
   }
 }

@@ -222,7 +222,55 @@ For DMARC alignment and DNS configuration prerequisites, see [docs/email.md](ema
 
 ---
 
-## 8. v1 Limitations and Future Work
+## 8. What Delivery Status Proves — and Does Not Prove
+
+This section clarifies exactly what `OfferDeliveryAttempt.outcome` tells you in support
+case views, timeline reviews, and dispute investigations.
+
+### `DELIVERED_TO_PROVIDER` proves:
+
+- The email message was accepted by Resend (or whichever provider is configured) for
+  delivery. The provider returned HTTP 2xx.
+- The message was addressed to the correct recipient email at the time of dispatch.
+- A `tokenHash` is recorded in the attempt, linking the attempt to the specific signing
+  link that was sent in that email.
+
+### `DELIVERED_TO_PROVIDER` does NOT prove:
+
+- The message reached the recipient's inbox (provider acceptance ≠ inbox delivery)
+- The message was not filtered into spam
+- The recipient opened or read the email
+- The recipient clicked the signing link
+
+### `FAILED` proves:
+
+- The email provider rejected the message, or a network error occurred before the
+  provider could respond. The signing link was issued but the email was not accepted.
+
+### `FAILED` does NOT prove:
+
+- The recipient did not receive the offer — a subsequent resend may have succeeded.
+  Always check all delivery attempts, not just the most recent.
+
+### Support interpretation guide
+
+When investigating a dispute where the recipient claims they did not receive the offer:
+
+1. Check `deliveryAttempts` in the case view — look for at least one `DELIVERED_TO_PROVIDER`.
+2. If all attempts are `FAILED`, the email was never accepted by the provider. This is
+   a delivery failure, not a signing failure.
+3. If there is a `DELIVERED_TO_PROVIDER` attempt, the provider accepted it. Check
+   whether a `SigningSession` was created (which requires the recipient to have clicked
+   the link). A session means the link was followed.
+4. If a session exists, check for `OTP_VERIFIED` and `OFFER_ACCEPTED` events in the
+   signing event chain. These are the authoritative evidence of recipient engagement.
+
+**Never use `DELIVERED_TO_PROVIDER` alone as proof that the recipient read the email.**
+Use the signing event chain for proof of recipient engagement.
+
+---
+
+## 9. v1 Limitations and Future Work
 
 | Limitation | Future improvement |
 |------------|--------------------|

@@ -134,8 +134,13 @@ export class SigningSessionService {
 // Maps session status transitions to the SigningEventType that must be emitted.
 // Not all transitions emit events (e.g., AWAITING_OTP has no inbound transition event
 // beyond SESSION_STARTED which is emitted in create()).
+//
+// OTP_VERIFIED is intentionally absent: the OTP_VERIFIED event is emitted exclusively
+// inside SigningOtpService.verifyAndAdvanceSession() as part of the atomic transaction
+// that also marks the challenge VERIFIED, advances the session, and advances the
+// recipient. Omitting it here prevents any accidental double-event emission if
+// transition() is ever called for that state.
 const SESSION_TRANSITION_EVENTS: Partial<Record<SessionStatus, import('@prisma/client').SigningEventType>> = {
-  OTP_VERIFIED: 'OTP_VERIFIED',    // also emitted by SigningOtpService, but session transition records it
   ACCEPTED: 'OFFER_ACCEPTED',
   DECLINED: 'OFFER_DECLINED',
   EXPIRED: 'SESSION_EXPIRED',

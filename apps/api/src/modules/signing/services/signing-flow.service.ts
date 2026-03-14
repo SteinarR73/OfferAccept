@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, SigningSession } from '@prisma/client';
 import { SigningTokenService } from './signing-token.service';
 import { SigningSessionService, SessionContext } from './signing-session.service';
 import { SigningOtpService, IssuedOtpResult, VerifyOtpResult } from './signing-otp.service';
@@ -10,6 +10,7 @@ import { EMAIL_PORT, EmailPort } from '../../../common/email/email.port';
 import {
   InvalidStateTransitionError,
   OfferExpiredError,
+  OtpChallengeMismatchError,
   SessionExpiredError,
   TokenInvalidError,
 } from '../../../common/errors/domain.errors';
@@ -40,11 +41,23 @@ export interface OfferContext {
 // Orchestrates the public signing flow. The only class controllers should call.
 //
 // Step sequence (enforced by state machines, not by this service):
-//   1. getOfferContext(token)           → validate token, return snapshot; NO OTP sent
-//   2. requestOtp(token, ctx)           → recipient explicitly asks; session created here
-//   3. verifyOtp(token, challengeId, code, ctx) → verify code
-//   4. accept(token, challengeId, ctx)  → final acceptance
-//   5. decline(token, ctx)              → decline
+//   1. getOfferContext(token)                    → validate token, return snapshot; NO OTP sent
+//   2. requestOtp(token, ctx)                    → recipient explicitly asks; session created here
+//   3. verifyOtp(token, challengeId, code, ctx)  → verify code; atomically advances all state
+//   4. accept(token, challengeId, ctx)           → final acceptance
+//   5. decline(token, ctx)                       → decline
+//
+// Session/challenge binding:
+//   verifyOtp:  The authoritative session is derived from the challenge's bound sessionId.
+//               No "latest resumable" lookup. If the challenge belongs to a different or
+//               expired session, verification fails with a deterministic domain error.
+//
+//   accept:     The authoritative session is derived from the VERIFIED challenge's bound
+//               sessionId. Prevents a scenario where a second session is "latest resumable"
+//               but the verified challenge belongs to the first session.
+//
+//   decline:    Uses findResumable() — acceptable because decline does not create
+//               verifiable evidence and does not require challenge binding.
 //
 // Why OTP is NOT sent on link open:
 //   Email security scanners follow links to check for phishing. If opening the URL
@@ -152,7 +165,14 @@ export class SigningFlowService {
     return result;
   }
 
-  // Step 3: Verify OTP; advance session to OTP_VERIFIED.
+  // Step 3: Verify OTP; atomically advance challenge + session + recipient to OTP_VERIFIED.
+  //
+  // The session is derived from the challenge's bound sessionId — not from "latest resumable".
+  // If the challenge does not exist, belongs to a different recipient, or its session is
+  // expired/wrong state, a deterministic domain error is thrown with no partial state.
+  //
+  // All state changes (challenge VERIFIED, session OTP_VERIFIED, recipient OTP_VERIFIED,
+  // OTP_VERIFIED event) happen in a single $transaction inside SigningOtpService.
   async verifyOtp(
     rawToken: string,
     challengeId: string,
@@ -160,26 +180,17 @@ export class SigningFlowService {
     ctx: SessionContext,
   ): Promise<VerifyOtpResult> {
     const recipient = await this.tokenService.verifyToken(rawToken);
-    const session = await this.getRequiredSession(recipient.id);
 
-    const result = await this.otpService.verify(challengeId, session.id, rawCode, ctx);
-
-    // Advance session status directly (OTP_VERIFIED event already written by otpService)
-    if (session.status === 'AWAITING_OTP') {
-      await this.db.signingSession.update({
-        where: { id: session.id },
-        data: { status: 'OTP_VERIFIED', otpVerifiedAt: result.verifiedAt },
-      });
-      await this.db.offerRecipient.update({
-        where: { id: recipient.id },
-        data: { status: 'OTP_VERIFIED' },
-      });
-    }
-
-    return result;
+    // Atomic: validates challenge binding, verifies code, advances all state in one tx.
+    return this.otpService.verifyAndAdvanceSession(challengeId, recipient.id, rawCode, ctx);
   }
 
   // Step 4a: Accept offer (requires OTP_VERIFIED session).
+  //
+  // The authoritative session is derived from the verified challenge's bound sessionId.
+  // This prevents the "wrong session" scenario where multiple sessions exist for a
+  // recipient and findResumable() would return the latest (possibly wrong) one.
+  //
   // Certificate is generated synchronously after the acceptance transaction commits.
   // Notification emails are sent best-effort — failure never reverses the acceptance.
   async accept(
@@ -188,7 +199,12 @@ export class SigningFlowService {
     context: AcceptanceContext,
   ): Promise<AcceptanceResult> {
     const recipient = await this.tokenService.verifyToken(rawToken);
-    const session = await this.getRequiredSession(recipient.id);
+
+    // Derive session from the VERIFIED challenge's bound sessionId.
+    // Throws OtpChallengeMismatchError if challenge is not VERIFIED or wrong recipient.
+    // Throws SessionExpiredError if session is expired or in a terminal/wrong state.
+    const session = await this.getSessionFromVerifiedChallenge(challengeId, recipient.id);
+
     const result = await this.acceptanceService.accept(session, challengeId, context);
 
     const { certificateId } = await this.certificateService.generateForAcceptance(
@@ -224,6 +240,8 @@ export class SigningFlowService {
 
   // Step 4b: Decline offer.
   // Decline notification to the sender is sent best-effort after the decline commits.
+  // Uses findResumable() — acceptable because decline does not produce verifiable
+  // evidence that needs challenge binding.
   async decline(rawToken: string, ctx: SessionContext): Promise<void> {
     const recipient = await this.tokenService.verifyToken(rawToken);
     const session = await this.getRequiredSession(recipient.id);
@@ -330,7 +348,39 @@ export class SigningFlowService {
     });
   }
 
-  private async getRequiredSession(recipientId: string) {
+  // ── Private helpers ────────────────────────────────────────────────────────────
+
+  // Derives the authoritative session from a VERIFIED OTP challenge.
+  //
+  // Used by accept() to ensure the session being accepted is the same one
+  // in which the OTP was verified — not an ambiguous "latest resumable" session.
+  //
+  // Throws OtpChallengeMismatchError if:
+  //   - challenge does not exist
+  //   - challenge.recipientId !== recipientId (binding violation)
+  //   - challenge.status !== 'VERIFIED' (OTP not yet verified in this challenge)
+  //
+  // Throws SessionExpiredError if the bound session is expired or in a wrong state.
+  private async getSessionFromVerifiedChallenge(
+    challengeId: string,
+    recipientId: string,
+  ): Promise<SigningSession> {
+    const challenge = await this.db.signingOtpChallenge.findUnique({
+      where: { id: challengeId },
+    });
+
+    if (!challenge || challenge.recipientId !== recipientId || challenge.status !== 'VERIFIED') {
+      throw new OtpChallengeMismatchError();
+    }
+
+    // getAndValidate enforces TTL and non-terminal status.
+    // If the session is expired or in ACCEPTED/DECLINED/EXPIRED/ABANDONED, it throws.
+    return this.sessionService.getAndValidate(challenge.sessionId);
+  }
+
+  // Returns the latest resumable session for a recipient.
+  // Used only for decline() — not for verifyOtp or accept.
+  private async getRequiredSession(recipientId: string): Promise<SigningSession> {
     const session = await this.sessionService.findResumable(recipientId);
     if (!session) throw new SessionExpiredError();
     return session;

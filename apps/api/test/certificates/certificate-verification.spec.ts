@@ -206,6 +206,8 @@ describe('CertificateService.generateForAcceptance()', () => {
       id: RECORD_ID,
       snapshot: { offerId: 'offer-1' },
     });
+    // include: offer is needed for access control in exportPayload, but
+    // generateForAcceptance bypasses exportPayload — uses db.acceptanceCertificate.create directly
 
     const built = makeBuiltCert();
     builder.build.mockResolvedValue(built);

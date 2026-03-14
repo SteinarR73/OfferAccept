@@ -11,6 +11,7 @@ import {
   OtpAlreadyVerifiedError,
   OtpInvalidatedError,
   OtpChallengeMismatchError,
+  SessionExpiredError,
 } from '../../../common/errors/domain.errors';
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -107,8 +108,139 @@ export class SigningOtpService {
     };
   }
 
-  // Verifies a submitted OTP code.
-  // Throws typed errors for all failure modes — never returns false.
+  // Atomically verifies the OTP code and advances session + recipient to OTP_VERIFIED.
+  //
+  // This is the primary verification method used by the signing flow.
+  // All state changes happen in a single $transaction — there is no split-brain state
+  // where the challenge is VERIFIED but the session is still AWAITING_OTP.
+  //
+  // Binding validation:
+  //   - challenge.recipientId must match the provided recipientId
+  //   - session is loaded from challenge.sessionId (not from "latest resumable")
+  //   - session must be AWAITING_OTP and not expired
+  //
+  // On success, one atomic transaction:
+  //   1. SigningOtpChallenge → VERIFIED
+  //   2. SigningSession → OTP_VERIFIED (otpVerifiedAt set)
+  //   3. OfferRecipient → OTP_VERIFIED
+  //   4. OTP_VERIFIED SigningEvent appended (exactly once)
+  //
+  // On failure, the challenge attempt count is incremented (also in a transaction).
+  // No session or recipient state changes on failure.
+  async verifyAndAdvanceSession(
+    challengeId: string,
+    recipientId: string,
+    rawCode: string,
+    context: { ipAddress?: string; userAgent?: string },
+  ): Promise<VerifyOtpResult> {
+    // ── Load and validate the challenge ───────────────────────────────────────
+    const challenge = await this.db.signingOtpChallenge.findUnique({
+      where: { id: challengeId },
+    });
+
+    if (!challenge || challenge.recipientId !== recipientId) {
+      // Treat missing challenge or recipient mismatch the same way —
+      // no session or recipient state change; same error to prevent enumeration.
+      throw new OtpChallengeMismatchError();
+    }
+
+    const effectiveStatus = deriveOtpStatus(challenge);
+
+    switch (effectiveStatus) {
+      case 'VERIFIED':    throw new OtpAlreadyVerifiedError();
+      case 'EXPIRED':     throw new OtpExpiredError();
+      case 'LOCKED':      throw new OtpLockedError();
+      case 'INVALIDATED': throw new OtpInvalidatedError();
+    }
+
+    // ── Load and validate the session bound to this challenge ─────────────────
+    // We derive the session from the challenge — not from "latest resumable".
+    // This is the authoritative binding: the challenge was issued for this session,
+    // so this is the session that must be advanced.
+    const session = await this.db.signingSession.findUnique({
+      where: { id: challenge.sessionId },
+    });
+
+    if (!session || session.status !== 'AWAITING_OTP' || session.expiresAt <= new Date()) {
+      // Session is gone, in the wrong state, or expired — cannot verify.
+      throw new SessionExpiredError();
+    }
+
+    // ── Verify the submitted code ─────────────────────────────────────────────
+    const isCorrect = this.verifyCode(rawCode, challenge.codeHash);
+
+    if (!isCorrect) {
+      const newAttemptCount = challenge.attemptCount + 1;
+      const isNowLocked = newAttemptCount >= challenge.maxAttempts;
+
+      await this.db.$transaction(async (tx) => {
+        await tx.signingOtpChallenge.update({
+          where: { id: challengeId },
+          data: {
+            attemptCount: newAttemptCount,
+            ...(isNowLocked ? { status: 'LOCKED' } : {}),
+          },
+        });
+
+        await this.eventService.append(
+          {
+            sessionId: session.id,
+            eventType: isNowLocked ? 'OTP_MAX_ATTEMPTS' : 'OTP_ATTEMPT_FAILED',
+            payload: { challengeId, attemptCount: newAttemptCount },
+            ...context,
+          },
+          tx as unknown as PrismaClient,
+        );
+      });
+
+      if (isNowLocked) throw new OtpLockedError();
+      throw new OtpInvalidError(challenge.maxAttempts - newAttemptCount);
+    }
+
+    // ── Correct code — atomic state advancement ───────────────────────────────
+    // All four updates happen in one transaction. If any step fails, the entire
+    // transaction rolls back and no partial state is persisted.
+    otpStateMachine.assertTransition(effectiveStatus, 'VERIFIED');
+    const verifiedAt = new Date();
+
+    await this.db.$transaction(async (tx) => {
+      // 1. Mark the OTP challenge as verified
+      await tx.signingOtpChallenge.update({
+        where: { id: challengeId },
+        data: { status: 'VERIFIED', verifiedAt },
+      });
+
+      // 2. Advance the session to OTP_VERIFIED
+      await tx.signingSession.update({
+        where: { id: session.id },
+        data: { status: 'OTP_VERIFIED', otpVerifiedAt: verifiedAt },
+      });
+
+      // 3. Advance the recipient to OTP_VERIFIED (inbox ownership proven)
+      await tx.offerRecipient.update({
+        where: { id: recipientId },
+        data: { status: 'OTP_VERIFIED' },
+      });
+
+      // 4. Append the OTP_VERIFIED event (exactly once — no duplicate from session service)
+      await this.eventService.append(
+        {
+          sessionId: session.id,
+          eventType: 'OTP_VERIFIED',
+          payload: { challengeId, channel: challenge.channel },
+          ...context,
+        },
+        tx as unknown as PrismaClient,
+      );
+    });
+
+    return { verified: true, verifiedAt };
+  }
+
+  // Legacy single-step verify method.
+  // Does NOT advance session or recipient — used only where the caller manages
+  // those transitions separately (e.g., support-side re-verification in future).
+  // The primary signing flow uses verifyAndAdvanceSession() instead.
   async verify(
     challengeId: string,
     sessionId: string,
@@ -162,7 +294,6 @@ export class SigningOtpService {
       throw new OtpInvalidError(challenge.maxAttempts - newAttemptCount);
     }
 
-    // Correct code
     otpStateMachine.assertTransition(effectiveStatus, 'VERIFIED');
     const verifiedAt = new Date();
 
