@@ -7,11 +7,16 @@ import { computeEventHash } from '../domain/signing-event.builder';
 // The only way signing events should be written anywhere in the application.
 // Enforces: append-only, sequenced, hash-chained.
 //
-// Concurrency note: for v1 (single recipient, single-threaded signing flow),
-// concurrent event inserts into the same session are not expected. The sequence
-// number assignment is not atomic across processes. If concurrent signing sessions
-// become possible, this must be moved to a serialized queue or a DB sequence with
-// a row lock on the session.
+// Concurrency safety: every append acquires a Postgres advisory transaction lock
+// keyed by sessionId before reading the last sequence number. This serializes
+// concurrent appends within the same session across any number of processes.
+// The lock is automatically released when the enclosing transaction commits or
+// rolls back — no manual unlock is needed.
+//
+// Lock key derivation:
+//   pg_advisory_xact_lock(hashtext(sessionId)::bigint)
+//   hashtext() uses MurmurHash and returns int4; ::bigint cast widens to 64-bit.
+//   Collision probability for any two session IDs ≈ 1/2^32 — acceptable for v1.
 
 export interface AppendEventInput {
   sessionId: string;
@@ -39,10 +44,30 @@ export class SigningEventService {
     input: AppendEventInput,
     tx?: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>,
   ): Promise<SigningEvent> {
-    const client = tx ?? this.db;
+    if (tx) {
+      return this.appendWithLock(input, tx);
+    }
+    // No caller-supplied transaction: wrap in our own so the advisory lock is
+    // always acquired inside a transaction (required by pg_advisory_xact_lock).
+    return this.db.$transaction((innerTx) =>
+      this.appendWithLock(
+        input,
+        innerTx as unknown as Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>,
+      ),
+    );
+  }
 
-    // Get the last event in this session to determine sequence number and prev hash
-    const lastEvent = await client.signingEvent.findFirst({
+  private async appendWithLock(
+    input: AppendEventInput,
+    tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>,
+  ): Promise<SigningEvent> {
+    // Acquire a session-scoped advisory transaction lock.
+    // Blocks until the lock is free; released automatically on transaction end.
+    // This serializes concurrent appends to the same session across all processes.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId})::bigint)`;
+
+    // Read the last event AFTER acquiring the lock — safe from TOCTOU.
+    const lastEvent = await tx.signingEvent.findFirst({
       where: { sessionId: input.sessionId },
       orderBy: { sequenceNumber: 'desc' },
       select: { sequenceNumber: true, eventHash: true },
@@ -61,7 +86,7 @@ export class SigningEventService {
       previousEventHash,
     });
 
-    return client.signingEvent.create({
+    return tx.signingEvent.create({
       data: {
         sessionId: input.sessionId,
         sequenceNumber,

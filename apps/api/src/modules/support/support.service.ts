@@ -23,10 +23,23 @@ export interface SupportCaseView {
   offer: {
     id: string;
     title: string;
+    // offerStatus reflects the business lifecycle of the offer (DRAFT/SENT/ACCEPTED/…).
+    // SENT means the snapshot is frozen and the signing token is live.
+    // It does NOT mean the recipient received the email — check latestDeliveryOutcome.
     status: string;
     expiresAt: string | null;
     createdAt: string;
   };
+  // Top-level delivery summary — the most important single question: did the email reach
+  // the provider? null if no attempt has been made (should not happen for SENT offers).
+  //
+  //   DELIVERED_TO_PROVIDER — provider accepted the message. Does NOT prove inbox delivery.
+  //   FAILED                — provider rejected the message, or network error occurred.
+  //   DISPATCHING           — send in progress (stale if > a few seconds old).
+  //
+  // For full attempt history (including all resends) see deliveryAttempts below.
+  // For proof of recipient engagement, see the signing event chain.
+  latestDeliveryOutcome: string | null;
   snapshot: {
     id: string;
     title: string;
@@ -245,6 +258,9 @@ export class SupportService {
       };
     }
 
+    // Latest delivery attempt is the first in newest-first order
+    const latestDeliveryOutcome = deliveryAttempts[0]?.outcome ?? null;
+
     return {
       offer: {
         id: offer.id,
@@ -253,6 +269,7 @@ export class SupportService {
         expiresAt: offer.expiresAt?.toISOString() ?? null,
         createdAt: offer.createdAt.toISOString(),
       },
+      latestDeliveryOutcome,
       snapshot: snapshot
         ? {
             id: snapshot.id,

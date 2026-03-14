@@ -240,11 +240,17 @@ export class SigningFlowService {
 
   // Step 4b: Decline offer.
   // Decline notification to the sender is sent best-effort after the decline commits.
-  // Uses findResumable() — acceptable because decline does not produce verifiable
-  // evidence that needs challenge binding.
-  async decline(rawToken: string, ctx: SessionContext): Promise<void> {
+  //
+  // Session is derived from the challenge's bound sessionId, not from findResumable().
+  // This eliminates multi-tab ambiguity: the recipient's explicit challengeId tells us
+  // exactly which session they are declining from.
+  //
+  // The challenge does NOT need to be VERIFIED to decline — the recipient may
+  // want to decline before completing OTP verification. It must exist and belong
+  // to this recipient (binding check) so we can identify the correct session.
+  async decline(rawToken: string, challengeId: string, ctx: SessionContext): Promise<void> {
     const recipient = await this.tokenService.verifyToken(rawToken);
-    const session = await this.getRequiredSession(recipient.id);
+    const session = await this.getSessionFromChallenge(challengeId, recipient.id);
     await this.acceptanceService.decline(session, ctx);
 
     // Load snapshot for sender contact details — best-effort only.
@@ -378,11 +384,26 @@ export class SigningFlowService {
     return this.sessionService.getAndValidate(challenge.sessionId);
   }
 
-  // Returns the latest resumable session for a recipient.
-  // Used only for decline() — not for verifyOtp or accept.
-  private async getRequiredSession(recipientId: string): Promise<SigningSession> {
-    const session = await this.sessionService.findResumable(recipientId);
-    if (!session) throw new SessionExpiredError();
-    return session;
+  // Derives the authoritative session from any challenge (any status) that belongs
+  // to the given recipient. Used by decline() — which does not require OTP completion.
+  //
+  // Throws OtpChallengeMismatchError if:
+  //   - challenge does not exist
+  //   - challenge.recipientId !== recipientId (binding violation)
+  //
+  // Throws SessionExpiredError if the bound session is expired or in a terminal state.
+  private async getSessionFromChallenge(
+    challengeId: string,
+    recipientId: string,
+  ): Promise<SigningSession> {
+    const challenge = await this.db.signingOtpChallenge.findUnique({
+      where: { id: challengeId },
+    });
+
+    if (!challenge || challenge.recipientId !== recipientId) {
+      throw new OtpChallengeMismatchError();
+    }
+
+    return this.sessionService.getAndValidate(challenge.sessionId);
   }
 }

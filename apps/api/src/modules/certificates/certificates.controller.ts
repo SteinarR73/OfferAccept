@@ -1,7 +1,10 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
+import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { CertificateService } from './certificate.service';
+import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 
 // ─── CertificatesController ────────────────────────────────────────────────────
 // Mixed access: some routes are public (no auth), others require a JWT.
@@ -27,7 +30,10 @@ import { CertificateService } from './certificate.service';
 
 @Controller('certificates')
 export class CertificatesController {
-  constructor(private readonly certificates: CertificateService) {}
+  constructor(
+    private readonly certificates: CertificateService,
+    private readonly rateLimiter: RateLimitService,
+  ) {}
 
   // Returns certificate metadata for authenticated callers (sender, support).
   // Does not recompute the hash — returns stored hash.
@@ -64,7 +70,9 @@ export class CertificatesController {
   //   2. Compute SHA-256 of deepSortKeys(JSON.stringify(payload)) themselves
   //   3. Compare their computed hash to this endpoint's reconstructedHash
   @Get(':id/verify')
-  async verifyCertificate(@Param('id') id: string) {
+  async verifyCertificate(@Param('id') id: string, @Req() req: Request) {
+    // Rate-limit by IP — public endpoint, protects against bulk scraping
+    this.rateLimiter.check('cert_verify', extractClientIp(req));
     const result = await this.certificates.verify(id);
 
     // Return verification result with no sensitive internal data

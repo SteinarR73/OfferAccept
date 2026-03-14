@@ -164,6 +164,21 @@ export class OfferAlreadyAcceptedError extends DomainError {
   }
 }
 
+// ─── Concurrency ──────────────────────────────────────────────────────────────
+
+// Thrown when an optimistic concurrency check fails: another process updated
+// the same row between the read and the write. Callers should retry or surface
+// a conflict response — never silently swallow this error.
+export class ConcurrencyConflictError extends DomainError {
+  constructor(public readonly entity?: string) {
+    super(
+      entity
+        ? `Concurrent modification detected on ${entity}. Please retry.`
+        : 'Concurrent modification detected. Please retry.',
+    );
+  }
+}
+
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
 export class RateLimitExceededError extends DomainError {

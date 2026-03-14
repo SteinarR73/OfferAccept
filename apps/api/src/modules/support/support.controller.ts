@@ -13,8 +13,10 @@ import { Request } from 'express';
 import { InternalSupportGuard } from '../../common/auth/internal-support.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { SupportService } from './support.service';
 import { SupportAuditService } from './support-audit.service';
+import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 
 // ─── SupportController ────────────────────────────────────────────────────────
 // Internal support endpoints for investigating signing flows and disputes.
@@ -45,6 +47,7 @@ export class SupportController {
   constructor(
     private readonly supportService: SupportService,
     private readonly audit: SupportAuditService,
+    private readonly rateLimiter: RateLimitService,
   ) {}
 
   // GET /support/offers?offerId=xxx OR ?recipientEmail=xxx@example.com
@@ -100,8 +103,8 @@ export class SupportController {
     @Req() req: Request,
   ) {
     this.audit.log(agent.sub, 'REVOKE_OFFER', `offer:${offerId}`, {
-      ipAddress: clientIp(req),
-      userAgent: req.headers['user-agent'] ?? '',
+      ipAddress: extractClientIp(req),
+      userAgent: req.headers['user-agent'] as string | undefined,
     });
     await this.supportService.revokeOffer(offerId);
     return { revoked: true, offerId };
@@ -110,6 +113,7 @@ export class SupportController {
   // POST /support/offers/:offerId/resend-link
   // Resend offer link email. Generates a new signing token (old link superseded).
   // Does NOT mutate OfferSnapshot.
+  // Rate-limited: 5 resends per actor per 10 minutes.
   @Post('offers/:offerId/resend-link')
   @HttpCode(HttpStatus.OK)
   async resendOfferLink(
@@ -117,9 +121,12 @@ export class SupportController {
     @CurrentUser() agent: JwtPayload,
     @Req() req: Request,
   ) {
+    // Rate-limit by actorId — prevents a single support agent from mass-resending
+    this.rateLimiter.check('support_resend_link', agent.sub);
+    const ip = extractClientIp(req);
     this.audit.log(agent.sub, 'RESEND_OFFER_LINK', `offer:${offerId}`, {
-      ipAddress: clientIp(req),
-      userAgent: req.headers['user-agent'] ?? '',
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
     });
     const result = await this.supportService.resendOfferLink(offerId, agent.sub);
     return { offerId, deliveryAttemptId: result.deliveryAttemptId, deliveryOutcome: result.deliveryOutcome };
@@ -129,6 +136,7 @@ export class SupportController {
   // Re-issue OTP to an active signing session.
   // Only allowed when session is AWAITING_OTP. Does NOT mutate any evidence.
   // Returns the masked delivery address and expiry — never the raw code.
+  // Rate-limited: 3 OTP resends per session per 5 minutes.
   @Post('sessions/:sessionId/resend-otp')
   @HttpCode(HttpStatus.OK)
   async resendSessionOtp(
@@ -136,20 +144,17 @@ export class SupportController {
     @CurrentUser() agent: JwtPayload,
     @Req() req: Request,
   ) {
+    // Rate-limit by sessionId — prevents OTP spam to a single session
+    this.rateLimiter.check('support_resend_otp', sessionId);
+    const ip = extractClientIp(req);
     const ctx = {
-      ipAddress: clientIp(req),
-      userAgent: req.headers['user-agent'] ?? '',
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
     };
     this.audit.log(agent.sub, 'RESEND_SESSION_OTP', `session:${sessionId}`, ctx);
     const result = await this.supportService.resendSessionOtp(sessionId, ctx);
     return { sessionId, ...result };
   }
-}
-
-function clientIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
-  return req.socket?.remoteAddress ?? 'unknown';
 }
 
 // Mask email for audit log — keeps domain but masks local part

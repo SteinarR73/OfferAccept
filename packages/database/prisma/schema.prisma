@@ -221,6 +221,8 @@ model OfferRecipient {
   tokenExpiresAt     DateTime
   tokenInvalidatedAt DateTime?
   status             RecipientStatus @default(PENDING)
+  // Optimistic concurrency version — incremented on every status update.
+  version            Int             @default(1)
   viewedAt           DateTime?
   respondedAt        DateTime?
   createdAt          DateTime        @default(now())
@@ -269,6 +271,9 @@ model SigningSession {
   ipAddress     String?
   userAgent     String?
   status        SessionStatus @default(AWAITING_OTP)
+  // Optimistic concurrency version — incremented on every status update.
+  // Used with updateMany WHERE version = ? to detect concurrent modifications.
+  version       Int           @default(1)
   // Session TTL — set at creation, enforced by application + background job
   expiresAt     DateTime
   otpVerifiedAt DateTime?
@@ -530,6 +535,44 @@ model OfferDeliveryAttempt {
   @@index([offerId])
   @@index([attemptedAt])
   @@map("offer_delivery_attempts")
+}
+
+// ─── SupportAuditLog ──────────────────────────────────────────────────────────
+// Append-only audit trail for all INTERNAL_SUPPORT reads and actions.
+//
+// Rules:
+//   - Never update or delete rows. append-only.
+//   - metadata must never contain secrets, tokens, OTP codes, or raw passwords.
+//   - actorId is the sub claim from the support user's JWT — always from the
+//     server-verified token, never from request body.
+//
+// resourceType + resourceId identify the entity acted upon:
+//   offer:{offerId}, session:{sessionId}, certificate:{certId}
+//
+// This table is the authoritative audit source for compliance reviews and
+// dispute investigations involving internal staff access.
+
+model SupportAuditLog {
+  id             String   @id @default(cuid())
+  // Support user who performed the action (JWT sub — never request-supplied)
+  actorId        String
+  // Action enum: SEARCH_OFFERS, READ_CASE, READ_TIMELINE, READ_SESSION_EVENTS,
+  //              REVOKE_OFFER, RESEND_OFFER_LINK, RESEND_SESSION_OTP
+  action         String
+  resourceType   String   // 'offer' | 'session' | 'certificate'
+  resourceId     String
+  // Owning org of the resource — null when resource is cross-org (search results)
+  organizationId String?
+  timestamp      DateTime @default(now())
+  ipAddress      String?
+  userAgent      String?
+  // Safe structured detail — see rules above: NO secrets, tokens, or OTPs
+  metadata       Json?
+
+  @@index([actorId])
+  @@index([resourceType, resourceId])
+  @@index([timestamp])
+  @@map("support_audit_logs")
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

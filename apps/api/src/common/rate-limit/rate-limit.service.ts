@@ -25,16 +25,25 @@ interface WindowEntry {
 
 // Named limit profiles. Callers reference a profile name for consistency.
 export type RateLimitProfile =
-  | 'token_verification' // 10 attempts per IP per 15 minutes
-  | 'otp_issuance'       // 3 issuances per recipient token per hour
-  | 'otp_verification'   // 10 attempts per IP per 15 minutes (defense in depth)
-  | 'signing_global';    // 60 requests per IP per minute
+  // Public signing flow
+  | 'token_verification'  // 10 attempts per IP per 15 minutes
+  | 'otp_issuance'        // 3 issuances per recipient token per hour
+  | 'otp_verification'    // 10 attempts per IP per 15 minutes (defense in depth)
+  | 'signing_global'      // 60 requests per IP per minute
+  // Support staff actions — keyed by sessionId or actorId
+  | 'support_resend_otp'  // 3 OTP resends per session per 5 minutes (per-session key)
+  | 'support_resend_link' // 5 link resends per actor per 10 minutes (per-actor key)
+  // Public certificate verification
+  | 'cert_verify';        // 10 verifications per IP per minute
 
 const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
-  token_verification: { limit: 10, windowMs: 15 * 60 * 1000 },
-  otp_issuance:       { limit: 3,  windowMs: 60 * 60 * 1000 },
-  otp_verification:   { limit: 10, windowMs: 15 * 60 * 1000 },
-  signing_global:     { limit: 60, windowMs: 60 * 1000 },
+  token_verification:  { limit: 10, windowMs: 15 * 60 * 1000 },
+  otp_issuance:        { limit: 3,  windowMs: 60 * 60 * 1000 },
+  otp_verification:    { limit: 10, windowMs: 15 * 60 * 1000 },
+  signing_global:      { limit: 60, windowMs:      60 * 1000 },
+  support_resend_otp:  { limit: 3,  windowMs:  5 * 60 * 1000 },
+  support_resend_link: { limit: 5,  windowMs: 10 * 60 * 1000 },
+  cert_verify:         { limit: 10, windowMs:      60 * 1000 },
 };
 
 @Injectable()

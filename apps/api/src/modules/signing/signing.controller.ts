@@ -13,6 +13,8 @@ import { SigningFlowService } from './services/signing-flow.service';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AcceptOfferDto } from './dto/accept-offer.dto';
+import { DeclineOfferDto } from './dto/decline-offer.dto';
+import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 
 // ─── SigningController ─────────────────────────────────────────────────────────
 // Public (unauthenticated) signing flow endpoints.
@@ -34,7 +36,7 @@ export class SigningController {
   // Does NOT create a session. Does NOT send an OTP.
   @Get(':token')
   async getContext(@Param('token') token: string, @Req() req: Request) {
-    this.rateLimiter.check('token_verification', clientIp(req));
+    this.rateLimiter.check('token_verification', extractClientIp(req));
     return this.flow.getOfferContext(token);
   }
 
@@ -46,7 +48,7 @@ export class SigningController {
     // Rate-limit by token hash (per-recipient) to prevent OTP spam
     this.rateLimiter.check('otp_issuance', token);
     // Also rate-limit by IP as a secondary defence
-    this.rateLimiter.check('signing_global', clientIp(req));
+    this.rateLimiter.check('signing_global', extractClientIp(req));
 
     const result = await this.flow.requestOtp(token, context(req));
     // Never expose challengeId's expiry timing in error paths — only in success response
@@ -66,7 +68,7 @@ export class SigningController {
     @Body() body: VerifyOtpDto,
     @Req() req: Request,
   ) {
-    this.rateLimiter.check('otp_verification', clientIp(req));
+    this.rateLimiter.check('otp_verification', extractClientIp(req));
 
     const result = await this.flow.verifyOtp(token, body.challengeId, body.code, context(req));
     return {
@@ -84,7 +86,7 @@ export class SigningController {
     @Body() body: AcceptOfferDto,
     @Req() req: Request,
   ) {
-    this.rateLimiter.check('signing_global', clientIp(req));
+    this.rateLimiter.check('signing_global', extractClientIp(req));
 
     const result = await this.flow.accept(token, body.challengeId, {
       ...context(req),
@@ -100,11 +102,19 @@ export class SigningController {
   }
 
   // POST /api/v1/signing/:token/decline
+  // Requires challengeId so the session is resolved from the challenge's bound
+  // sessionId — not from a "latest resumable" lookup. The challenge may be in
+  // any status (PENDING, VERIFIED, etc.) — it only needs to exist and belong to
+  // this recipient to identify the correct session.
   @Post(':token/decline')
   @HttpCode(HttpStatus.OK)
-  async decline(@Param('token') token: string, @Req() req: Request) {
-    this.rateLimiter.check('signing_global', clientIp(req));
-    await this.flow.decline(token, context(req));
+  async decline(
+    @Param('token') token: string,
+    @Body() body: DeclineOfferDto,
+    @Req() req: Request,
+  ) {
+    this.rateLimiter.check('signing_global', extractClientIp(req));
+    await this.flow.decline(token, body.challengeId, context(req));
     return { declined: true };
   }
 
@@ -118,21 +128,15 @@ export class SigningController {
     @Req() req: Request,
   ) {
     // Not rate-limited tightly — document views are a low-risk operation
-    this.rateLimiter.check('signing_global', clientIp(req));
+    this.rateLimiter.check('signing_global', extractClientIp(req));
     await this.flow.recordDocumentView(token, documentId, context(req));
     return { recorded: true };
   }
 }
 
-function clientIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
-  return req.socket?.remoteAddress ?? 'unknown';
-}
-
 function context(req: Request): { ipAddress: string; userAgent: string } {
   return {
-    ipAddress: clientIp(req),
+    ipAddress: extractClientIp(req),
     userAgent: req.headers['user-agent'] ?? '',
   };
 }

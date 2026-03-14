@@ -12,6 +12,7 @@ import {
   OtpInvalidatedError,
   OtpChallengeMismatchError,
   SessionExpiredError,
+  ConcurrencyConflictError,
 } from '../../../common/errors/domain.errors';
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -166,6 +167,13 @@ export class SigningOtpService {
       throw new SessionExpiredError();
     }
 
+    // ── Load recipient version for optimistic concurrency check ───────────────
+    const recipient = await this.db.offerRecipient.findUnique({
+      where: { id: recipientId },
+      select: { id: true, version: true },
+    });
+    if (!recipient) throw new OtpChallengeMismatchError();
+
     // ── Verify the submitted code ─────────────────────────────────────────────
     const isCorrect = this.verifyCode(rawCode, challenge.codeHash);
 
@@ -210,17 +218,19 @@ export class SigningOtpService {
         data: { status: 'VERIFIED', verifiedAt },
       });
 
-      // 2. Advance the session to OTP_VERIFIED
-      await tx.signingSession.update({
-        where: { id: session.id },
-        data: { status: 'OTP_VERIFIED', otpVerifiedAt: verifiedAt },
+      // 2. Advance the session to OTP_VERIFIED — with optimistic concurrency check.
+      const sessionUpdate = await tx.signingSession.updateMany({
+        where: { id: session.id, version: session.version },
+        data: { status: 'OTP_VERIFIED', otpVerifiedAt: verifiedAt, version: { increment: 1 } },
       });
+      if (sessionUpdate.count === 0) throw new ConcurrencyConflictError('SigningSession');
 
-      // 3. Advance the recipient to OTP_VERIFIED (inbox ownership proven)
-      await tx.offerRecipient.update({
-        where: { id: recipientId },
-        data: { status: 'OTP_VERIFIED' },
+      // 3. Advance the recipient to OTP_VERIFIED — with optimistic concurrency check.
+      const recipientUpdate = await tx.offerRecipient.updateMany({
+        where: { id: recipientId, version: recipient.version },
+        data: { status: 'OTP_VERIFIED', version: { increment: 1 } },
       });
+      if (recipientUpdate.count === 0) throw new ConcurrencyConflictError('OfferRecipient');
 
       // 4. Append the OTP_VERIFIED event (exactly once — no duplicate from session service)
       await this.eventService.append(

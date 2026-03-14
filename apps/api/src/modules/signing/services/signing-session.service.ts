@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { PrismaClient, SigningSession, SessionStatus } from '@prisma/client';
 import { sessionStateMachine } from '../domain/signing-session.state-machine';
 import { SigningEventService } from './signing-event.service';
-import { SessionExpiredError } from '../../../common/errors/domain.errors';
+import { SessionExpiredError, ConcurrencyConflictError } from '../../../common/errors/domain.errors';
 
 const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
@@ -90,14 +90,23 @@ export class SigningSessionService {
     const isCompletion = ['ACCEPTED', 'DECLINED', 'EXPIRED', 'ABANDONED'].includes(to);
 
     const updated = await this.db.$transaction(async (tx) => {
-      const result = await tx.signingSession.update({
-        where: { id: session.id },
+      // Optimistic concurrency: include current version in WHERE clause.
+      // If another process already updated this session, count = 0 → conflict error.
+      const { count } = await tx.signingSession.updateMany({
+        where: { id: session.id, version: session.version },
         data: {
           status: to,
+          version: { increment: 1 },
           ...(to === 'OTP_VERIFIED' ? { otpVerifiedAt: new Date() } : {}),
           ...(isCompletion ? { completedAt: new Date() } : {}),
         },
       });
+
+      if (count === 0) {
+        throw new ConcurrencyConflictError('SigningSession');
+      }
+
+      const result = await tx.signingSession.findUniqueOrThrow({ where: { id: session.id } });
 
       if (eventType) {
         await this.eventService.append(
@@ -114,7 +123,7 @@ export class SigningSessionService {
       return result;
     });
 
-    return updated;
+    return updated!;
   }
 
   // Finds an existing resumable session for a recipient (AWAITING_OTP or OTP_VERIFIED)

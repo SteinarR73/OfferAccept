@@ -26,6 +26,7 @@ import {
   InvalidStateTransitionError,
   TerminalStateError,
   RateLimitExceededError,
+  ConcurrencyConflictError,
 } from '../errors/domain.errors';
 
 // ─── DomainExceptionFilter ─────────────────────────────────────────────────────
@@ -114,6 +115,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
     if (err instanceof InvalidStateTransitionError || err instanceof TerminalStateError) {
       return this.make(HttpStatus.CONFLICT, err.message, 'INVALID_STATE_TRANSITION');
+    }
+    if (err instanceof ConcurrencyConflictError) {
+      return this.make(HttpStatus.CONFLICT, err.message, 'CONCURRENCY_CONFLICT');
     }
 
     // ── 400 Bad Request — OTP verification failures ───────────────────────────
