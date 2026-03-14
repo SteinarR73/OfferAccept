@@ -102,7 +102,7 @@ export class SupportController {
     @CurrentUser() agent: JwtPayload,
     @Req() req: Request,
   ) {
-    this.audit.log(agent.sub, 'REVOKE_OFFER', `offer:${offerId}`, {
+    await this.audit.logCritical(agent.sub, 'REVOKE_OFFER', `offer:${offerId}`, {
       ipAddress: extractClientIp(req),
       userAgent: req.headers['user-agent'] as string | undefined,
     });
@@ -124,7 +124,7 @@ export class SupportController {
     // Rate-limit by actorId — prevents a single support agent from mass-resending
     this.rateLimiter.check('support_resend_link', agent.sub);
     const ip = extractClientIp(req);
-    this.audit.log(agent.sub, 'RESEND_OFFER_LINK', `offer:${offerId}`, {
+    await this.audit.logCritical(agent.sub, 'RESEND_OFFER_LINK', `offer:${offerId}`, {
       ipAddress: ip,
       userAgent: req.headers['user-agent'] as string | undefined,
     });
@@ -151,7 +151,7 @@ export class SupportController {
       ipAddress: ip,
       userAgent: req.headers['user-agent'] as string | undefined,
     };
-    this.audit.log(agent.sub, 'RESEND_SESSION_OTP', `session:${sessionId}`, ctx);
+    await this.audit.logCritical(agent.sub, 'RESEND_SESSION_OTP', `session:${sessionId}`, ctx);
     const result = await this.supportService.resendSessionOtp(sessionId, ctx);
     return { sessionId, ...result };
   }

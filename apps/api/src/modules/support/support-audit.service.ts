@@ -4,17 +4,21 @@ import { PrismaClient } from '@prisma/client';
 // ─── SupportAuditService ───────────────────────────────────────────────────────
 // Persists a DB-backed audit trail for every INTERNAL_SUPPORT read and action.
 //
-// Design decisions:
-//   - Primary store: SupportAuditLog table (Postgres, append-only).
-//     This is the authoritative audit source — queryable after the fact without
-//     depending on log aggregation availability.
-//   - Secondary store: structured JSON via NestJS Logger. Production log
-//     aggregation (CloudWatch, Datadog) picks this up for real-time alerting.
-//   - DB write is fire-and-forget (async, not awaited at call site) to avoid
-//     blocking the response. A failure to write is logged at ERROR but does not
-//     fail the action — we prefer partial audit over unavailability.
+// Two write modes:
 //
-// Sensitive data rules (enforced here, not by callers):
+//   log()          — fire-and-forget. Used for read-only actions (searches,
+//                    case views, timeline reads). A DB failure is logged at
+//                    ERROR level but does not block the response.
+//
+//   logCritical()  — synchronous and blocking. Used for ALL mutating support
+//                    actions (revoke, resend-link, resend-otp). The audit row
+//                    must be written BEFORE the action executes. If the write
+//                    fails the method throws, preventing the action from
+//                    proceeding without an audit trail.
+//
+// This ensures: mutating support actions cannot complete without audit logging.
+//
+// Sensitive data rules:
 //   - No raw tokens, token hashes, OTP codes, or passwords in metadata
 //   - actorId always comes from the JWT sub — never from request body
 //   - Email addresses in metadata must be pre-masked by the caller
@@ -25,7 +29,7 @@ export type SupportAuditAction =
   | 'READ_CASE'
   | 'READ_TIMELINE'
   | 'READ_SESSION_EVENTS'
-  // Mutation actions
+  // Mutation actions (use logCritical for these)
   | 'REVOKE_OFFER'
   | 'RESEND_OFFER_LINK'
   | 'RESEND_SESSION_OTP';
@@ -35,10 +39,11 @@ export interface SupportAuditContext {
   userAgent?: string;
 }
 
-// resourceType values used internally — not validated at runtime, document here
+// resourceType values — not validated at runtime, documented here:
 // 'offer'       — action on an offer or its case data
 // 'session'     — action on a specific signing session
 // 'certificate' — action on an acceptance certificate
+// 'offers'      — cross-resource action (search results)
 type ResourceType = 'offer' | 'session' | 'certificate' | 'offers';
 
 @Injectable()
@@ -47,13 +52,10 @@ export class SupportAuditService {
 
   constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
 
-  // Log a support read or action.
-  // `actorId`        — userId from the support user's JWT (JWT sub, never request body)
-  // `action`         — what was done (see SupportAuditAction)
-  // `resource`       — resource descriptor: "offer:{id}", "session:{id}" etc.
-  // `ctx`            — optional network context (IP, UA) — for mutation actions
-  // `detail`         — safe additional data (must not contain secrets/tokens)
-  // `organizationId` — owning org when known (null for cross-org search results)
+  // ── Fire-and-forget — for read-only actions ────────────────────────────────
+  //
+  // Emits structured JSON to the logger (picked up by log aggregation) and
+  // schedules a DB write that does NOT block the caller. Use for reads.
   log(
     actorId: string,
     action: SupportAuditAction,
@@ -63,45 +65,38 @@ export class SupportAuditService {
     organizationId?: string,
   ): void {
     const timestamp = new Date();
-    const [resourceType, resourceId] = this.parseResource(resource);
+    this.emitToLogger({ actorId, action, resource, timestamp, ctx, detail });
 
-    const entry = {
-      type: 'SUPPORT_AUDIT',
-      actorId,
-      action,
-      resource,
-      timestamp: timestamp.toISOString(),
-      ...(ctx?.ipAddress ? { ipAddress: ctx.ipAddress } : {}),
-      ...(ctx?.userAgent ? { userAgent: ctx.userAgent } : {}),
-      ...(detail ? { detail } : {}),
-    };
-
-    // Secondary: structured log for real-time aggregation
-    this.logger.log(JSON.stringify(entry));
-
-    // Primary: durable DB row — non-blocking
-    this.persistToDB({
-      actorId,
-      action,
-      resourceType,
-      resourceId,
-      organizationId: organizationId ?? null,
-      timestamp,
-      ipAddress: ctx?.ipAddress ?? null,
-      userAgent: ctx?.userAgent ?? null,
-      metadata: detail ?? null,
-    }).catch((err) => {
-      this.logger.error('Failed to persist support audit log to DB', err);
-    });
+    this.persistToDB({ actorId, action, resource, timestamp, ctx, detail, organizationId }).catch(
+      (err) => this.logger.error('Failed to persist support audit log to DB', err),
+    );
   }
 
-  // Retrieves recent audit entries for a resource — for compliance review.
-  // Returns newest-first, limited to 100 rows by default.
-  async getEntriesForResource(
-    resourceType: string,
-    resourceId: string,
-    limit = 100,
-  ) {
+  // ── Synchronous — for mutating actions ────────────────────────────────────
+  //
+  // Awaits the DB write and propagates any failure to the caller.
+  // Must be called and awaited BEFORE the action executes so that a DB
+  // failure prevents the action from proceeding un-audited.
+  //
+  // Also emits to the logger so real-time alerting sees mutation events.
+  async logCritical(
+    actorId: string,
+    action: SupportAuditAction,
+    resource: string,
+    ctx?: SupportAuditContext,
+    detail?: Record<string, unknown>,
+    organizationId?: string,
+  ): Promise<void> {
+    const timestamp = new Date();
+    this.emitToLogger({ actorId, action, resource, timestamp, ctx, detail });
+    // Blocking: throws on failure → caller must handle / bubble up
+    await this.persistToDB({ actorId, action, resource, timestamp, ctx, detail, organizationId });
+  }
+
+  // ── Query helpers ─────────────────────────────────────────────────────────
+
+  // Returns recent audit entries for a resource — for compliance review.
+  async getEntriesForResource(resourceType: string, resourceId: string, limit = 100) {
     return this.db.supportAuditLog.findMany({
       where: { resourceType, resourceId },
       orderBy: { timestamp: 'desc' },
@@ -109,7 +104,7 @@ export class SupportAuditService {
     });
   }
 
-  // Retrieves recent audit entries for an actor — for actor-level investigation.
+  // Returns recent audit entries for an actor — for actor-level investigation.
   async getEntriesForActor(actorId: string, limit = 100) {
     return this.db.supportAuditLog.findMany({
       where: { actorId },
@@ -118,41 +113,59 @@ export class SupportAuditService {
     });
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────────────
+  // ── Private helpers ────────────────────────────────────────────────────────
 
-  private async persistToDB(row: {
+  private emitToLogger(params: {
     actorId: string;
     action: string;
-    resourceType: string;
-    resourceId: string;
-    organizationId: string | null;
+    resource: string;
     timestamp: Date;
-    ipAddress: string | null;
-    userAgent: string | null;
-    metadata: Record<string, unknown> | null;
+    ctx?: SupportAuditContext;
+    detail?: Record<string, unknown>;
+  }): void {
+    this.logger.log(
+      JSON.stringify({
+        type: 'SUPPORT_AUDIT',
+        actorId: params.actorId,
+        action: params.action,
+        resource: params.resource,
+        timestamp: params.timestamp.toISOString(),
+        ...(params.ctx?.ipAddress ? { ipAddress: params.ctx.ipAddress } : {}),
+        ...(params.ctx?.userAgent ? { userAgent: params.ctx.userAgent } : {}),
+        ...(params.detail ? { detail: params.detail } : {}),
+      }),
+    );
+  }
+
+  private async persistToDB(params: {
+    actorId: string;
+    action: string;
+    resource: string;
+    timestamp: Date;
+    ctx?: SupportAuditContext;
+    detail?: Record<string, unknown>;
+    organizationId?: string;
   }): Promise<void> {
+    const [resourceType, resourceId] = this.parseResource(params.resource);
     await this.db.supportAuditLog.create({
       data: {
-        actorId: row.actorId,
-        action: row.action,
-        resourceType: row.resourceType,
-        resourceId: row.resourceId,
-        organizationId: row.organizationId ?? undefined,
-        timestamp: row.timestamp,
-        ipAddress: row.ipAddress ?? undefined,
-        userAgent: row.userAgent ?? undefined,
-        metadata: row.metadata ?? undefined,
+        actorId: params.actorId,
+        action: params.action,
+        resourceType,
+        resourceId,
+        organizationId: params.organizationId ?? undefined,
+        timestamp: params.timestamp,
+        ipAddress: params.ctx?.ipAddress ?? undefined,
+        userAgent: params.ctx?.userAgent ?? undefined,
+        metadata: params.detail ?? undefined,
       },
     });
   }
 
-  // Splits "offer:abc123" into ["offer", "abc123"].
-  // Falls back to ["unknown", resource] for unrecognized formats.
+  // Splits "offer:abc123" → ["offer", "abc123"].
   private parseResource(resource: string): [ResourceType, string] {
     const sep = resource.indexOf(':');
     if (sep < 1) return ['offer', resource];
-    const type = resource.slice(0, sep) as ResourceType;
-    const id = resource.slice(sep + 1);
-    return [type, id];
+    return [resource.slice(0, sep) as ResourceType, resource.slice(sep + 1)];
   }
 }

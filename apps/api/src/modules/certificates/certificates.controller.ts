@@ -1,5 +1,5 @@
-import { Controller, Get, Param, UseGuards, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Get, Param, UseGuards, Req, Res } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
@@ -70,9 +70,21 @@ export class CertificatesController {
   //   2. Compute SHA-256 of deepSortKeys(JSON.stringify(payload)) themselves
   //   3. Compare their computed hash to this endpoint's reconstructedHash
   @Get(':id/verify')
-  async verifyCertificate(@Param('id') id: string, @Req() req: Request) {
+  async verifyCertificate(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const ip = extractClientIp(req);
     // Rate-limit by IP — public endpoint, protects against bulk scraping
-    this.rateLimiter.check('cert_verify', extractClientIp(req));
+    this.rateLimiter.check('cert_verify', ip);
+
+    // Expose rate limit state so callers can back off gracefully
+    const { remaining, resetAt } = this.rateLimiter.peek('cert_verify', ip);
+    res.setHeader('X-RateLimit-Limit', '10');
+    res.setHeader('X-RateLimit-Remaining', String(remaining));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(resetAt.getTime() / 1000)));
+
     const result = await this.certificates.verify(id);
 
     // Return verification result with no sensitive internal data

@@ -15,8 +15,24 @@ import { computeEventHash } from '../domain/signing-event.builder';
 //
 // Lock key derivation:
 //   pg_advisory_xact_lock(hashtext(sessionId)::bigint)
-//   hashtext() uses MurmurHash and returns int4; ::bigint cast widens to 64-bit.
-//   Collision probability for any two session IDs ≈ 1/2^32 — acceptable for v1.
+//
+//   hashtext() is Postgres's internal MurmurHash-based function that returns int4
+//   (32-bit signed). Casting to bigint widens to 64-bit, but the entropy remains
+//   32 bits because hashtext output fills only the lower 32 bits of the bigint.
+//
+//   Collision risk: two distinct session IDs map to the same advisory lock key
+//   with probability ≈ 1/2^32 (~2.3 × 10⁻¹⁰ per pair). For v1 concurrency
+//   correctness this is acceptable — a collision merely serializes two sessions
+//   that could have run in parallel; it does NOT corrupt data.
+//
+//   Migration path to eliminate collision risk (do before scaling past ~100k active
+//   sessions):
+//     1. Compute SHA-256 of the sessionId string.
+//     2. Take the first 8 bytes of the digest and interpret as a signed int64.
+//     3. Pass that value to pg_advisory_xact_lock() directly.
+//   This gives 64 bits of entropy and reduces collision probability to ≈ 1/2^64.
+//   Implementation requires a native SHA library or a Postgres UDF; Prisma $queryRaw
+//   can call the UDF as:  SELECT pg_advisory_xact_lock(sha256_to_int64(${sessionId}))
 
 export interface AppendEventInput {
   sessionId: string;

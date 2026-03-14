@@ -117,7 +117,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return this.make(HttpStatus.CONFLICT, err.message, 'INVALID_STATE_TRANSITION');
     }
     if (err instanceof ConcurrencyConflictError) {
-      return this.make(HttpStatus.CONFLICT, err.message, 'CONCURRENCY_CONFLICT');
+      return this.make(HttpStatus.CONFLICT, err.message, 'CONCURRENCY_CONFLICT', { retryable: true });
     }
 
     // ── 400 Bad Request — OTP verification failures ───────────────────────────

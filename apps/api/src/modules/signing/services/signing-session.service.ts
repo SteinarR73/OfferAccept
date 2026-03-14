@@ -78,7 +78,26 @@ export class SigningSessionService {
 
   // Transitions a session to a new status. Validates via the state machine.
   // Emits the appropriate signing event for transitions that require one.
+  // Auto-retries once on ConcurrencyConflictError by re-fetching the fresh session.
   async transition(
+    session: SigningSession,
+    to: SessionStatus,
+    context: SessionContext,
+    eventPayload?: Record<string, unknown>,
+  ): Promise<SigningSession> {
+    try {
+      return await this.doTransition(session, to, context, eventPayload);
+    } catch (err) {
+      if (err instanceof ConcurrencyConflictError) {
+        // Re-fetch the latest session state and retry exactly once.
+        const fresh = await this.getAndValidate(session.id);
+        return this.doTransition(fresh, to, context, eventPayload);
+      }
+      throw err;
+    }
+  }
+
+  private async doTransition(
     session: SigningSession,
     to: SessionStatus,
     context: SessionContext,

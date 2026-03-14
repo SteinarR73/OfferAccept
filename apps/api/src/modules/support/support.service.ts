@@ -20,12 +20,14 @@ export interface TimelineEntry {
 // ─── Case view types ───────────────────────────────────────────────────────────
 
 export interface SupportCaseView {
+  // offerBusinessStatus is the offer's lifecycle state (DRAFT/SENT/ACCEPTED/DECLINED/REVOKED).
+  // SENT means the snapshot is frozen and the signing token is live.
+  // It does NOT mean the recipient received the email — check latestEmailDeliveryOutcome.
+  // This field is surfaced at the top level (mirroring offer.status) for quick triage.
+  offerBusinessStatus: string;
   offer: {
     id: string;
     title: string;
-    // offerStatus reflects the business lifecycle of the offer (DRAFT/SENT/ACCEPTED/…).
-    // SENT means the snapshot is frozen and the signing token is live.
-    // It does NOT mean the recipient received the email — check latestDeliveryOutcome.
     status: string;
     expiresAt: string | null;
     createdAt: string;
@@ -39,7 +41,7 @@ export interface SupportCaseView {
   //
   // For full attempt history (including all resends) see deliveryAttempts below.
   // For proof of recipient engagement, see the signing event chain.
-  latestDeliveryOutcome: string | null;
+  latestEmailDeliveryOutcome: string | null;
   snapshot: {
     id: string;
     title: string;
@@ -259,9 +261,10 @@ export class SupportService {
     }
 
     // Latest delivery attempt is the first in newest-first order
-    const latestDeliveryOutcome = deliveryAttempts[0]?.outcome ?? null;
+    const latestEmailDeliveryOutcome = deliveryAttempts[0]?.outcome ?? null;
 
     return {
+      offerBusinessStatus: offer.status,
       offer: {
         id: offer.id,
         title: offer.title,
@@ -269,7 +272,7 @@ export class SupportService {
         expiresAt: offer.expiresAt?.toISOString() ?? null,
         createdAt: offer.createdAt.toISOString(),
       },
-      latestDeliveryOutcome,
+      latestEmailDeliveryOutcome,
       snapshot: snapshot
         ? {
             id: snapshot.id,
