@@ -1,0 +1,13 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testMatch": ["**/test/**/*.e2e.spec.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@offeracept/database$": "<rootDir>/packages/database/src/index.ts",
+    "^@offeracept/types$": "<rootDir>/packages/types/src/index.ts"
+  }
+}

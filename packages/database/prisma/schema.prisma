@@ -1,0 +1,566 @@
+// OfferAccept v2 — Prisma Schema
+// Database: PostgreSQL
+//
+// Security model summary:
+//   - Recipient tokens are never stored raw; only SHA-256 hashes are persisted.
+//   - Final acceptance requires two factors: email link (token) + email OTP.
+//   - Offer content is frozen into an immutable snapshot at send time.
+//   - Signing events form a hash chain — each event commits to the previous.
+//   - AcceptanceCertificate is derived from an immutable AcceptanceRecord,
+//     not from mutable offer state.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Organization ─────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users        User[]
+  offers       Offer[]
+  subscription Subscription?
+
+  @@map("organizations")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  // Internal OfferAccept staff role. Cross-org read access + limited safe actions.
+  // Must never be assigned to customer users.
+  INTERNAL_SUPPORT
+}
+
+model User {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String    @unique
+  name           String
+  role           UserRole  @default(MEMBER)
+  hashedPassword String
+  emailVerified  Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  offersCreated Offer[]      @relation("CreatedByUser")
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+// ─── Offer ────────────────────────────────────────────────────────────────────
+// Mutable operational record. Once sent, authoritative content lives in
+// OfferSnapshot, not here. This record tracks lifecycle state only.
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+model Offer {
+  id             String      @id @default(cuid())
+  organizationId String
+  createdById    String
+  title          String
+  message        String?     @db.Text
+  status         OfferStatus @default(DRAFT)
+  expiresAt      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization          @relation(fields: [organizationId], references: [id])
+  createdBy    User                  @relation("CreatedByUser", fields: [createdById], references: [id])
+  // v1: one recipient enforced by OfferRecipient.offerId @unique
+  recipient    OfferRecipient?
+  documents    OfferDocument[]
+  // Frozen at send time — null while DRAFT
+  snapshot          OfferSnapshot?
+  certificate       AcceptanceCertificate?
+  deliveryAttempts  OfferDeliveryAttempt[]
+
+  @@index([organizationId, status])
+  @@index([createdById])
+  @@map("offers")
+}
+
+// ─── OfferDocument ────────────────────────────────────────────────────────────
+// Document metadata. The file lives in object storage at `storageKey`.
+// sha256Hash is computed at upload time and is authoritative for integrity checks.
+// Documents are append-only — no soft-delete; instead, remove from offer before sending.
+
+model OfferDocument {
+  id         String   @id @default(cuid())
+  offerId    String
+  filename   String
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  // SHA-256 hex digest of file content, computed at upload time.
+  // Copied into OfferSnapshotDocument to bind the snapshot to the exact file bytes.
+  sha256Hash String
+  createdAt  DateTime @default(now())
+
+  offer             Offer                  @relation(fields: [offerId], references: [id])
+  snapshotDocuments OfferSnapshotDocument[]
+
+  @@index([offerId])
+  @@map("offer_documents")
+}
+
+// ─── OfferSnapshot ────────────────────────────────────────────────────────────
+// Immutable frozen copy of offer content created atomically when an offer is sent.
+// This is what the recipient sees and what the certificate is derived from.
+// IMPORTANT: never update this record after creation.
+//
+// contentHash = SHA-256 of the canonical JSON serialization of:
+//   { title, message, senderName, senderEmail, expiresAt, documents: [{ filename, storageKey, sha256Hash }] }
+// sorted keys, no whitespace. This allows independent re-verification.
+
+model OfferSnapshot {
+  id           String    @id @default(cuid())
+  // 1:1 with Offer — enforced here and by Offer.snapshot relation
+  offerId      String    @unique
+  // Content frozen at send time
+  title        String
+  message      String?   @db.Text
+  // Sender identity frozen at send time (user may later change name/email)
+  senderName   String
+  senderEmail  String
+  expiresAt    DateTime?
+  // SHA-256 of canonical content — see comment above
+  contentHash  String
+  // No updatedAt — this record is immutable after creation
+  frozenAt     DateTime  @default(now())
+
+  offer     Offer                  @relation(fields: [offerId], references: [id])
+  documents OfferSnapshotDocument[]
+  sessions  SigningSession[]
+  records   AcceptanceRecord[]
+
+  @@map("offer_snapshots")
+}
+
+// ─── OfferSnapshotDocument ────────────────────────────────────────────────────
+// Frozen document references within a snapshot.
+// Captures document metadata and file hash at the moment the offer was sent.
+// If the underlying OfferDocument is later deleted, this record remains valid.
+// No updatedAt — immutable after creation.
+
+model OfferSnapshotDocument {
+  id         String @id @default(cuid())
+  snapshotId String
+  documentId String
+  // Fields frozen from OfferDocument at snapshot time
+  filename   String
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  sha256Hash String // copied from OfferDocument.sha256Hash — binds snapshot to exact file bytes
+
+  snapshot OfferSnapshot @relation(fields: [snapshotId], references: [id])
+  document OfferDocument @relation(fields: [documentId], references: [id])
+
+  @@unique([snapshotId, documentId])
+  @@index([snapshotId])
+  @@map("offer_snapshot_documents")
+}
+
+// ─── OfferRecipient ───────────────────────────────────────────────────────────
+// The single recipient for an offer in v1.
+// offerId is @unique to enforce the one-recipient constraint at the database level.
+// Remove @unique from offerId when multi-recipient is introduced.
+//
+// Token security model:
+//   - Raw token format: oa_<base64url(32 random bytes)>  [256 bits of entropy]
+//   - Raw token is generated once, embedded in the email link, NEVER stored.
+//   - Only SHA-256(rawToken) is stored in tokenHash.
+//   - Lookup: WHERE tokenHash = SHA256(incoming) AND tokenExpiresAt > NOW()
+//             AND tokenInvalidatedAt IS NULL
+//   - A used token is NOT automatically invalidated — the link can be re-opened
+//     to re-enter an OTP if needed. Final acceptance requires OTP verification.
+
+enum RecipientStatus {
+  PENDING
+  VIEWED
+  OTP_VERIFIED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model OfferRecipient {
+  id                 String          @id @default(cuid())
+  // @unique enforces v1 single-recipient constraint — intentional, documented
+  offerId            String          @unique
+  email              String
+  name               String
+  // Hashed token — see security model above
+  tokenHash          String          @unique
+  tokenExpiresAt     DateTime
+  tokenInvalidatedAt DateTime?
+  status             RecipientStatus @default(PENDING)
+  viewedAt           DateTime?
+  respondedAt        DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  offer         Offer                @relation(fields: [offerId], references: [id])
+  sessions      SigningSession[]
+  otpChallenges SigningOtpChallenge[]
+
+  @@index([tokenHash])
+  @@map("offer_recipients")
+}
+
+// ─── SigningSession ───────────────────────────────────────────────────────────
+// One session per visit to the signing link. A recipient may have multiple
+// sessions (e.g., opened the link on two devices), but only one can reach ACCEPTED.
+//
+// A session is bound to a specific snapshot — it cannot be replayed against
+// a different offer. snapshotId is set at creation and never changed.
+//
+// Status lifecycle:
+//   AWAITING_OTP  → OTP_VERIFIED  → ACCEPTED
+//                                 → DECLINED
+//   AWAITING_OTP  → EXPIRED (TTL exceeded)
+//   AWAITING_OTP  → ABANDONED (no activity)
+//   OTP_VERIFIED  → EXPIRED
+//   OTP_VERIFIED  → ABANDONED
+
+enum SessionStatus {
+  AWAITING_OTP  // token validated, OTP sent, waiting for verification
+  OTP_VERIFIED  // email confirmed, recipient may submit acceptance
+  ACCEPTED      // offer accepted
+  DECLINED      // offer declined
+  EXPIRED       // session TTL exceeded before completion
+  ABANDONED     // no meaningful activity for a sustained period
+}
+
+model SigningSession {
+  id            String        @id @default(cuid())
+  recipientId   String
+  // Denormalized for queries — always consistent with recipient.offerId
+  offerId       String
+  // Which snapshot was presented in this session — immutable after creation
+  snapshotId    String
+  // Network context at session creation
+  ipAddress     String?
+  userAgent     String?
+  status        SessionStatus @default(AWAITING_OTP)
+  // Session TTL — set at creation, enforced by application + background job
+  expiresAt     DateTime
+  otpVerifiedAt DateTime?
+  startedAt     DateTime      @default(now())
+  completedAt   DateTime?
+  updatedAt     DateTime      @updatedAt
+
+  recipient        OfferRecipient        @relation(fields: [recipientId], references: [id])
+  snapshot         OfferSnapshot         @relation(fields: [snapshotId], references: [id])
+  events           SigningEvent[]
+  otpChallenges    SigningOtpChallenge[]
+  acceptanceRecord AcceptanceRecord?
+
+  @@index([recipientId])
+  @@index([offerId])
+  @@index([snapshotId])
+  @@map("signing_sessions")
+}
+
+// ─── SigningOtpChallenge ───────────────────────────────────────────────────────
+// An OTP challenge issued to a recipient during a signing session.
+// Only one challenge should be active per session at a time (invalidate old
+// ones before creating new ones via invalidatedAt).
+//
+// OTP security model:
+//   - Code: 6-digit numeric, generated with crypto.randomInt(100000, 999999)
+//   - Storage: only SHA-256(code) is persisted — never the raw code
+//   - TTL: short (10 minutes by default)
+//   - Rate limiting: max 5 attempts before lockout (maxAttempts)
+//   - Re-issue: a new challenge invalidates all prior ones for the same session
+//
+// channel is EMAIL for v1. The field is present to avoid a schema migration
+// when SMS or other channels are added.
+
+enum OtpChannel {
+  EMAIL
+}
+
+// Explicit status makes state machine checks and queries unambiguous.
+// Derived from (verifiedAt, invalidatedAt, attemptCount, expiresAt) but stored directly
+// so the application layer never has to re-derive it from multiple nullable fields.
+enum OtpChallengeStatus {
+  PENDING      // active, awaiting code submission
+  VERIFIED     // correct code submitted
+  EXPIRED      // TTL exceeded before verification
+  LOCKED       // maxAttempts reached without success
+  INVALIDATED  // superseded by a new challenge for the same session
+}
+
+model SigningOtpChallenge {
+  id              String             @id @default(cuid())
+  sessionId       String
+  recipientId     String
+  channel         OtpChannel         @default(EMAIL)
+  // For EMAIL: the address it was sent to (captured at issue time)
+  deliveryAddress String
+  // SHA-256 hex of the raw OTP code — raw code is never stored
+  codeHash        String
+  status          OtpChallengeStatus @default(PENDING)
+  expiresAt       DateTime
+  attemptCount    Int                @default(0)
+  maxAttempts     Int                @default(5)
+  // Set on successful verification; null if not yet verified
+  verifiedAt      DateTime?
+  // Set when this challenge is superseded by a new one or the session expires
+  invalidatedAt   DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  session   SigningSession  @relation(fields: [sessionId], references: [id])
+  recipient OfferRecipient  @relation(fields: [recipientId], references: [id])
+
+  @@index([sessionId])
+  @@index([recipientId])
+  @@map("signing_otp_challenges")
+}
+
+// ─── SigningEvent ─────────────────────────────────────────────────────────────
+// Append-only audit log for all actions in the signing flow.
+// NEVER update or delete rows in this table. No updatedAt.
+//
+// Hash chain model:
+//   sequenceNumber: monotonically increasing per session, starting at 1
+//   previousEventHash: eventHash of the prior event in this session (null for #1)
+//   eventHash: SHA-256 of the canonical concatenation:
+//     sessionId || "|" || sequenceNumber || "|" || eventType || "|"
+//     || canonicalPayload || "|" || timestamp.toISOString() || "|"
+//     || (previousEventHash ?? "GENESIS")
+//   where canonicalPayload = JSON.stringify(payload, sortedKeys) or "" if null
+//
+// @@unique([sessionId, sequenceNumber]) prevents duplicate sequence numbers,
+// which would allow forking the chain.
+//
+// To verify integrity: recompute eventHash for each event and confirm it
+// matches the stored value, and that previousEventHash matches the prior event.
+
+enum SigningEventType {
+  // Session
+  SESSION_STARTED       // token validated, session created
+  SESSION_EXPIRED       // session TTL reached
+  SESSION_ABANDONED     // inactivity timeout
+  // Document interaction
+  DOCUMENT_VIEWED       // recipient opened a specific document
+  // OTP flow
+  OTP_ISSUED            // OTP challenge created and sent
+  OTP_ATTEMPT_FAILED    // incorrect code submitted
+  OTP_MAX_ATTEMPTS      // max failed attempts reached; challenge locked
+  OTP_VERIFIED          // correct code submitted; email verified
+  // Acceptance
+  OFFER_ACCEPTED        // final acceptance after OTP verification
+  OFFER_DECLINED        // recipient declined the offer
+}
+
+model SigningEvent {
+  id                String          @id @default(cuid())
+  sessionId         String
+  sequenceNumber    Int             // 1-based, unique per session
+  eventType         SigningEventType
+  // Event-specific structured data. Schema is validated in the application layer.
+  // Examples:
+  //   DOCUMENT_VIEWED:   { documentId, filename }
+  //   OTP_ISSUED:        { channel, deliveryAddress, challengeId }
+  //   OTP_ATTEMPT_FAILED:{ challengeId, attemptCount }
+  //   OFFER_ACCEPTED:    { acceptanceStatement, verifiedEmail, locale, timezone }
+  payload           Json?
+  // Network context — captured per event (not just at session start)
+  ipAddress         String?
+  userAgent         String?
+  // Hash chain — stored as lowercase hex-encoded SHA-256
+  previousEventHash String?         // null for the first event in a session
+  eventHash         String          // must be verified before trusting this event
+  // Server-assigned. Client-supplied timestamps must not be used.
+  timestamp         DateTime        @default(now())
+
+  session SigningSession @relation(fields: [sessionId], references: [id])
+
+  @@unique([sessionId, sequenceNumber])
+  @@index([sessionId])
+  @@index([timestamp])
+  @@map("signing_events")
+}
+
+// ─── AcceptanceRecord ─────────────────────────────────────────────────────────
+// Structured, immutable record of everything known about the acceptance at the
+// moment it was submitted. This is the primary input to certificate generation.
+//
+// It is created in the same transaction as the OFFER_ACCEPTED signing event.
+// It is never updated after creation.
+//
+// snapshotContentHash is copied from OfferSnapshot.contentHash at creation time.
+// This means the AcceptanceRecord is self-contained for certificate generation —
+// the certificate can be regenerated from this record alone, without reading
+// the current state of any mutable entity.
+
+model AcceptanceRecord {
+  id String @id @default(cuid())
+
+  sessionId   String @unique
+  recipientId String
+  snapshotId  String
+
+  // Exact text that was displayed to the recipient at the acceptance UI.
+  // Stored verbatim so it can appear on the certificate.
+  acceptanceStatement String   @db.Text
+
+  // Evidence — all fields captured at the moment of acceptance
+  verifiedEmail   String   // the email address that passed OTP verification
+  emailVerifiedAt DateTime // when OTP was verified in this session
+  acceptedAt      DateTime // when the recipient clicked Accept
+  ipAddress       String?
+  userAgent       String?
+  locale          String?  // from Accept-Language header or Intl API
+  timezone        String?  // from Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  // Snapshot binding — copied at creation for certificate independence.
+  // Allows regenerating the certificate without reading OfferSnapshot.
+  snapshotContentHash String
+
+  // No updatedAt — immutable after creation
+  createdAt DateTime @default(now())
+
+  session     SigningSession         @relation(fields: [sessionId], references: [id])
+  snapshot    OfferSnapshot         @relation(fields: [snapshotId], references: [id])
+  certificate AcceptanceCertificate?
+
+  @@index([recipientId])
+  @@index([snapshotId])
+  @@map("acceptance_records")
+}
+
+// ─── AcceptanceCertificate ────────────────────────────────────────────────────
+// The tamper-evident artifact generated from an AcceptanceRecord.
+// Generated asynchronously after AcceptanceRecord creation.
+//
+// certificateHash = SHA-256 of the canonical certificate content (the same
+// input used to generate the PDF). Allows third-party verification without
+// the PDF.
+//
+// Certificate content is derived from AcceptanceRecord + OfferSnapshot only.
+// It does not re-read Offer, User, or Organization at generation time.
+
+model AcceptanceCertificate {
+  id                 String   @id @default(cuid())
+  offerId            String   @unique  // for convenient dashboard lookups
+  acceptanceRecordId String   @unique
+  certificateHash    String   // SHA-256 hex of canonical certificate content
+  pdfStorageKey      String?  // object storage key; null until PDF is generated
+  issuedAt           DateTime @default(now())
+
+  offer           Offer           @relation(fields: [offerId], references: [id])
+  acceptanceRecord AcceptanceRecord @relation(fields: [acceptanceRecordId], references: [id])
+
+  @@map("acceptance_certificates")
+}
+
+// ─── OfferDeliveryAttempt ──────────────────────────────────────────────────────
+// Audit trail for every attempt to deliver the offer-link email to the recipient.
+// Created immediately before the email provider call; outcome updated after.
+//
+// A new attempt is created for each send/resend action — history is preserved.
+// The latest attempt record is authoritative for current delivery state.
+//
+// tokenHash is the SHA-256 of the rawToken embedded in the email for this attempt.
+// Storing it here allows matching which signing link was sent in each email,
+// even after the token is replaced by a subsequent resend.
+//
+// attemptedBy: null means the system triggered it (initial send flow).
+//              A userId means an authenticated sender requested a resend.
+//
+// Outcome states:
+//   DISPATCHING          — email call in progress; never left in this state
+//   DELIVERED_TO_PROVIDER — provider returned 2xx; email accepted for delivery
+//   FAILED               — provider returned non-2xx or network error occurred
+
+enum DeliveryOutcome {
+  DISPATCHING
+  DELIVERED_TO_PROVIDER
+  FAILED
+}
+
+model OfferDeliveryAttempt {
+  id             String          @id @default(cuid())
+  offerId        String
+  recipientEmail String
+  // SHA-256 of the rawToken that was embedded in the signing URL for this attempt.
+  // Immutable after creation — records which link was sent.
+  tokenHash      String
+  outcome        DeliveryOutcome
+  // HTTP status code returned by the email provider (null if DISPATCHING or network error)
+  failureCode    Int?
+  // Human-readable error from the provider or runtime (null on success)
+  failureReason  String?
+  // null = system-initiated (initial send); userId = sender-requested resend
+  attemptedBy    String?
+  attemptedAt    DateTime        @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id])
+
+  @@index([offerId])
+  @@index([attemptedAt])
+  @@map("offer_delivery_attempts")
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  organizationId       String             @unique
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(TRIALING)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  stripeSubscriptionId String?            @unique
+  stripeCustomerId     String?            @unique
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("subscriptions")
+}
