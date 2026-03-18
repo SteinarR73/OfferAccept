@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automasjonsoppskrifter – Spar 5–10 timer i uka</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <style>
+    :root {
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #1a1a2e;
+    }
+
+    /* Navbar */
+    .navbar-brand {
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      color: var(--accent) !important;
+    }
+
+    /* Hero */
+    .hero-section {
+      background: linear-gradient(160deg, #ffffff 0%, #eff6ff 60%, #dbeafe 100%);
+      padding: 6rem 0 5rem;
+    }
+
+    .hero-section h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .hero-section .lead {
+      font-size: 1.2rem;
+      color: #475569;
+    }
+
+    .trust-text {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-accent {
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.75rem 2rem;
+      font-size: 1.05rem;
+      border-radius: 0.625rem;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .btn-accent:hover {
+      background-color: var(--accent-dark);
+      border-color: var(--accent-dark);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    /* Section labels */
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 3vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    /* Feature cards */
+    .feature-card {
+      border: 1px solid #e2e8f0;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 8px 30px rgba(37, 99, 235, 0.1) !important;
+      transform: translateY(-3px);
+    }
+
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      font-size: 1.5rem;
+    }
+
+    /* Recipe cards */
+    .recipe-card {
+      border: 1px solid #e2e8f0;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .recipe-card:hover {
+      box-shadow: 0 8px 30px rgba(37, 99, 235, 0.1) !important;
+      transform: translateY(-3px);
+    }
+
+    .recipe-card .card-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    /* Filter buttons */
+    .filter-btn {
+      border-radius: 2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.4rem 1.2rem;
+    }
+
+    .filter-btn.active {
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Steps */
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-connector {
+      width: 2px;
+      flex: 1;
+      background: linear-gradient(to bottom, #bfdbfe, transparent);
+      min-height: 2rem;
+    }
+
+    /* CTA section */
+    .cta-section {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    }
+
+    /* Footer */
+    footer {
+      background-color: #0f172a;
+    }
+
+    footer a {
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    footer a:hover {
+      color: #e2e8f0;
+    }
+
+    /* Scroll behavior */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ NAVBAR -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top shadow-sm py-3">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <i class="bi bi-lightning-charge-fill me-1" style="color: var(--accent);"></i>
+        AUTOMASJONSOPPSKRIFTER
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+          <li class="nav-item"><a class="nav-link fw-500" href="#funksjoner">Funksjoner</a></li>
+          <li class="nav-item"><a class="nav-link fw-500" href="#oppskrifter">Oppskrifter</a></li>
+          <li class="nav-item"><a class="nav-link fw-500" href="#hvordan">Hvordan det fungerer</a></li>
+          <li class="nav-item mt-2 mt-lg-0">
+            <a class="btn btn-accent btn-sm px-3" href="#oppskrifter">Kom i gang</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════ HERO -->
+  <section class="hero-section text-center">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+          <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold px-3 py-2 rounded-pill mb-4 d-inline-block" style="font-size:0.82rem; letter-spacing:0.04em;">
+            <i class="bi bi-stars me-1"></i> Ny: 6 nye oppskrifter for 2024
+          </span>
+          <h1 class="mb-4">
+            Spar 5–10 timer i uka<br>
+            <span style="color: var(--accent);">med enkle automatiseringer</span>
+          </h1>
+          <p class="lead mb-5">
+            Følg steg-for-steg guider laget for småbedrifter.<br class="d-none d-md-block">
+            Ingen koding nødvendig — bare resultater.
+          </p>
+          <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center align-items-center mb-4">
+            <a href="#oppskrifter" class="btn btn-accent btn-lg" data-scroll="oppskrifter">
+              Se automatiseringer <i class="bi bi-arrow-down ms-1"></i>
+            </a>
+            <a href="#hvordan" class="btn btn-outline-secondary btn-lg rounded-3" data-scroll="hvordan">
+              Hvordan det fungerer
+            </a>
+          </div>
+          <p class="trust-text mb-0">
+            <i class="bi bi-shield-check me-1 text-success"></i>
+            Brukt av småbedrifter over hele Norge
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ FEATURE CARDS -->
+  <section class="py-5 bg-white" id="funksjoner">
+    <div class="container">
+      <div class="text-center mb-5">
+        <p class="section-label mb-2">Hva vi løser</p>
+        <h2 class="section-title">De tre vanligste tidstyvene</h2>
+        <p class="text-secondary mt-2" style="max-width:520px; margin: 0 auto;">
+          Vi hjelper deg å automatisere de oppgavene som tar mest tid — uten å ansette noen.
+        </p>
+      </div>
+      <div class="row g-4">
+
+        <!-- Card 1 -->
+        <div class="col-md-4">
+          <div class="card feature-card h-100 rounded-4 shadow-sm p-4 border-0">
+            <div class="feature-icon bg-primary bg-opacity-10 text-primary mb-4">
+              <i class="bi bi-person-plus-fill"></i>
+            </div>
+            <h5 class="fw-700 mb-2">Automatisk lead-oppfølging</h5>
+            <p class="text-secondary mb-0">
+              Hvert nye lead får en personlig epost automatisk — innen sekunder. Aldri mist en kunde igjen.
+            </p>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="col-md-4">
+          <div class="card feature-card h-100 rounded-4 shadow-sm p-4 border-0">
+            <div class="feature-icon bg-success bg-opacity-10 text-success mb-4">
+              <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <h5 class="fw-700 mb-2">Booking → kalender + SMS</h5>
+            <p class="text-secondary mb-0">
+              Når en kunde booker, oppdateres kalenderen og kunden får en SMS-bekreftelse — helt automatisk.
+            </p>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="col-md-4">
+          <div class="card feature-card h-100 rounded-4 shadow-sm p-4 border-0">
+            <div class="feature-icon bg-warning bg-opacity-10 text-warning mb-4">
+              <i class="bi bi-receipt-cutoff"></i>
+            </div>
+            <h5 class="fw-700 mb-2">Faktura → oppfølging automatisk</h5>
+            <p class="text-secondary mb-0">
+              Ubetalte fakturaer får automatiske purringer på riktig tidspunkt. Du fokuserer på jobben.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ RECIPE GRID -->
+  <section class="py-5" id="oppskrifter" style="background:#f8fafc;">
+    <div class="container">
+      <div class="text-center mb-5">
+        <p class="section-label mb-2">Oppskrifter</p>
+        <h2 class="section-title">Velg din neste automatisering</h2>
+        <p class="text-secondary mt-2" style="max-width:500px; margin: 0 auto;">
+          Steg-for-steg guider du kan implementere i dag — uten teknisk bakgrunn.
+        </p>
+      </div>
+
+      <!-- Filter -->
+      <div class="d-flex justify-content-center gap-2 mb-5 flex-wrap">
+        <button class="btn btn-outline-primary filter-btn active" data-filter="alle">Alle</button>
+        <button class="btn btn-outline-primary filter-btn" data-filter="enkel">Enkel</button>
+        <button class="btn btn-outline-primary filter-btn" data-filter="medium">Medium</button>
+      </div>
+
+      <!-- Grid -->
+      <div class="row g-4" id="recipe-grid">
+
+        <!-- Recipe 1 -->
+        <div class="col-md-6 col-lg-4 recipe-item" data-difficulty="enkel">
+          <div class="card recipe-card h-100 rounded-4 shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-3">
+                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-2 fw-semibold" style="font-size:0.78rem;">
+                  <i class="bi bi-clock me-1"></i> Spar 2 timer/uke
+                </span>
+                <span class="badge border border-secondary text-secondary rounded-pill px-3 py-2 fw-normal" style="font-size:0.75rem; background:transparent;">Enkel</span>
+              </div>
+              <div class="mb-3">
+                <div class="rounded-3 bg-primary bg-opacity-10 d-inline-flex p-2 mb-3">
+                  <i class="bi bi-envelope-fill text-primary fs-5"></i>
+                </div>
+                <h5 class="card-title mb-1">Automatisk epost etter kontaktskjema</h5>
+                <p class="text-secondary small mb-0">Send en personlig velkomstepost sekunder etter at noen fyller ut skjemaet ditt.</p>
+              </div>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  Se oppskrift <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 2 -->
+        <div class="col-md-6 col-lg-4 recipe-item" data-difficulty="enkel">
+          <div class="card recipe-card h-100 rounded-4 shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-3">
+                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-2 fw-semibold" style="font-size:0.78rem;">
+                  <i class="bi bi-clock me-1"></i> Spar 3 timer/uke
+                </span>
+                <span class="badge border border-secondary text-secondary rounded-pill px-3 py-2 fw-normal" style="font-size:0.75rem; background:transparent;">Enkel</span>
+              </div>
+              <div class="mb-3">
+                <div class="rounded-3 bg-success bg-opacity-10 d-inline-flex p-2 mb-3">
+                  <i class="bi bi-chat-fill text-success fs-5"></i>
+                </div>
+                <h5 class="card-title mb-1">Send SMS når kunde booker</h5>
+                <p class="text-secondary small mb-0">Bekreft bookingen automatisk med en SMS — kunden er fornøyd, du gjør ingenting.</p>
+              </div>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  Se oppskrift <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 3 -->
+        <div class="col-md-6 col-lg-4 recipe-item" data-difficulty="medium">
+          <div class="card recipe-card h-100 rounded-4 shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-3">
+                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-2 fw-semibold" style="font-size:0.78rem;">
+                  <i class="bi bi-clock me-1"></i> Spar 4 timer/uke
+                </span>
+                <span class="badge border border-warning text-warning rounded-pill px-3 py-2 fw-normal" style="font-size:0.75rem; background:transparent;">Medium</span>
+              </div>
+              <div class="mb-3">
+                <div class="rounded-3 bg-warning bg-opacity-10 d-inline-flex p-2 mb-3">
+                  <i class="bi bi-receipt text-warning fs-5"></i>
+                </div>
+                <h5 class="card-title mb-1">Automatisk fakturapåminnelse</h5>
+                <p class="text-secondary small mb-0">Kunder som ikke betaler i tide får automatiske og vennlige purringer til riktig tid.</p>
+              </div>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  Se oppskrift <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 4 -->
+        <div class="col-md-6 col-lg-4 recipe-item" data-difficulty="medium">
+          <div class="card recipe-card h-100 rounded-4 shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-3">
+                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-2 fw-semibold" style="font-size:0.78rem;">
+                  <i class="bi bi-clock me-1"></i> Spar 3 timer/uke
+                </span>
+                <span class="badge border border-warning text-warning rounded-pill px-3 py-2 fw-normal" style="font-size:0.75rem; background:transparent;">Medium</span>
+              </div>
+              <div class="mb-3">
+                <div class="rounded-3 bg-info bg-opacity-10 d-inline-flex p-2 mb-3">
+                  <i class="bi bi-person-check-fill text-info fs-5"></i>
+                </div>
+                <h5 class="card-title mb-1">Lag kunde i CRM automatisk</h5>
+                <p class="text-secondary small mb-0">Nye leads fra nettstedet ditt havner rett i CRM-systemet — ingen manuell registrering.</p>
+              </div>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  Se oppskrift <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 5 -->
+        <div class="col-md-6 col-lg-4 recipe-item" data-difficulty="enkel">
+          <div class="card recipe-card h-100 rounded-4 shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-3">
+                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-2 fw-semibold" style="font-size:0.78rem;">
+                  <i class="bi bi-clock me-1"></i> Spar 2 timer/uke
+                </span>
+                <span class="badge border border-secondary text-secondary rounded-pill px-3 py-2 fw-normal" style="font-size:0.75rem; background:transparent;">Enkel</span>
+              </div>
+              <div class="mb-3">
+                <div class="rounded-3 bg-danger bg-opacity-10 d-inline-flex p-2 mb-3">
+                  <i class="bi bi-bell-fill text-danger fs-5"></i>
+                </div>
+                <h5 class="card-title mb-1">Varsel når ny kunde kommer</h5>
+                <p class="text-secondary small mb-0">Få umiddelbar varsling på Slack, SMS eller epost når noen blir ny kunde hos deg.</p>
+              </div>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  Se oppskrift <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 6 -->
+        <div class="col-md-6 col-lg-4 recipe-item" data-difficulty="medium">
+          <div class="card recipe-card h-100 rounded-4 shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-3">
+                <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-3 py-2 fw-semibold" style="font-size:0.78rem;">
+                  <i class="bi bi-clock me-1"></i> Spar 5 timer/uke
+                </span>
+                <span class="badge border border-warning text-warning rounded-pill px-3 py-2 fw-normal" style="font-size:0.75rem; background:transparent;">Medium</span>
+              </div>
+              <div class="mb-3">
+                <div class="rounded-3 bg-purple bg-opacity-10 d-inline-flex p-2 mb-3" style="background:rgba(124,58,237,0.1)!important;">
+                  <i class="bi bi-calendar2-check-fill fs-5" style="color:#7c3aed;"></i>
+                </div>
+                <h5 class="card-title mb-1">Automatisk oppfølging etter møte</h5>
+                <p class="text-secondary small mb-0">Send et sammendrag og neste steg til kunden automatisk etter hvert møte du har.</p>
+              </div>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  Se oppskrift <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /recipe-grid -->
+
+      <!-- No results message -->
+      <div id="no-recipes" class="text-center py-5 d-none">
+        <i class="bi bi-search fs-1 text-secondary opacity-50"></i>
+        <p class="text-secondary mt-3">Ingen oppskrifter funnet for dette filteret.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ HOW IT WORKS -->
+  <section class="py-5 bg-white" id="hvordan">
+    <div class="container">
+      <div class="text-center mb-5">
+        <p class="section-label mb-2">Prosessen</p>
+        <h2 class="section-title">Kom i gang på 3 steg</h2>
+        <p class="text-secondary mt-2" style="max-width:460px; margin: 0 auto;">
+          Ingen konsulenter, ingen komplisert oppsett. Du er i gang på under en time.
+        </p>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+          <!-- Step 1 -->
+          <div class="d-flex align-items-start gap-4 mb-4">
+            <div class="step-number">1</div>
+            <div class="card border-0 shadow-sm rounded-4 flex-grow-1 p-4">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="rounded-3 bg-primary bg-opacity-10 p-2">
+                  <i class="bi bi-search text-primary fs-5"></i>
+                </div>
+                <h5 class="mb-0 fw-700">Velg oppskrift</h5>
+              </div>
+              <p class="text-secondary mb-0">Bla gjennom oppskriftene og finn den som passer din bedrift best. Filtrer på vanskelighetsgrad.</p>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="d-flex align-items-start gap-4 mb-4">
+            <div class="step-number">2</div>
+            <div class="card border-0 shadow-sm rounded-4 flex-grow-1 p-4">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="rounded-3 bg-success bg-opacity-10 p-2">
+                  <i class="bi bi-list-check text-success fs-5"></i>
+                </div>
+                <h5 class="mb-0 fw-700">Følg stegene</h5>
+              </div>
+              <p class="text-secondary mb-0">Detaljerte, enkle instruksjoner med skjermbilder. Du trenger ingen teknisk bakgrunn for å lykkes.</p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="d-flex align-items-start gap-4">
+            <div class="step-number">3</div>
+            <div class="card border-0 shadow-sm rounded-4 flex-grow-1 p-4">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="rounded-3 bg-warning bg-opacity-10 p-2">
+                  <i class="bi bi-clock text-warning fs-5"></i>
+                </div>
+                <h5 class="mb-0 fw-700">Spar tid</h5>
+              </div>
+              <p class="text-secondary mb-0">Automatiseringen kjører i bakgrunnen. Du sparer timer hver uke og kan fokusere på det du er best på.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ STATS STRIP -->
+  <section class="py-4 border-top border-bottom" style="background:#f8fafc;">
+    <div class="container">
+      <div class="row g-4 text-center">
+        <div class="col-6 col-md-3">
+          <div class="fw-800 fs-2" style="color:var(--accent); font-weight:800;">6+</div>
+          <div class="text-secondary small">Oppskrifter tilgjengelig</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="fw-800 fs-2" style="color:var(--accent); font-weight:800;">5–10t</div>
+          <div class="text-secondary small">Spart per uke</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="fw-800 fs-2" style="color:var(--accent); font-weight:800;">0</div>
+          <div class="text-secondary small">Koding nødvendig</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="fw-800 fs-2" style="color:var(--accent); font-weight:800;">&lt;1t</div>
+          <div class="text-secondary small">Til første automatisering</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ CTA SECTION -->
+  <section class="cta-section py-5 text-white text-center">
+    <div class="container py-3">
+      <div class="row justify-content-center">
+        <div class="col-lg-7">
+          <h2 class="fw-800 mb-3" style="font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight:800;">
+            Start med din første automatisering i dag
+          </h2>
+          <p class="mb-5 opacity-75 fs-5">
+            Velg en oppskrift, følg stegene, og se resultater — uten konsulenter eller teknisk hjelp.
+          </p>
+          <a href="#oppskrifter" class="btn btn-light btn-lg px-5 fw-semibold rounded-3" data-scroll="oppskrifter" style="color:var(--accent);">
+            Se alle oppskrifter <i class="bi bi-arrow-right ms-2"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ FOOTER -->
+  <footer class="py-5">
+    <div class="container">
+      <div class="row align-items-center gy-3">
+        <div class="col-md-6">
+          <span class="text-white fw-700 fs-6">
+            <i class="bi bi-lightning-charge-fill me-1" style="color:#60a5fa;"></i>
+            AUTOMASJONSOPPSKRIFTER
+          </span>
+          <p class="text-secondary small mt-1 mb-0">Spar tid med enkle automatiseringer for småbedrifter.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <a href="#" class="me-4">Kontakt</a>
+          <a href="#">Om oss</a>
+          <p class="text-secondary small mt-3 mb-0">© 2024 Automasjonsoppskrifter. Alle rettigheter forbeholdt.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- CDN Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <script>
+    $(function () {
+
+      // ── Smooth scroll for data-scroll buttons ──────────────────────────
+      $('[data-scroll]').on('click', function (e) {
+        e.preventDefault();
+        var target = $(this).data('scroll');
+        var $target = $('#' + target);
+        if ($target.length) {
+          $('html, body').animate({ scrollTop: $target.offset().top - 72 }, 500, 'swing');
+        }
+      });
+
+      // Also handle plain href="#id" links in navbar
+      $('a[href^="#"]').not('[data-scroll]').on('click', function (e) {
+        var href = $(this).attr('href');
+        if (href.length > 1) {
+          e.preventDefault();
+          var $target = $(href);
+          if ($target.length) {
+            $('html, body').animate({ scrollTop: $target.offset().top - 72 }, 500, 'swing');
+          }
+        }
+      });
+
+      // ── Recipe filter ───────────────────────────────────────────────────
+      $('.filter-btn').on('click', function () {
+        var filter = $(this).data('filter');
+
+        // Update active state
+        $('.filter-btn').removeClass('active');
+        $(this).addClass('active');
+
+        var $items = $('.recipe-item');
+
+        if (filter === 'alle') {
+          $items.removeClass('d-none');
+        } else {
+          $items.each(function () {
+            var difficulty = $(this).data('difficulty');
+            if (difficulty === filter) {
+              $(this).removeClass('d-none');
+            } else {
+              $(this).addClass('d-none');
+            }
+          });
+        }
+
+        // Show/hide no-results message
+        var visibleCount = $('.recipe-item:not(.d-none)').length;
+        if (visibleCount === 0) {
+          $('#no-recipes').removeClass('d-none');
+        } else {
+          $('#no-recipes').addClass('d-none');
+        }
+      });
+
+      // ── Navbar collapse on mobile link click ───────────────────────────
+      $('.navbar-nav .nav-link, .navbar-nav .btn').on('click', function () {
+        var $toggler = $('.navbar-toggler');
+        if ($toggler.is(':visible') && !$('.navbar-collapse').hasClass('collapsing')) {
+          var bsCollapse = bootstrap.Collapse.getInstance($('#navMenu')[0]);
+          if (bsCollapse) bsCollapse.hide();
+        }
+      });
+
+    });
+  </script>
+
+</body>
+</html>
