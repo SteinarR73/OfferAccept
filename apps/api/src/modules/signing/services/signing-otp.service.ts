@@ -51,14 +51,17 @@ export class SigningOtpService {
     const { rawCode, codeHash } = this.generateCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-    await this.db.$transaction(async (tx) => {
+    // Return the created challenge ID directly from the transaction — do not re-query
+    // after the fact. A post-transaction findFirst could return a different challenge
+    // if two OTPs are issued in rapid succession for the same session.
+    const { challengeId } = await this.db.$transaction(async (tx) => {
       // Invalidate any existing PENDING challenges for this session
       await tx.signingOtpChallenge.updateMany({
         where: { sessionId, status: 'PENDING' },
         data: { status: 'INVALIDATED', invalidatedAt: new Date() },
       });
 
-      await tx.signingOtpChallenge.create({
+      const created = await tx.signingOtpChallenge.create({
         data: {
           sessionId,
           recipientId,
@@ -69,6 +72,7 @@ export class SigningOtpService {
           expiresAt,
           maxAttempts: MAX_ATTEMPTS,
         },
+        select: { id: true },
       });
 
       await this.eventService.append(
@@ -80,12 +84,8 @@ export class SigningOtpService {
         },
         tx as unknown as PrismaClient,
       );
-    });
 
-    // Fetch the created challenge ID (created in the transaction above)
-    const challenge = await this.db.signingOtpChallenge.findFirst({
-      where: { sessionId, status: 'PENDING' },
-      orderBy: { createdAt: 'desc' },
+      return { challengeId: created.id };
     });
 
     // Send email AFTER the DB transaction commits.
@@ -102,7 +102,7 @@ export class SigningOtpService {
     return {
       rawCode, // returned for dev/test use ONLY — must not be logged by callers
       result: {
-        challengeId: challenge!.id,
+        challengeId,
         deliveryAddressMasked: maskEmail(deliveryAddress),
         expiresAt,
       },

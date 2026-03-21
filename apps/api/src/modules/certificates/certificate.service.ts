@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import {
   CertificatePayloadBuilder,
@@ -89,18 +89,32 @@ export class CertificateService {
     // ── Build payload (reads immutable evidence from DB) ──────────────────────
     const built = await this.builder.build(acceptanceRecordId, certificateId, issuedAt);
 
-    // ── Persist certificate atomically ────────────────────────────────────────
-    const cert = await this.db.acceptanceCertificate.create({
-      data: {
-        id: certificateId,
-        offerId: record.snapshot.offerId,
-        acceptanceRecordId,
-        certificateHash: built.certificateHash,
-        issuedAt,
-      },
-    });
-
-    return { certificateId: cert.id };
+    // ── Persist certificate ────────────────────────────────────────────────────
+    // Guard against the race between the idempotency check above and this create:
+    // if two concurrent calls both passed the findUnique check, the second will
+    // hit a P2002 unique-constraint violation. Catch it and return the winner's ID.
+    try {
+      const cert = await this.db.acceptanceCertificate.create({
+        data: {
+          id: certificateId,
+          offerId: record.snapshot.offerId,
+          acceptanceRecordId,
+          certificateHash: built.certificateHash,
+          issuedAt,
+        },
+      });
+      return { certificateId: cert.id };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        // Another process won the race — return their certificate ID.
+        const winner = await this.db.acceptanceCertificate.findUniqueOrThrow({
+          where: { acceptanceRecordId },
+          select: { id: true },
+        });
+        return { certificateId: winner.id };
+      }
+      throw err;
+    }
   }
 
   // Verifies a stored certificate's full integrity.

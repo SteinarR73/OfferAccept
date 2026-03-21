@@ -109,6 +109,22 @@ export class AcceptanceService {
 
     // ── Atomic transaction: create evidence, transition all entities ──────────
     const acceptanceRecord = await this.db.$transaction(async (tx) => {
+      // Re-verify offer status INSIDE the transaction — this is the authoritative check.
+      // updateMany with status='SENT' in the WHERE clause is an atomic compare-and-swap:
+      // if count=0, another concurrent accept() already transitioned the offer.
+      // The pre-transaction checks above are a fast-fail optimization only.
+      const { count: offerCount } = await tx.offer.updateMany({
+        where: { id: offer.id, status: 'SENT' },
+        data: { status: 'ACCEPTED' },
+      });
+
+      if (offerCount === 0) {
+        const current = await tx.offer.findUniqueOrThrow({ where: { id: offer.id } });
+        if (current.status === 'ACCEPTED') throw new OfferAlreadyAcceptedError();
+        if (current.status === 'EXPIRED') throw new OfferExpiredError();
+        throw new InvalidStateTransitionError(current.status, 'ACCEPTED', 'Offer');
+      }
+
       const record = await tx.acceptanceRecord.create({
         data: {
           sessionId: session.id,
@@ -134,11 +150,6 @@ export class AcceptanceService {
       await tx.offerRecipient.update({
         where: { id: recipient.id },
         data: { status: 'ACCEPTED', respondedAt: acceptedAt },
-      });
-
-      await tx.offer.update({
-        where: { id: offer.id },
-        data: { status: 'ACCEPTED' },
       });
 
       // OFFER_ACCEPTED is the terminal event in the signing chain.
@@ -189,6 +200,18 @@ export class AcceptanceService {
     const declinedAt = new Date();
 
     await this.db.$transaction(async (tx) => {
+      // Atomic check-and-update: prevent double-decline or declining an already-accepted offer.
+      const { count: offerCount } = await tx.offer.updateMany({
+        where: { id: offer.id, status: 'SENT' },
+        data: { status: 'DECLINED' },
+      });
+
+      if (offerCount === 0) {
+        const current = await tx.offer.findUniqueOrThrow({ where: { id: offer.id } });
+        if (current.status === 'ACCEPTED') throw new OfferAlreadyAcceptedError();
+        throw new InvalidStateTransitionError(current.status, 'DECLINED', 'Offer');
+      }
+
       await tx.signingSession.update({
         where: { id: session.id },
         data: { status: 'DECLINED', completedAt: declinedAt },
@@ -197,11 +220,6 @@ export class AcceptanceService {
       await tx.offerRecipient.update({
         where: { id: recipient.id },
         data: { status: 'DECLINED', respondedAt: declinedAt },
-      });
-
-      await tx.offer.update({
-        where: { id: offer.id },
-        data: { status: 'DECLINED' },
       });
 
       await this.eventService.append(
