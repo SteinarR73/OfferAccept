@@ -12,6 +12,7 @@ import { AcceptanceService } from '../../src/modules/signing/services/acceptance
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { EMAIL_PORT } from '../../src/common/email/email.port';
+import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 
 // ─── Session-bound decline tests ───────────────────────────────────────────────
 //
@@ -80,6 +81,7 @@ async function buildService(
       { provide: SigningEventService, useValue: { append: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
       { provide: CertificateService, useValue: { generateForAcceptance: jest.fn() } },
       { provide: EMAIL_PORT, useValue: { sendDeclineNotification: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
+      { provide: WebhookService, useValue: { dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
     ],
   }).compile();
 
@@ -89,9 +91,9 @@ async function buildService(
 describe('SigningFlowService.decline() — challenge-bound session', () => {
   it('resolves session from challenge.sessionId for a PENDING challenge', async () => {
     const db = createMockDb();
-    const tokenSvc = { verifyToken: jest.fn().mockResolvedValue(makeRecipient()) };
+    const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
     const sessionSvc = {
-      getAndValidate: jest.fn().mockResolvedValue(makeSession()),
+      getAndValidate: jest.fn<() => Promise<ReturnType<typeof makeSession>>>().mockResolvedValue(makeSession()),
       findResumable: jest.fn(),
       create: jest.fn(),
     };
@@ -113,9 +115,9 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
 
   it('resolves session from challenge.sessionId for a VERIFIED challenge', async () => {
     const db = createMockDb();
-    const tokenSvc = { verifyToken: jest.fn().mockResolvedValue(makeRecipient()) };
+    const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
     const sessionSvc = {
-      getAndValidate: jest.fn().mockResolvedValue(makeSession()),
+      getAndValidate: jest.fn<() => Promise<ReturnType<typeof makeSession>>>().mockResolvedValue(makeSession()),
       findResumable: jest.fn(),
       create: jest.fn(),
     };
@@ -134,7 +136,7 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
 
   it('throws OtpChallengeMismatchError when challenge does not exist', async () => {
     const db = createMockDb();
-    const tokenSvc = { verifyToken: jest.fn().mockResolvedValue(makeRecipient()) };
+    const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
     const sessionSvc = { getAndValidate: jest.fn(), findResumable: jest.fn(), create: jest.fn() };
     const acceptanceSvc = { decline: jest.fn() };
 
@@ -148,7 +150,7 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
 
   it('throws OtpChallengeMismatchError when challenge belongs to a different recipient', async () => {
     const db = createMockDb();
-    const tokenSvc = { verifyToken: jest.fn().mockResolvedValue(makeRecipient()) };
+    const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
     const sessionSvc = { getAndValidate: jest.fn(), findResumable: jest.fn(), create: jest.fn() };
     const acceptanceSvc = { decline: jest.fn() };
 
@@ -163,9 +165,9 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
 
   it('propagates SessionExpiredError when bound session is expired', async () => {
     const db = createMockDb();
-    const tokenSvc = { verifyToken: jest.fn().mockResolvedValue(makeRecipient()) };
+    const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
     const sessionSvc = {
-      getAndValidate: jest.fn().mockRejectedValue(new SessionExpiredError() as never),
+      getAndValidate: jest.fn<(...args: any[]) => any>().mockRejectedValue(new SessionExpiredError()),
       findResumable: jest.fn(),
       create: jest.fn(),
     };

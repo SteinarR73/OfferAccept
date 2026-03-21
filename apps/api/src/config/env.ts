@@ -8,6 +8,25 @@ const envSchema = z
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     API_PORT: z.coerce.number().default(3001),
     DATABASE_URL: z.string().url(),
+    // Redis connection string for the distributed rate limiter.
+    // Format: redis[s]://[[username][:password]@][host][:port][/db-number]
+    // Defaults to localhost for development. Must point to a shared Redis
+    // instance in production — all API pods must use the same URL.
+    // Use rediss:// (note double-s) to enable TLS — required for Upstash,
+    // Elasticache with TLS, and any externally hosted Redis.
+    REDIS_URL: z.string().default('redis://localhost:6379'),
+    // Force TLS for Redis even if the URL uses the redis:// scheme.
+    // Only needed if your managed Redis requires TLS but the URL doesn't reflect it.
+    // Redundant when the URL starts with rediss:// (ioredis handles that automatically).
+    REDIS_TLS: z
+      .string()
+      .transform((v) => v === 'true')
+      .default('false'),
+    // Timeout for establishing the initial Redis connection (ms).
+    // Keep well below 1 s — rate-limit errors must not add latency to API responses.
+    REDIS_CONNECT_TIMEOUT_MS: z.coerce.number().int().min(100).max(5000).default(500),
+    // Per-command timeout (ms). Commands exceeding this are aborted and fail-open.
+    REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(100).max(5000).default(500),
     JWT_SECRET: z.string().min(32),
     // Access token TTL (short-lived, delivered as HttpOnly cookie).
     // Must be a value parseable by the jsonwebtoken 'expiresIn' option (e.g. '15m', '1h').
@@ -30,6 +49,23 @@ const envSchema = z
     // See docs/email.md for production configuration guidance.
     EMAIL_PROVIDER: z.enum(['dev', 'resend']).default('dev'),
     RESEND_API_KEY: z.string().optional(),
+    // Storage provider — 'dev' uses in-memory DevStorageAdapter (safe default for local/test).
+    // 's3' uses AWS S3; requires AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME.
+    STORAGE_PROVIDER: z.enum(['dev', 's3']).default('dev'),
+    AWS_REGION: z.string().optional(),
+    AWS_ACCESS_KEY_ID: z.string().optional(),
+    AWS_SECRET_ACCESS_KEY: z.string().optional(),
+    S3_BUCKET_NAME: z.string().optional(),
+    // Stripe billing — required when BILLING_PROVIDER=stripe.
+    // STRIPE_PUBLISHABLE_KEY is not validated here; it is consumed by the frontend.
+    BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    // Price IDs for paid plans — required when BILLING_PROVIDER=stripe.
+    // Each maps a Stripe Price ID to one of our SubscriptionPlan values.
+    STRIPE_PRICE_STARTER: z.string().optional(),
+    STRIPE_PRICE_PROFESSIONAL: z.string().optional(),
+    STRIPE_PRICE_ENTERPRISE: z.string().optional(),
   })
   .refine(
     (data) =>
@@ -50,11 +86,29 @@ const envSchema = z
     },
   )
   .refine(
+    (data) => data.NODE_ENV !== 'production' || data.STORAGE_PROVIDER !== 'dev',
+    {
+      message:
+        'STORAGE_PROVIDER=dev must never be used in production. ' +
+        'Set STORAGE_PROVIDER=s3 and provide AWS credentials.',
+      path: ['STORAGE_PROVIDER'],
+    },
+  )
+  .refine(
+    (data) =>
+      data.STORAGE_PROVIDER !== 's3' ||
+      (!!data.AWS_REGION && !!data.AWS_ACCESS_KEY_ID && !!data.AWS_SECRET_ACCESS_KEY && !!data.S3_BUCKET_NAME),
+    {
+      message: 'AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and S3_BUCKET_NAME are required when STORAGE_PROVIDER=s3',
+      path: ['STORAGE_PROVIDER'],
+    },
+  )
+  .refine(
     (data) =>
       data.NODE_ENV !== 'production' ||
       !data.JWT_SECRET.includes('change-me'),
     {
-      message: 'JWT_SECRET appears to be the default placeholder. Replace it before running in production.',
+      message: 'JWT_SECRET contains "change-me" — replace it before running in production.',
       path: ['JWT_SECRET'],
     },
   )
@@ -63,7 +117,7 @@ const envSchema = z
       data.NODE_ENV !== 'production' ||
       !data.SIGNING_LINK_SECRET.includes('change-me'),
     {
-      message: 'SIGNING_LINK_SECRET appears to be the default placeholder. Replace it before running in production.',
+      message: 'SIGNING_LINK_SECRET contains "change-me" — replace it before running in production.',
       path: ['SIGNING_LINK_SECRET'],
     },
   )
@@ -72,6 +126,27 @@ const envSchema = z
     {
       message: 'COOKIE_SECURE must be true in production. Cookies must be served over HTTPS only.',
       path: ['COOKIE_SECURE'],
+    },
+  )
+  .refine(
+    (data) =>
+      data.BILLING_PROVIDER !== 'stripe' ||
+      (!!data.STRIPE_SECRET_KEY &&
+        !!data.STRIPE_WEBHOOK_SECRET &&
+        !!data.STRIPE_PRICE_STARTER &&
+        !!data.STRIPE_PRICE_PROFESSIONAL &&
+        !!data.STRIPE_PRICE_ENTERPRISE),
+    {
+      message:
+        'STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and all STRIPE_PRICE_* vars are required when BILLING_PROVIDER=stripe',
+      path: ['BILLING_PROVIDER'],
+    },
+  )
+  .refine(
+    (data) => data.NODE_ENV !== 'production' || data.BILLING_PROVIDER !== 'none',
+    {
+      message: 'BILLING_PROVIDER=none must not be used in production. Set BILLING_PROVIDER=stripe.',
+      path: ['BILLING_PROVIDER'],
     },
   );
 
@@ -83,7 +158,8 @@ export function validateEnv(config: Record<string, unknown>): Env {
   if (!result.success) {
     const formatted = result.error.format();
     console.error('❌ Invalid environment variables:', JSON.stringify(formatted, null, 2));
-    throw new Error('Invalid environment configuration. See above for details.');
+    const messages = result.error.errors.map((e) => e.message).join('; ');
+    throw new Error(`Invalid environment configuration: ${messages}`);
   }
 
   return result.data;

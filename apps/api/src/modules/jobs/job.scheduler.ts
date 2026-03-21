@@ -1,0 +1,68 @@
+import { Injectable, Inject, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { PgBoss } from 'pg-boss';
+import { JOB_BOSS } from './job.service';
+
+// ─── JobScheduler ──────────────────────────────────────────────────────────────
+// Registers recurring (cron) job schedules via pg-boss.
+//
+// pg-boss schedule() vs send():
+//   schedule() creates a *named cron schedule* stored in pgboss.schedule.
+//   On each cron tick pg-boss calls send() with singletonKey=name, so only one
+//   instance of the job is queued even if multiple API pods are running.
+//   This makes cron jobs safe for horizontally-scaled deployments out of the box.
+//
+// Idempotency of schedule() itself:
+//   Calling schedule() with the same name and cron updates the stored schedule
+//   in-place — safe to run on every app start without creating duplicates.
+//
+// All cron expressions are UTC.
+//
+// ── Schedule table ──────────────────────────────────────────────────────────
+//
+//   Job                    Cron              Description
+//   ─────────────────────  ───────────────   ─────────────────────────────────
+//   expire-sessions        */5 * * * *       Every 5 minutes
+//   expire-offers          */30 * * * *      Every 30 minutes
+//   reset-monthly-billing  0 0 1 * *         Midnight UTC on 1st of month
+//
+// issue-certificate, send-email, send-webhook are event-driven — they are
+// enqueued by application code rather than on a schedule.
+
+@Injectable()
+export class JobScheduler implements OnApplicationBootstrap {
+  private readonly logger = new Logger(JobScheduler.name);
+
+  constructor(@Inject(JOB_BOSS) private readonly boss: PgBoss) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    await this.registerSchedules();
+  }
+
+  private async registerSchedules(): Promise<void> {
+    // expire-sessions: every 5 minutes
+    await this.boss.schedule('expire-sessions', '*/5 * * * *', {}, {
+      tz: 'UTC',
+    });
+
+    // expire-offers: every 30 minutes
+    await this.boss.schedule('expire-offers', '*/30 * * * *', {}, {
+      tz: 'UTC',
+    });
+
+    // reset-monthly-billing: midnight UTC on the 1st of every month
+    // Uses a month-stamped singletonKey so re-registration after a restart
+    // on the 1st doesn't fire the job again.
+    const yearMonth = new Date().toISOString().slice(0, 7); // e.g. '2026-03'
+    await this.boss.schedule(
+      'reset-monthly-billing',
+      '0 0 1 * *',
+      {},
+      {
+        tz: 'UTC',
+        singletonKey: `reset-monthly-billing:${yearMonth}`,
+      },
+    );
+
+    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing');
+  }
+}

@@ -1,122 +1,244 @@
-import { Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnApplicationShutdown } from '@nestjs/common';
+import type Redis from 'ioredis';
 import { RateLimitExceededError } from '../errors/domain.errors';
 
-// ─── In-process sliding window rate limiter ────────────────────────────────────
-//
-// Suitable for v1 single-process deployment. For multi-process or horizontally
-// scaled deployments, replace the in-memory store with a Redis-backed
-// implementation using the same interface.
-//
-// Sliding window algorithm:
-//   - Each key tracks the start of its current window and the request count.
-//   - On each check: if the window has expired, reset. Otherwise, increment.
-//   - Throws RateLimitExceededError if count exceeds the limit.
-//
-// Keys are caller-controlled and should be scoped to an action:
-//   "token_verify:{ip}"              token validation attempts per IP
-//   "otp_issue:{tokenHash}"          OTP issuance per recipient
-//   "otp_verify:{ip}"                OTP verification per IP (defense in depth)
-//   "signing_global:{ip}"            general signing endpoint traffic per IP
+export const REDIS_CLIENT = 'REDIS_CLIENT';
 
-interface WindowEntry {
-  count: number;
-  windowStart: number; // Date.now() at window creation
-}
+// ─── Redis-backed sliding window rate limiter ──────────────────────────────────
+//
+// Algorithm: Sorted-set sliding window log, executed atomically via Lua.
+//
+// Per-key data structure (Redis sorted set):
+//   Key:    rl:{profile}:{scope}      e.g. rl:login_attempt:1.2.3.4
+//   Member: "{now}:{random}"          unique ID per request (avoids collisions
+//                                     at identical millisecond timestamps)
+//   Score:  Unix timestamp in ms      used for range queries and pruning
+//
+// On every check() call, a single Lua script atomically:
+//   1. Removes all members older than (now - windowMs)  — slides the window
+//   2. Counts remaining members                          — current request count
+//   3. If count >= limit → returns denied + earliest resetAt timestamp
+//   4. Otherwise → ZADDs the new request and sets PEXPIRE
+//
+// Atomicity guarantee:
+//   The Lua script runs as a single Redis command. No other client can observe
+//   a partial state between steps 1–4. This prevents the TOCTOU race that would
+//   exist with separate ZADD/ZCARD calls.
+//
+// Distributed consistency:
+//   All API instances share one Redis instance (REDIS_URL). Counters are global
+//   — horizontal scaling does not multiply effective limits.
+//
+// Failure mode:
+//   If Redis is unreachable, check() logs a CRITICAL error and allows the
+//   request (fail-open). This prevents Redis downtime from locking out all
+//   users. Operators must be alerted on the CRITICAL log and restore Redis.
+//
+// Key expiry:
+//   PEXPIRE is set to (windowMs + 1 s) after each successful request.
+//   Idle keys self-delete, preventing unbounded memory growth in Redis.
 
 // Named limit profiles. Callers reference a profile name for consistency.
 export type RateLimitProfile =
   // Public signing flow
-  | 'token_verification'  // 10 attempts per IP per 15 minutes
-  | 'otp_issuance'        // 3 issuances per recipient token per hour
-  | 'otp_verification'    // 10 attempts per IP per 15 minutes (defense in depth)
-  | 'signing_global'      // 60 requests per IP per minute
+  | 'token_verification'     // 10 attempts per IP per 15 minutes
+  | 'otp_issuance'           // 3 issuances per recipient token per hour
+  | 'otp_verification'       // 10 attempts per IP per 15 minutes (defense in depth)
+  | 'otp_verification_burst' // 3 per 10 s — catches rapid automated guessing
+  | 'signing_global'         // 60 requests per IP per minute
   // Support staff actions — keyed by sessionId or actorId
-  | 'support_resend_otp'  // 3 OTP resends per session per 5 minutes (per-session key)
-  | 'support_resend_link' // 5 link resends per actor per 10 minutes (per-actor key)
+  | 'support_resend_otp'     // 3 OTP resends per session per 5 minutes (per-session key)
+  | 'support_resend_link'    // 5 link resends per actor per 10 minutes (per-actor key)
   // Public certificate verification
-  | 'cert_verify'         // 10 verifications per IP per minute
+  | 'cert_verify'            // 10 verifications per IP per minute
   // Auth endpoints
-  | 'login_attempt'       // 10 login attempts per IP per 15 minutes
-  | 'forgot_password'     // 3 reset requests per IP per hour
-  | 'signup_attempt';     // 5 signups per IP per hour
+  | 'login_attempt'          // 10 login attempts per IP per 15 minutes
+  | 'login_attempt_burst'    // 3 per 10 s — catches credential-stuffing bursts
+  | 'forgot_password'        // 3 reset requests per IP per hour
+  | 'signup_attempt'         // 5 signups per IP per hour
+  | 'signup_attempt_burst'   // 2 per 30 s — catches automated account creation
+  // Organisation / invite endpoints
+  | 'invite_attempt'         // 10 invitations sent per actor (userId) per hour
+  | 'invite_accept_attempt'; // 5 accept attempts per IP per 15 minutes
 
-const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
-  token_verification:  { limit: 10, windowMs: 15 * 60 * 1000 },
-  otp_issuance:        { limit: 3,  windowMs: 60 * 60 * 1000 },
-  otp_verification:    { limit: 10, windowMs: 15 * 60 * 1000 },
-  signing_global:      { limit: 60, windowMs:      60 * 1000 },
-  support_resend_otp:  { limit: 3,  windowMs:  5 * 60 * 1000 },
-  support_resend_link: { limit: 5,  windowMs: 10 * 60 * 1000 },
-  cert_verify:         { limit: 10, windowMs:      60 * 1000 },
-  login_attempt:       { limit: 10, windowMs: 15 * 60 * 1000 },
-  forgot_password:     { limit: 3,  windowMs: 60 * 60 * 1000 },
-  signup_attempt:      { limit: 5,  windowMs: 60 * 60 * 1000 },
+export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
+  token_verification:     { limit: 10, windowMs: 15 * 60 * 1000 },
+  otp_issuance:           { limit: 3,  windowMs: 60 * 60 * 1000 },
+  otp_verification:       { limit: 10, windowMs: 15 * 60 * 1000 },
+  otp_verification_burst: { limit: 3,  windowMs:      10 * 1000 },
+  signing_global:         { limit: 60, windowMs:      60 * 1000 },
+  support_resend_otp:     { limit: 3,  windowMs:  5 * 60 * 1000 },
+  support_resend_link:    { limit: 5,  windowMs: 10 * 60 * 1000 },
+  cert_verify:            { limit: 10, windowMs:      60 * 1000 },
+  login_attempt:          { limit: 10, windowMs: 15 * 60 * 1000 },
+  login_attempt_burst:    { limit: 3,  windowMs:      10 * 1000 },
+  forgot_password:        { limit: 3,  windowMs: 60 * 60 * 1000 },
+  signup_attempt:         { limit: 5,  windowMs: 60 * 60 * 1000 },
+  signup_attempt_burst:   { limit: 2,  windowMs:      30 * 1000 },
+  invite_attempt:         { limit: 10, windowMs: 60 * 60 * 1000 },
+  invite_accept_attempt:  { limit: 5,  windowMs: 15 * 60 * 1000 },
 };
+
+// ── Lua scripts ────────────────────────────────────────────────────────────────
+//
+// CHECK_SCRIPT: atomic sliding-window check-and-increment.
+//
+// KEYS[1]  — Redis key (sorted set)
+// ARGV[1]  — limit          (integer, max requests per window)
+// ARGV[2]  — windowMs       (integer, window size in milliseconds)
+// ARGV[3]  — now            (integer, current Unix time in ms)
+// ARGV[4]  — member         (string,  unique ID for this request)
+//
+// Returns array [allowed, remaining, resetAtMs]:
+//   allowed   — 1 if request is permitted, 0 if rate-limited
+//   remaining — number of remaining slots after this request (0 if denied)
+//   resetAtMs — Unix ms when the oldest in-window request exits the window
+//               (i.e., when the first slot opens up again)
+
+const CHECK_SCRIPT = `
+local key      = KEYS[1]
+local limit    = tonumber(ARGV[1])
+local windowMs = tonumber(ARGV[2])
+local now      = tonumber(ARGV[3])
+local member   = ARGV[4]
+local cutoff   = now - windowMs
+
+redis.call('ZREMRANGEBYSCORE', key, '-inf', cutoff)
+
+local count = tonumber(redis.call('ZCARD', key))
+
+if count >= limit then
+  local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+  local resetAtMs = now + windowMs
+  if oldest and #oldest >= 2 then
+    resetAtMs = tonumber(oldest[2]) + windowMs
+  end
+  return {0, 0, resetAtMs}
+end
+
+redis.call('ZADD', key, now, member)
+redis.call('PEXPIRE', key, windowMs + 1000)
+
+local remaining = limit - count - 1
+return {1, remaining, now + windowMs}
+`.trim();
+
+// PEEK_SCRIPT: read-only sliding-window state (cleans expired entries but does not add).
+//
+// KEYS[1]  — Redis key
+// ARGV[1]  — limit
+// ARGV[2]  — windowMs
+// ARGV[3]  — now
+//
+// Returns array [remaining, resetAtMs]
+
+const PEEK_SCRIPT = `
+local key      = KEYS[1]
+local limit    = tonumber(ARGV[1])
+local windowMs = tonumber(ARGV[2])
+local now      = tonumber(ARGV[3])
+local cutoff   = now - windowMs
+
+redis.call('ZREMRANGEBYSCORE', key, '-inf', cutoff)
+
+local count    = tonumber(redis.call('ZCARD', key))
+local oldest   = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+local resetAtMs = now + windowMs
+
+if oldest and #oldest >= 2 then
+  resetAtMs = tonumber(oldest[2]) + windowMs
+end
+
+local remaining = math.max(0, limit - count)
+return {remaining, resetAtMs}
+`.trim();
+
+// ── Service ────────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class RateLimitService implements OnApplicationShutdown {
-  private readonly store = new Map<string, WindowEntry>();
-  private readonly cleanupTimer: ReturnType<typeof setInterval>;
+  private readonly logger = new Logger(RateLimitService.name);
 
-  constructor() {
-    // Prune stale entries every 5 minutes to prevent unbounded memory growth.
-    // Max stale age is the longest window (1 hour).
-    this.cleanupTimer = setInterval(() => this.cleanup(), 5 * 60 * 1000);
-  }
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
   // Check and increment. Throws RateLimitExceededError if over limit.
-  // key should be pre-scoped: e.g. "token_verification:{ip}"
-  check(profile: RateLimitProfile, key: string): void {
+  // key should be the raw scope value (e.g. an IP address or token hash).
+  // The Redis key is constructed as: rl:{profile}:{key}
+  async check(profile: RateLimitProfile, key: string): Promise<void> {
     const { limit, windowMs } = PROFILES[profile];
-    const storeKey = `${profile}:${key}`;
+    const redisKey = `rl:${profile}:${key}`;
     const now = Date.now();
+    // Unique member: timestamp + random suffix prevents collisions when multiple
+    // requests arrive within the same millisecond from the same scope.
+    const member = `${now}:${Math.random().toString(36).slice(2, 9)}`;
 
-    let entry = this.store.get(storeKey);
-
-    if (!entry || now - entry.windowStart >= windowMs) {
-      // New window
-      entry = { count: 1, windowStart: now };
-      this.store.set(storeKey, entry);
+    let result: [number, number, number];
+    try {
+      result = (await this.redis.eval(
+        CHECK_SCRIPT,
+        1,
+        redisKey,
+        String(limit),
+        String(windowMs),
+        String(now),
+        member,
+      )) as [number, number, number];
+    } catch (err) {
+      // Fail-open: Redis unavailable. Log CRITICAL so operators are alerted.
+      // Metric: rate_limit_redis_error — monitor this to detect Redis instability.
+      this.logger.error(
+        `[rate_limit_redis_error] profile=${profile} key=${key} action=fail_open ` +
+        `error=${err instanceof Error ? err.message : String(err)}`,
+      );
       return;
     }
 
-    entry.count += 1;
+    const [allowed, , resetAtMs] = result;
 
-    if (entry.count > limit) {
-      const resetAt = new Date(entry.windowStart + windowMs);
-      const retryAfterMs = resetAt.getTime() - now;
+    if (!allowed) {
+      const resetAt = new Date(resetAtMs);
+      const retryAfterMs = Math.max(0, resetAtMs - now);
+      // Metric: rate_limit_exceeded — monitor this to detect attacks.
+      // High frequency of this log = likely abuse or misconfigured limit.
+      this.logger.warn(
+        `[rate_limit_exceeded] profile=${profile} key=${key} retryAfterMs=${retryAfterMs}`,
+      );
       throw new RateLimitExceededError(retryAfterMs, resetAt);
     }
   }
 
   // Peek without incrementing — for building response headers.
-  peek(profile: RateLimitProfile, key: string): { remaining: number; resetAt: Date } {
+  async peek(profile: RateLimitProfile, key: string): Promise<{ remaining: number; resetAt: Date }> {
     const { limit, windowMs } = PROFILES[profile];
-    const storeKey = `${profile}:${key}`;
+    const redisKey = `rl:${profile}:${key}`;
     const now = Date.now();
-    const entry = this.store.get(storeKey);
 
-    if (!entry || now - entry.windowStart >= windowMs) {
+    try {
+      const result = (await this.redis.eval(
+        PEEK_SCRIPT,
+        1,
+        redisKey,
+        String(limit),
+        String(windowMs),
+        String(now),
+      )) as [number, number];
+
+      return {
+        remaining: result[0],
+        resetAt: new Date(result[1]),
+      };
+    } catch (err) {
+      // Metric: rate_limit_redis_error — same event as in check(), but from peek().
+      this.logger.error(
+        `[rate_limit_redis_error] profile=${profile} key=${key} action=peek_fail_open ` +
+        `error=${err instanceof Error ? err.message : String(err)}`,
+      );
+      // Fail-open: return full remaining count so callers can still serve headers.
       return { remaining: limit, resetAt: new Date(now + windowMs) };
     }
-
-    return {
-      remaining: Math.max(0, limit - entry.count),
-      resetAt: new Date(entry.windowStart + windowMs),
-    };
   }
 
-  onApplicationShutdown(): void {
-    clearInterval(this.cleanupTimer);
-  }
-
-  private cleanup(): void {
-    const maxWindowMs = Math.max(...Object.values(PROFILES).map((p) => p.windowMs));
-    const cutoff = Date.now() - maxWindowMs;
-    for (const [key, entry] of this.store) {
-      if (entry.windowStart < cutoff) {
-        this.store.delete(key);
-      }
-    }
+  async onApplicationShutdown(): Promise<void> {
+    await this.redis.quit();
   }
 }

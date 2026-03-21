@@ -12,6 +12,7 @@ import { AcceptanceService } from '../../src/modules/signing/services/acceptance
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { EMAIL_PORT } from '../../src/common/email/email.port';
+import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 
 // ─── Session binding tests ────────────────────────────────────────────────────
 //
@@ -157,6 +158,10 @@ async function buildService(
           sendAcceptanceConfirmationToRecipient: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
           sendDeclineNotification: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
         },
+      },
+      {
+        provide: WebhookService,
+        useValue: { dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) },
       },
     ],
   }).compile();

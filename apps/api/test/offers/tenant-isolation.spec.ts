@@ -62,10 +62,15 @@ function makeDb(offerInOrgA = OFFER_IN_ORG_A) {
     },
     offerRecipient: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     offerDocument: { create: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
-    $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn({
-      offer: { create: jest.fn().mockResolvedValue(offerInOrgA) },
-      offerRecipient: { create: jest.fn() },
-    })),
+    $transaction: jest.fn(async (fnOrArray: unknown) => {
+      if (Array.isArray(fnOrArray)) {
+        return Promise.all(fnOrArray);
+      }
+      return (fnOrArray as (tx: unknown) => unknown)({
+        offer: { create: jest.fn().mockResolvedValue(offerInOrgA) },
+        offerRecipient: { create: jest.fn() },
+      });
+    }),
   };
 }
 

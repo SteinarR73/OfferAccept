@@ -179,6 +179,42 @@ export class ConcurrencyConflictError extends DomainError {
   }
 }
 
+// ─── Organization / Membership ────────────────────────────────────────────────
+
+export class OrgNotFoundError extends DomainError {
+  constructor() { super('Organization not found.'); }
+}
+
+export class NotOrgMemberError extends DomainError {
+  constructor() { super('You are not a member of this organization.'); }
+}
+
+export class InsufficientOrgRoleError extends DomainError {
+  constructor(required: string) {
+    super(`This action requires the ${required} role or higher.`);
+  }
+}
+
+export class AlreadyOrgMemberError extends DomainError {
+  constructor() { super('This user is already a member of the organization.'); }
+}
+
+export class InviteNotFoundError extends DomainError {
+  constructor() { super('Invite not found or already used.'); }
+}
+
+export class InviteExpiredError extends DomainError {
+  constructor() { super('This invitation has expired.'); }
+}
+
+export class CannotRemoveLastOwnerError extends DomainError {
+  constructor() { super('Cannot remove the last owner of an organization.'); }
+}
+
+export class CannotTransferToNonMemberError extends DomainError {
+  constructor() { super('Ownership can only be transferred to an existing member.'); }
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 // Email is already registered. Return the same generic message as "invalid credentials"
@@ -215,6 +251,71 @@ export class SessionRevokedError extends DomainError {
 export class AuthTokenInvalidError extends DomainError {
   constructor() {
     super('This link is invalid or has expired. Please request a new one.');
+  }
+}
+
+// ─── File storage ─────────────────────────────────────────────────────────────
+
+export class FileTooLargeError extends DomainError {
+  constructor(public readonly maxBytes: number) {
+    super(`File exceeds the maximum allowed size of ${maxBytes} bytes.`);
+  }
+}
+
+export class InvalidMimeTypeError extends DomainError {
+  constructor(public readonly mime: string) {
+    super(`File type '${mime}' is not allowed.`);
+  }
+}
+
+export class FileHashMismatchError extends DomainError {
+  constructor() {
+    super('File integrity check failed. The uploaded content does not match the declared hash.');
+  }
+}
+
+export class FileNotFoundError extends DomainError {
+  constructor() {
+    super('File not found.');
+  }
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+// Thrown when an organisation has reached the offer limit for their plan.
+export class PlanLimitExceededError extends DomainError {
+  constructor(
+    public readonly plan: string,
+    public readonly limit: number,
+  ) {
+    super(
+      `Your ${plan} plan allows ${limit} offer(s) per month. ` +
+      `Upgrade your plan to send more offers.`,
+    );
+  }
+}
+
+// Thrown when a Stripe operation is attempted but no customer exists for the org.
+export class BillingCustomerNotFoundError extends DomainError {
+  constructor() {
+    super('No billing customer found for this organisation. Please contact support.');
+  }
+}
+
+// ─── Enterprise (API keys + webhooks) ─────────────────────────────────────────
+
+// Thrown when an X-Api-Key header is missing, invalid, expired, or revoked.
+// Deliberately vague — same message for all failure modes to prevent enumeration.
+export class ApiKeyInvalidError extends DomainError {
+  constructor() {
+    super('API key is invalid or has been revoked.');
+  }
+}
+
+// Thrown when a webhook endpoint is not found or does not belong to the caller's org.
+export class WebhookEndpointNotFoundError extends DomainError {
+  constructor() {
+    super('Webhook endpoint not found.');
   }
 }
 

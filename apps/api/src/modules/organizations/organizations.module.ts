@@ -1,10 +1,28 @@
 import { Module } from '@nestjs/common';
+import { OrgController } from './org.controller';
+import { OrgService } from './org.service';
+import { OrgRepository } from './org.repository';
+import { MembershipService } from './membership.service';
+import { InviteService } from './invite.service';
+import { OrgRoleGuard } from './guards/org-role.guard';
 
+// ─── OrganizationsModule ──────────────────────────────────────────────────────
 // Bounded context: Identity / Tenancy
-// Responsible for: organization CRUD, user management within an org,
-// invitation flow, and role assignment.
+// Responsible for: organization CRUD, user membership, invitation flow, roles.
 //
-// Not yet implemented — module stub ready for feature development.
+// DatabaseModule provides the 'PRISMA' token globally.
+// EmailModule provides the 'EMAIL_PORT' token globally.
+// AuthModule provides JwtService globally (needed by JwtAuthGuard used in routes).
 
-@Module({})
+@Module({
+  controllers: [OrgController],
+  providers: [
+    OrgRepository,
+    OrgService,
+    MembershipService,
+    InviteService,
+    OrgRoleGuard,
+  ],
+  exports: [MembershipService, OrgRepository],
+})
 export class OrganizationsModule {}

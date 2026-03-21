@@ -7,9 +7,10 @@ import { SigningFlowService } from './services/signing-flow.service';
 import { SigningController } from './signing.controller';
 import { SigningEventsModule } from './signing-events.module';
 import { CertificatesModule } from '../certificates/certificates.module';
+import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
 
 @Module({
-  imports: [SigningEventsModule, CertificatesModule],
+  imports: [SigningEventsModule, CertificatesModule, EnterpriseCoreModule],
   controllers: [SigningController],
   providers: [
     SigningTokenService,

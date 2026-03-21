@@ -67,12 +67,12 @@ function makeSession(overrides: Record<string, unknown> = {}) {
 function createMockDb() {
   const txMock = {
     signingOtpChallenge: { update: jest.fn() },
-    signingSession: { update: jest.fn() },
-    offerRecipient: { update: jest.fn() },
+    signingSession: { update: jest.fn(), updateMany: jest.fn() },
+    offerRecipient: { update: jest.fn(), updateMany: jest.fn() },
   };
 
   return {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock)),
+    $transaction: jest.fn().mockImplementation(async (fn: unknown) => (fn as (tx: typeof txMock) => Promise<unknown>)(txMock)),
     signingOtpChallenge: {
       findUnique: jest.fn(),
       update: jest.fn(),
@@ -82,6 +82,7 @@ function createMockDb() {
     },
     offerRecipient: {
       update: jest.fn(),
+      findUnique: jest.fn(),
     },
     _txMock: txMock, // exposed for assertion
   };
@@ -113,9 +114,10 @@ describe('SigningOtpService.verifyAndAdvanceSession() — happy path', () => {
     const db = createMockDb();
     db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge() as never);
     db.signingSession.findUnique.mockResolvedValue(makeSession() as never);
-    db._txMock.signingOtpChallenge.update.mockResolvedValue({});
-    db._txMock.signingSession.update.mockResolvedValue({});
-    db._txMock.offerRecipient.update.mockResolvedValue({});
+    db.offerRecipient.findUnique.mockResolvedValue({ id: RECIPIENT_ID, version: 1 } as never);
+    (db._txMock.signingOtpChallenge.update as jest.Mock<(...args: any[]) => any>).mockResolvedValue({});
+    (db._txMock.signingSession.updateMany as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ count: 1 });
+    (db._txMock.offerRecipient.updateMany as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ count: 1 });
 
     const { service, eventService } = await buildService(db);
     const result = await service.verifyAndAdvanceSession(CHALLENGE_ID, RECIPIENT_ID, CORRECT_CODE, {});
@@ -130,11 +132,11 @@ describe('SigningOtpService.verifyAndAdvanceSession() — happy path', () => {
     expect(db._txMock.signingOtpChallenge.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'VERIFIED' }) }),
     );
-    expect(db._txMock.signingSession.update).toHaveBeenCalledWith(
+    expect(db._txMock.signingSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'OTP_VERIFIED' }) }),
     );
-    expect(db._txMock.offerRecipient.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: 'OTP_VERIFIED' } }),
+    expect(db._txMock.offerRecipient.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'OTP_VERIFIED' }) }),
     );
 
     // OTP_VERIFIED event appended exactly once inside the transaction
@@ -149,14 +151,15 @@ describe('SigningOtpService.verifyAndAdvanceSession() — happy path', () => {
     const db = createMockDb();
     db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge() as never);
     db.signingSession.findUnique.mockResolvedValue(makeSession() as never);
-    db._txMock.signingOtpChallenge.update.mockResolvedValue({});
-    db._txMock.signingSession.update.mockResolvedValue({});
-    db._txMock.offerRecipient.update.mockResolvedValue({});
+    db.offerRecipient.findUnique.mockResolvedValue({ id: RECIPIENT_ID, version: 1 } as never);
+    (db._txMock.signingOtpChallenge.update as jest.Mock<(...args: any[]) => any>).mockResolvedValue({});
+    (db._txMock.signingSession.updateMany as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ count: 1 });
+    (db._txMock.offerRecipient.updateMany as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ count: 1 });
 
     const { service } = await buildService(db);
     await service.verifyAndAdvanceSession(CHALLENGE_ID, RECIPIENT_ID, CORRECT_CODE, {});
 
-    const sessionUpdateCall = db._txMock.signingSession.update.mock.calls[0][0] as {
+    const sessionUpdateCall = ((db._txMock.signingSession.updateMany as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { status: string; otpVerifiedAt: Date };
     };
     expect(sessionUpdateCall.data.otpVerifiedAt).toBeInstanceOf(Date);
@@ -293,7 +296,8 @@ describe('SigningOtpService.verifyAndAdvanceSession() — incorrect code', () =>
     const db = createMockDb();
     db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge() as never);
     db.signingSession.findUnique.mockResolvedValue(makeSession() as never);
-    db._txMock.signingOtpChallenge.update.mockResolvedValue({});
+    db.offerRecipient.findUnique.mockResolvedValue({ id: RECIPIENT_ID, version: 1 } as never);
+    (db._txMock.signingOtpChallenge.update as jest.Mock<(...args: any[]) => any>).mockResolvedValue({});
 
     const { service, eventService } = await buildService(db);
 
@@ -308,8 +312,8 @@ describe('SigningOtpService.verifyAndAdvanceSession() — incorrect code', () =>
     );
 
     // Session and recipient must NOT have been updated
-    expect(db._txMock.signingSession.update).not.toHaveBeenCalled();
-    expect(db._txMock.offerRecipient.update).not.toHaveBeenCalled();
+    expect(db._txMock.signingSession.updateMany).not.toHaveBeenCalled();
+    expect(db._txMock.offerRecipient.updateMany).not.toHaveBeenCalled();
 
     // Event should be a failure event, not OTP_VERIFIED
     expect(eventService.append).toHaveBeenCalledWith(

@@ -9,6 +9,7 @@ import {
   EmailVerificationParams,
   PasswordResetParams,
   PasswordChangedParams,
+  OrgInviteParams,
 } from './email.port';
 
 // ─── DevEmailAdapter ───────────────────────────────────────────────────────────
@@ -80,6 +81,7 @@ export class DevEmailAdapter implements EmailPort {
   private readonly sentDeclines: SentDeclineNotification[] = [];
   private readonly sentVerifications: Array<{ to: string; url: string; sentAt: Date }> = [];
   private readonly sentPasswordResets: Array<{ to: string; url: string; sentAt: Date }> = [];
+  private readonly sentOrgInvites: Array<{ to: string; url: string; orgName: string; sentAt: Date }> = [];
 
   async sendOtp(params: OtpEmailParams): Promise<void> {
     this.sentOtps.push({
@@ -173,6 +175,19 @@ export class DevEmailAdapter implements EmailPort {
     this.logger.log(`[DEV EMAIL] Password changed notification → ${params.to}`);
   }
 
+  async sendOrgInvite(params: OrgInviteParams): Promise<void> {
+    this.sentOrgInvites.push({ to: params.to, url: params.inviteUrl, orgName: params.orgName, sentAt: new Date() });
+    // Do not log inviteUrl — contains raw token
+    this.logger.log(`[DEV EMAIL] Org invite → ${params.to} for org "${params.orgName}" (role: ${params.role})`);
+  }
+
+  getLastOrgInviteUrl(email: string): string | null {
+    const records = this.sentOrgInvites
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0]?.url ?? null;
+  }
+
   // ─── Test helpers ────────────────────────────────────────────────────────────
   // These methods are only meaningful in dev/test. Production uses ResendEmailAdapter.
 
@@ -241,5 +256,6 @@ export class DevEmailAdapter implements EmailPort {
     this.sentDeclines.length = 0;
     this.sentVerifications.length = 0;
     this.sentPasswordResets.length = 0;
+    this.sentOrgInvites.length = 0;
   }
 }

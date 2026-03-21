@@ -35,8 +35,9 @@ export class AuthRepository {
     return this.db.user.findUnique({ where: { id: userId, deletedAt: null } });
   }
 
-  // Creates an org + owner user atomically. Caller is responsible for checking
-  // for duplicate email before calling — the unique constraint is the final guard.
+  // Creates an org + owner user + OWNER Membership atomically.
+  // Caller is responsible for checking for duplicate email before calling —
+  // the unique constraint is the final guard.
   async createOrgAndOwner(params: {
     orgName: string;
     orgSlug: string;
@@ -49,7 +50,7 @@ export class AuthRepository {
         data: { name: params.orgName, slug: params.orgSlug },
       });
 
-      return tx.user.create({
+      const user = await tx.user.create({
         data: {
           organizationId: org.id,
           name: params.userName,
@@ -59,6 +60,13 @@ export class AuthRepository {
           emailVerified: false,
         },
       });
+
+      // Seed the Membership table so the multi-org system is consistent from day 1.
+      await tx.membership.create({
+        data: { userId: user.id, organizationId: org.id, role: 'OWNER' },
+      });
+
+      return user;
     });
   }
 

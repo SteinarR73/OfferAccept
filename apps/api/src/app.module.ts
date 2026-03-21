@@ -13,6 +13,10 @@ import { EmailModule } from './common/email/email.module';
 import { AuthModule } from './common/auth/auth.module';
 import { AuthFeatureModule } from './modules/auth/auth.module';
 import { SupportModule } from './modules/support/support.module';
+import { StorageModule } from './common/storage/storage.module';
+import { FilesModule } from './modules/files/files.module';
+import { JobsModule } from './modules/jobs/job.module';
+import { EnterpriseHttpModule } from './modules/enterprise/enterprise-http.module';
 
 @Module({
   imports: [
@@ -23,6 +27,7 @@ import { SupportModule } from './modules/support/support.module';
     DatabaseModule,
     RateLimitModule,
     EmailModule,
+    StorageModule,    // global: provides STORAGE_PORT
     AuthModule,       // global: provides JwtService + JwtAuthGuard
     AuthFeatureModule, // provides POST /auth/login
     HealthModule,
@@ -32,6 +37,9 @@ import { SupportModule } from './modules/support/support.module';
     CertificatesModule,
     BillingModule,
     SupportModule,
+    FilesModule,
+    JobsModule,
+    EnterpriseHttpModule,
   ],
 })
 export class AppModule {}

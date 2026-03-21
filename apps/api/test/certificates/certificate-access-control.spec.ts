@@ -4,6 +4,7 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
+import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
 
 // ─── Certificate access control tests ─────────────────────────────────────────
 //
@@ -58,10 +59,11 @@ function makeBuiltCert() {
 
 // ─── Test setup ────────────────────────────────────────────────────────────────
 
+type AnyMock = jest.Mock<(...args: any[]) => any>;
 type MockDb = {
-  acceptanceCertificate: { findUnique: jest.Mock; create: jest.Mock };
-  acceptanceRecord: { findUniqueOrThrow: jest.Mock; findUnique: jest.Mock };
-  offerSnapshot: { findUniqueOrThrow: jest.Mock };
+  acceptanceCertificate: { findUnique: AnyMock; create: AnyMock };
+  acceptanceRecord: { findUniqueOrThrow: AnyMock; findUnique: AnyMock };
+  offerSnapshot: { findUniqueOrThrow: AnyMock };
 };
 
 function makeMockDb(): MockDb {
@@ -84,7 +86,7 @@ function stubCertWithOrg(db: MockDb, orgId: string, storedHash: string) {
   });
 }
 
-async function buildService(db: MockDb, builder: { build: jest.Mock }, eventService: { verifyChain: jest.Mock }) {
+async function buildService(db: MockDb, builder: { build: AnyMock }, eventService: { verifyChain: AnyMock }) {
   const module = await Test.createTestingModule({
     providers: [
       CertificateService,
@@ -100,8 +102,8 @@ async function buildService(db: MockDb, builder: { build: jest.Mock }, eventServ
 
 describe('CertificateService.exportPayload() — access control', () => {
   let db: MockDb;
-  let builder: { build: jest.Mock };
-  let eventService: { verifyChain: jest.Mock };
+  let builder: { build: AnyMock };
+  let eventService: { verifyChain: AnyMock };
   let service: CertificateService;
 
   beforeEach(async () => {
@@ -180,8 +182,8 @@ describe('CertificateService.exportPayload() — access control', () => {
 
 describe('CertificateService.verify() — public endpoint safety', () => {
   let db: MockDb;
-  let builder: { build: jest.Mock };
-  let eventService: { verifyChain: jest.Mock };
+  let builder: { build: AnyMock };
+  let eventService: { verifyChain: AnyMock };
   let service: CertificateService;
 
   beforeEach(async () => {
@@ -204,15 +206,19 @@ describe('CertificateService.verify() — public endpoint safety', () => {
     builder.build.mockResolvedValue(built);
 
     // Stub snapshot check inside verify()
-    (db as unknown as { offerSnapshot: { findUniqueOrThrow: jest.Mock } }).offerSnapshot =
-      { findUniqueOrThrow: jest.fn().mockResolvedValue({
+    const snapshotInput = {
+      title: 'Access Control Test Offer',
+      message: null as null,
+      senderName: 'Corp',
+      senderEmail: 'corp@co.com',
+      expiresAt: null as null,
+      documents: [] as Array<{ filename: string; sha256Hash: string; storageKey: string }>,
+    };
+    db.offerSnapshot =
+      { findUniqueOrThrow: (jest.fn() as AnyMock).mockResolvedValue({
         id: 'snap-1',
-        title: 'Access Control Test Offer',
-        message: null,
-        senderName: 'Corp',
-        senderEmail: 'corp@co.com',
-        expiresAt: null,
-        contentHash: 'b'.repeat(64),
+        ...snapshotInput,
+        contentHash: computeSnapshotHash(snapshotInput),
         documents: [],
       }) };
 

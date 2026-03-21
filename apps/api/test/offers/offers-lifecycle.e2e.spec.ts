@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { OffersModule } from '../../src/modules/offers/offers.module';
 import { EmailModule } from '../../src/common/email/email.module';
 import { AuthModule } from '../../src/common/auth/auth.module';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
+import { DatabaseModule } from '../../src/modules/database/database.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import {
   createMockOffersDb,
@@ -54,6 +55,7 @@ describe('Offers Lifecycle (e2e)', () => {
           })],
         }),
         JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+        DatabaseModule,
         AuthModule,
         EmailModule,
         OffersModule,
@@ -242,6 +244,8 @@ describe('Offers Lifecycle (e2e)', () => {
       } as never);
       db.offerRecipient.update.mockResolvedValue(recipient as never);
       db.offer.update.mockResolvedValue({ ...offerWithRecipient, status: 'SENT' } as never);
+      db.offerDeliveryAttempt.create.mockResolvedValue({ id: 'delivery-1' } as never);
+      db.offerDeliveryAttempt.update.mockResolvedValue({ id: 'delivery-1' } as never);
     }
 
     it('creates snapshot, updates token, transitions to SENT, and sends email', async () => {

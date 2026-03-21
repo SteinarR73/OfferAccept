@@ -32,6 +32,22 @@ import {
   EmailNotVerifiedError,
   SessionRevokedError,
   AuthTokenInvalidError,
+  OrgNotFoundError,
+  NotOrgMemberError,
+  InsufficientOrgRoleError,
+  AlreadyOrgMemberError,
+  InviteNotFoundError,
+  InviteExpiredError,
+  CannotRemoveLastOwnerError,
+  CannotTransferToNonMemberError,
+  FileTooLargeError,
+  InvalidMimeTypeError,
+  FileHashMismatchError,
+  FileNotFoundError,
+  PlanLimitExceededError,
+  BillingCustomerNotFoundError,
+  ApiKeyInvalidError,
+  WebhookEndpointNotFoundError,
 } from '../errors/domain.errors';
 
 // ─── DomainExceptionFilter ─────────────────────────────────────────────────────
@@ -74,6 +90,46 @@ export class DomainExceptionFilter implements ExceptionFilter {
   }
 
   private resolve(err: DomainError): { statusCode: number; body: ErrorResponse } {
+    // ── Org errors ─────────────────────────────────────────────────────────────
+    if (err instanceof OrgNotFoundError) {
+      return this.make(HttpStatus.NOT_FOUND, err.message, 'ORG_NOT_FOUND');
+    }
+    if (err instanceof NotOrgMemberError) {
+      return this.make(HttpStatus.FORBIDDEN, err.message, 'NOT_ORG_MEMBER');
+    }
+    if (err instanceof InsufficientOrgRoleError) {
+      return this.make(HttpStatus.FORBIDDEN, err.message, 'INSUFFICIENT_ORG_ROLE');
+    }
+    if (err instanceof AlreadyOrgMemberError) {
+      return this.make(HttpStatus.CONFLICT, err.message, 'ALREADY_ORG_MEMBER');
+    }
+    if (err instanceof InviteNotFoundError) {
+      return this.make(HttpStatus.NOT_FOUND, err.message, 'INVITE_NOT_FOUND');
+    }
+    if (err instanceof InviteExpiredError) {
+      return this.make(HttpStatus.GONE, err.message, 'INVITE_EXPIRED');
+    }
+    if (err instanceof CannotRemoveLastOwnerError) {
+      return this.make(HttpStatus.CONFLICT, err.message, 'CANNOT_REMOVE_LAST_OWNER');
+    }
+    if (err instanceof CannotTransferToNonMemberError) {
+      return this.make(HttpStatus.UNPROCESSABLE_ENTITY, err.message, 'CANNOT_TRANSFER_TO_NON_MEMBER');
+    }
+
+    // ── File storage errors ────────────────────────────────────────────────────
+    if (err instanceof FileTooLargeError) {
+      return this.make(HttpStatus.PAYLOAD_TOO_LARGE, err.message, 'FILE_TOO_LARGE', { maxBytes: err.maxBytes });
+    }
+    if (err instanceof InvalidMimeTypeError) {
+      return this.make(HttpStatus.UNPROCESSABLE_ENTITY, err.message, 'INVALID_MIME_TYPE', { mime: err.mime });
+    }
+    if (err instanceof FileHashMismatchError) {
+      return this.make(HttpStatus.UNPROCESSABLE_ENTITY, err.message, 'FILE_HASH_MISMATCH');
+    }
+    if (err instanceof FileNotFoundError) {
+      return this.make(HttpStatus.NOT_FOUND, err.message, 'FILE_NOT_FOUND');
+    }
+
     // ── Auth errors ────────────────────────────────────────────────────────────
     // 401: credentials / session problems
     if (err instanceof InvalidCredentialsError) {
@@ -157,6 +213,25 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return this.make(HttpStatus.BAD_REQUEST, err.message, 'OTP_INVALID', {
         attemptsRemaining: err.attemptsRemaining,
       });
+    }
+
+    // ── Enterprise errors ──────────────────────────────────────────────────────
+    if (err instanceof ApiKeyInvalidError) {
+      return this.make(HttpStatus.UNAUTHORIZED, err.message, 'API_KEY_INVALID');
+    }
+    if (err instanceof WebhookEndpointNotFoundError) {
+      return this.make(HttpStatus.NOT_FOUND, err.message, 'WEBHOOK_ENDPOINT_NOT_FOUND');
+    }
+
+    // ── Billing errors ─────────────────────────────────────────────────────────
+    if (err instanceof PlanLimitExceededError) {
+      return this.make(HttpStatus.PAYMENT_REQUIRED, err.message, 'PLAN_LIMIT_EXCEEDED', {
+        plan: err.plan,
+        limit: err.limit,
+      });
+    }
+    if (err instanceof BillingCustomerNotFoundError) {
+      return this.make(HttpStatus.NOT_FOUND, err.message, 'BILLING_CUSTOMER_NOT_FOUND');
     }
 
     // ── 429 Too Many Requests ──────────────────────────────────────────────────

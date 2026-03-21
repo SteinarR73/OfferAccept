@@ -10,17 +10,17 @@ import { Type } from 'class-transformer';
 
 class RecipientDto {
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsString()
   @MaxLength(200)
-  name: string;
+  name!: string;
 }
 
 export class CreateOfferDto {
   @IsString()
   @MaxLength(500)
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()

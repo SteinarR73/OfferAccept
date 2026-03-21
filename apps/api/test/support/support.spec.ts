@@ -1,17 +1,21 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { AuthModule } from '../../src/common/auth/auth.module';
 import { EmailModule } from '../../src/common/email/email.module';
+import { RateLimitModule } from '../../src/common/rate-limit/rate-limit.module';
+import { REDIS_CLIENT } from '../../src/common/rate-limit/rate-limit.service';
 import { SupportModule } from '../../src/modules/support/support.module';
 import { OffersModule } from '../../src/modules/offers/offers.module';
 import { SigningModule } from '../../src/modules/signing/signing.module';
 import { CertificatesModule } from '../../src/modules/certificates/certificates.module';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
+import { WebhookService } from '../../src/modules/enterprise/webhook.service';
+import { DatabaseModule } from '../../src/modules/database/database.module';
 
 // ─── Support tooling tests ─────────────────────────────────────────────────────
 //
@@ -34,7 +38,7 @@ function makeJwt(jwtService: JwtService, role = 'INTERNAL_SUPPORT') {
 
 function createMockDb() {
   return {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    $transaction: jest.fn().mockImplementation(async (fn: unknown) => (fn as (tx: unknown) => Promise<unknown>)({})),
     offer: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
@@ -42,6 +46,7 @@ function createMockDb() {
     },
     offerRecipient: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
     },
@@ -208,8 +213,10 @@ async function buildApp(db: MockDb) {
         })],
       }),
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+      DatabaseModule,
       AuthModule,
       EmailModule,
+      RateLimitModule,
       OffersModule,
       SigningModule,
       CertificatesModule,
@@ -220,6 +227,13 @@ async function buildApp(db: MockDb) {
     .useValue(db)
     .overrideProvider(CertificateService)
     .useValue(mockCertService)
+    // WebhookService (from EnterpriseCoreModule, via SigningModule) depends on
+    // JobService which is not available in this isolated test module.
+    .overrideProvider(WebhookService)
+    .useValue({ dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) })
+    // Override REDIS_CLIENT so RateLimitModule factory doesn't crash on undefined REDIS_URL.
+    .overrideProvider(REDIS_CLIENT)
+    .useValue({ eval: jest.fn<() => Promise<null>>().mockResolvedValue(null), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
     .compile();
 
   const app = module.createNestApplication();
@@ -308,7 +322,6 @@ describe('Support API — search', () => {
 
   beforeEach(async () => {
     db = createMockDb();
-    ({ app, jwtService: { sign: (p: object) => '' } } = await buildApp(db));
     const built = await buildApp(db);
     app = built.app;
     token = makeJwt(built.jwtService);

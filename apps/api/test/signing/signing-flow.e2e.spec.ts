@@ -1,15 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import * as crypto from 'crypto';
 import { ConfigModule } from '@nestjs/config';
 import { jest } from '@jest/globals';
 import { SigningModule } from '../../src/modules/signing/signing.module';
 import { RateLimitModule } from '../../src/common/rate-limit/rate-limit.module';
+import { REDIS_CLIENT } from '../../src/common/rate-limit/rate-limit.service';
+import { AuthModule } from '../../src/common/auth/auth.module';
 import { EmailModule } from '../../src/common/email/email.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
+import { DatabaseModule } from '../../src/modules/database/database.module';
+import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 import {
   createMockDb,
   makeRecipient,
@@ -43,7 +47,18 @@ describe('Public Signing Flow (e2e)', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
+        ConfigModule.forRoot({
+          isGlobal: true,
+          ignoreEnvFile: true,
+          load: [() => ({
+            JWT_SECRET: 'test-secret-at-least-32-characters-long!!',
+            JWT_ACCESS_TTL: '15m',
+            WEB_BASE_URL: 'https://app.test',
+            EMAIL_FROM: 'noreply@test.com',
+          })],
+        }),
+        DatabaseModule,
+        AuthModule,
         RateLimitModule,
         EmailModule,
         SigningModule,
@@ -55,6 +70,15 @@ describe('Public Signing Flow (e2e)', () => {
       // signing flow tests from the full certificate generation DB queries.
       .overrideProvider(CertificateService)
       .useValue({ generateForAcceptance: jest.fn<() => Promise<{ certificateId: string }>>().mockResolvedValue({ certificateId: 'cert-mock-1' }) })
+      // WebhookService (from EnterpriseCoreModule, via SigningModule) depends on
+      // JobService which is not available in this isolated test module. Mock it so
+      // SigningFlowService.accept() can dispatch events without pg-boss present.
+      .overrideProvider(WebhookService)
+      .useValue({ dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) })
+      // Override REDIS_CLIENT to prevent the RateLimitModule factory from crashing
+      // when REDIS_URL is undefined in the test ConfigModule.
+      .overrideProvider(REDIS_CLIENT)
+      .useValue({ eval: jest.fn<() => Promise<null>>().mockResolvedValue(null), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
       .compile();
 
     app = module.createNestApplication();
@@ -172,7 +196,7 @@ describe('Public Signing Flow (e2e)', () => {
     });
 
     it('resumes an existing session if one is still active', async () => {
-      const recipient = makeRecipient({ status: 'VIEWED' });
+      const recipient = makeRecipient({ status: 'VIEWED' as 'PENDING' });
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       db.offer.findUniqueOrThrow.mockResolvedValue(makeOffer() as never);
       db.offerSnapshot.findUniqueOrThrow.mockResolvedValue(makeSnapshot() as never);
@@ -196,7 +220,7 @@ describe('Public Signing Flow (e2e)', () => {
     const CORRECT_CODE = '123456';
 
     function setupForVerify(challengeOverrides: Record<string, unknown> = {}) {
-      const recipient = makeRecipient({ status: 'VIEWED' });
+      const recipient = makeRecipient({ status: 'VIEWED' as 'PENDING' });
       const session = makeSession();
       const challenge = makeChallenge({
         codeHash: hashCode(CORRECT_CODE),
@@ -291,7 +315,7 @@ describe('Public Signing Flow (e2e)', () => {
 
   describe('POST /api/v1/signing/:token/accept — accept', () => {
     function setupForAccept() {
-      const recipient = makeRecipient({ status: 'OTP_VERIFIED' });
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
       const session = makeSession({ status: 'OTP_VERIFIED', otpVerifiedAt: new Date() });
       const challenge = makeChallenge({
         status: 'VERIFIED',
@@ -340,7 +364,7 @@ describe('Public Signing Flow (e2e)', () => {
     });
 
     it('rejects acceptance when the challenge has not been verified (OTP not yet done)', async () => {
-      const recipient = makeRecipient({ status: 'VIEWED' });
+      const recipient = makeRecipient({ status: 'VIEWED' as 'PENDING' });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       // New flow: getSessionFromVerifiedChallenge checks challenge.status === 'VERIFIED'.
@@ -358,7 +382,7 @@ describe('Public Signing Flow (e2e)', () => {
     });
 
     it('rejects a second acceptance attempt when offer is already ACCEPTED', async () => {
-      const recipient = makeRecipient({ status: 'OTP_VERIFIED' });
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
       const session = makeSession({ status: 'OTP_VERIFIED' });
       const challenge = makeChallenge({ status: 'VERIFIED', verifiedAt: new Date() });
 
@@ -380,7 +404,7 @@ describe('Public Signing Flow (e2e)', () => {
     });
 
     it('rejects acceptance when challenge belongs to a different recipient', async () => {
-      const recipient = makeRecipient({ status: 'OTP_VERIFIED' });
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       // New flow: getSessionFromVerifiedChallenge() checks challenge.recipientId === recipient.id.
@@ -402,7 +426,7 @@ describe('Public Signing Flow (e2e)', () => {
 
   describe('POST /api/v1/signing/:token/decline — decline', () => {
     it('declines the offer and transitions all entities', async () => {
-      const recipient = makeRecipient({ status: 'VIEWED' });
+      const recipient = makeRecipient({ status: 'VIEWED' as 'PENDING' });
       const session = makeSession({ status: 'AWAITING_OTP' });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);

@@ -22,69 +22,69 @@ class SignupDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  orgName: string;
+  orgName!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  name: string;
+  name!: string;
 
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsString()
   @MinLength(8)
   @MaxLength(128)
-  password: string;
+  password!: string;
 }
 
 class LoginDto {
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsString()
   @MinLength(1)
   @MaxLength(128)
-  password: string;
+  password!: string;
 }
 
 class RequestPasswordResetDto {
   @IsEmail()
-  email: string;
+  email!: string;
 }
 
 class ResetPasswordDto {
   @IsString()
   @IsNotEmpty()
-  token: string;
+  token!: string;
 
   @IsString()
   @MinLength(8)
   @MaxLength(128)
-  newPassword: string;
+  newPassword!: string;
 }
 
 class VerifyEmailDto {
   @IsString()
   @IsNotEmpty()
-  token: string;
+  token!: string;
 }
 
 class ChangePasswordDto {
   @IsString()
   @MinLength(1)
   @MaxLength(128)
-  currentPassword: string;
+  currentPassword!: string;
 
   @IsString()
   @MinLength(8)
   @MaxLength(128)
-  newPassword: string;
+  newPassword!: string;
 }
 
 class ResendVerificationDto {
   @IsEmail()
-  email: string;
+  email!: string;
 }
 
 // ─── AuthController ───────────────────────────────────────────────────────────
@@ -119,7 +119,8 @@ export class AuthController {
     @Body() body: SignupDto,
     @Req() req: Request,
   ): Promise<{ message: string }> {
-    this.rateLimiter.check('signup_attempt', extractClientIp(req));
+    await this.rateLimiter.check('signup_attempt', extractClientIp(req));
+    await this.rateLimiter.check('signup_attempt_burst', extractClientIp(req));
 
     await this.authService.signup({
       orgName: body.orgName,
@@ -139,7 +140,8 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    this.rateLimiter.check('login_attempt', extractClientIp(req));
+    await this.rateLimiter.check('login_attempt', extractClientIp(req));
+    await this.rateLimiter.check('login_attempt_burst', extractClientIp(req));
 
     const context = { ipAddress: extractClientIp(req), userAgent: req.headers['user-agent'] };
     const tokens = await this.authService.login(body.email, body.password, context);
@@ -212,7 +214,7 @@ export class AuthController {
     @Body() body: RequestPasswordResetDto,
     @Req() req: Request,
   ): Promise<{ message: string }> {
-    this.rateLimiter.check('forgot_password', extractClientIp(req));
+    await this.rateLimiter.check('forgot_password', extractClientIp(req));
 
     await this.authService.requestPasswordReset(body.email);
     // Always return 200 regardless of whether the email exists

@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -38,6 +39,7 @@ async function buildController() {
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
     ],
   }).compile();
 
@@ -74,7 +76,7 @@ describe('AuthController.forgotPassword()', () => {
   it('does NOT throw when service throws (email not found case is handled silently in service)', async () => {
     // The service already handles unknown emails silently. The controller just awaits it.
     const { controller, authSvc } = await buildController();
-    (authSvc.requestPasswordReset as jest.Mock).mockResolvedValue(undefined);
+    (authSvc.requestPasswordReset as jest.Mock<(...args: any[]) => any>).mockResolvedValue(undefined);
     await expect(
       controller.forgotPassword({ email: 'nobody@void.io' } as never, buildMockReq() as never),
     ).resolves.toBeDefined();
@@ -110,7 +112,7 @@ describe('AuthController.resetPassword()', () => {
 
   it('propagates AuthTokenInvalidError for invalid/expired token', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.resetPassword as jest.Mock).mockRejectedValue(new AuthTokenInvalidError());
+    (authSvc.resetPassword as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new AuthTokenInvalidError());
 
     await expect(
       controller.resetPassword(

@@ -4,6 +4,7 @@ import { NotFoundException } from '@nestjs/common';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
+import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,14 +52,15 @@ function makeBuiltCert() {
 
 describe('CertificateService.verify()', () => {
   let service: CertificateService;
-  let db: { acceptanceCertificate: { findUnique: jest.Mock }; acceptanceRecord: { findUniqueOrThrow: jest.Mock; findUnique: jest.Mock } };
-  let builder: { build: jest.Mock };
-  let eventService: { verifyChain: jest.Mock };
+  let db: { acceptanceCertificate: { findUnique: jest.Mock<(...args: any[]) => any> }; acceptanceRecord: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any>; findUnique: jest.Mock<(...args: any[]) => any> }; offerSnapshot: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any> } };
+  let builder: { build: jest.Mock<(...args: any[]) => any> };
+  let eventService: { verifyChain: jest.Mock<(...args: any[]) => any> };
 
   beforeEach(async () => {
     db = {
       acceptanceCertificate: { findUnique: jest.fn() },
       acceptanceRecord: { findUniqueOrThrow: jest.fn(), findUnique: jest.fn() },
+      offerSnapshot: { findUniqueOrThrow: jest.fn() },
     };
     builder = { build: jest.fn() };
     eventService = { verifyChain: jest.fn() };
@@ -81,7 +83,21 @@ describe('CertificateService.verify()', () => {
       acceptanceRecordId: RECORD_ID,
       issuedAt: ISSUED_AT,
       certificateHash: storedHash,
-      acceptanceRecord: { id: RECORD_ID, sessionId: SESSION_ID },
+      acceptanceRecord: { id: RECORD_ID, sessionId: SESSION_ID, snapshotId: 'snap-1' },
+    });
+    const snapshotHashInput = {
+      title: makePayload().offer.title,
+      message: null as null,
+      senderName: makePayload().sender.name,
+      senderEmail: makePayload().sender.email,
+      expiresAt: null as null,
+      documents: [] as Array<{ filename: string; sha256Hash: string; storageKey: string }>,
+    };
+    db.offerSnapshot.findUniqueOrThrow.mockResolvedValue({
+      id: 'snap-1',
+      ...snapshotHashInput,
+      contentHash: computeSnapshotHash(snapshotHashInput),
+      documents: [],
     });
   }
 
@@ -164,11 +180,11 @@ describe('CertificateService.verify()', () => {
 describe('CertificateService.generateForAcceptance()', () => {
   let service: CertificateService;
   let db: {
-    acceptanceCertificate: { findUnique: jest.Mock; create: jest.Mock };
-    acceptanceRecord: { findUniqueOrThrow: jest.Mock; findUnique: jest.Mock };
+    acceptanceCertificate: { findUnique: jest.Mock<(...args: any[]) => any>; create: jest.Mock<(...args: any[]) => any> };
+    acceptanceRecord: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any>; findUnique: jest.Mock<(...args: any[]) => any> };
   };
-  let builder: { build: jest.Mock };
-  let eventService: { verifyChain: jest.Mock };
+  let builder: { build: jest.Mock<(...args: any[]) => any> };
+  let eventService: { verifyChain: jest.Mock<(...args: any[]) => any> };
 
   beforeEach(async () => {
     db = {
@@ -211,8 +227,8 @@ describe('CertificateService.generateForAcceptance()', () => {
 
     const built = makeBuiltCert();
     builder.build.mockResolvedValue(built);
-    db.acceptanceCertificate.create.mockImplementation(({ data }: { data: { id: string } }) =>
-      Promise.resolve({ id: data.id }),
+    db.acceptanceCertificate.create.mockImplementation((args: unknown) =>
+      Promise.resolve({ id: (args as { data: { id: string } }).data.id }),
     );
 
     const result = await service.generateForAcceptance(RECORD_ID);
@@ -220,7 +236,7 @@ describe('CertificateService.generateForAcceptance()', () => {
     expect(typeof result.certificateId).toBe('string');
     expect(db.acceptanceCertificate.create).toHaveBeenCalledTimes(1);
 
-    const createArgs = (db.acceptanceCertificate.create as jest.Mock).mock.calls[0][0] as {
+    const createArgs = ((db.acceptanceCertificate.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { certificateHash: string; offerId: string; acceptanceRecordId: string };
     };
     expect(createArgs.data.certificateHash).toBe(built.certificateHash);

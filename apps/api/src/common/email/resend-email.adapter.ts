@@ -9,6 +9,7 @@ import {
   EmailVerificationParams,
   PasswordResetParams,
   PasswordChangedParams,
+  OrgInviteParams,
 } from './email.port';
 import {
   otpEmail,
@@ -19,6 +20,7 @@ import {
   emailVerificationEmail,
   passwordResetEmail,
   passwordChangedEmail,
+  orgInviteEmail,
 } from './templates';
 
 // ─── ResendEmailAdapter ─────────────────────────────────────────────────────────
@@ -112,6 +114,13 @@ export class ResendEmailAdapter implements EmailPort {
   async sendPasswordChanged(params: PasswordChangedParams): Promise<void> {
     const template = passwordChangedEmail(params);
     this.logger.log(`Sending password changed notification to ${params.to}`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendOrgInvite(params: OrgInviteParams): Promise<void> {
+    const template = orgInviteEmail(params);
+    // Do not log inviteUrl — contains raw token
+    this.logger.log(`Sending org invite to ${params.to} for org "${params.orgName}"`);
     await this.send(params.to, template.subject, template.html, template.text);
   }
 

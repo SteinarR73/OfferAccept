@@ -44,13 +44,13 @@ function createRetryMockDb() {
         callCount += 1;
         return { count: callCount === 1 ? 0 : 1 };
       }),
-      findUniqueOrThrow: jest.fn().mockResolvedValue(makeSession(4)),
-      findUnique: jest.fn().mockResolvedValue(makeSession(4)), // for getAndValidate on retry
-      findFirst: jest.fn().mockResolvedValue(null),
+      findUniqueOrThrow: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)),
+      findUnique: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)), // for getAndValidate on retry
+      findFirst: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null),
     },
     signingEvent: {
-      findFirst: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({
+      findFirst: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null),
+      create: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue({
         id: 'event-1',
         sequenceNumber: 1,
         eventHash: 'h1',
@@ -61,9 +61,9 @@ function createRetryMockDb() {
   };
 
   return {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock)),
+    $transaction: jest.fn().mockImplementation(async (fn: unknown) => (fn as (tx: typeof txMock) => Promise<unknown>)(txMock)),
     signingSession: {
-      findUnique: jest.fn().mockResolvedValue(makeSession(4)), // outer getAndValidate call
+      findUnique: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)), // outer getAndValidate call
     },
     _txMock: txMock,
     _callCount: () => callCount,
@@ -121,19 +121,19 @@ describe('SigningSessionService.transition() — auto-retry on ConcurrencyConfli
       $queryRaw: jest.fn<() => Promise<never[]>>().mockResolvedValue([]),
       signingSession: {
         updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValue(makeSession(4)),
-        findUnique: jest.fn().mockResolvedValue(makeSession(4)),
-        findFirst: jest.fn().mockResolvedValue(null),
+        findUniqueOrThrow: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)),
+        findUnique: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)),
+        findFirst: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null),
       },
       signingEvent: {
-        findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: 'e', sequenceNumber: 1, eventHash: 'h', previousEventHash: null, timestamp: new Date() }),
+        findFirst: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null),
+        create: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ id: 'e', sequenceNumber: 1, eventHash: 'h', previousEventHash: null, timestamp: new Date() }),
       },
     };
 
     const db = {
-      $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock)),
-      signingSession: { findUnique: jest.fn().mockResolvedValue(makeSession(4)) },
+      $transaction: jest.fn().mockImplementation(async (fn: unknown) => (fn as (tx: typeof txMock) => Promise<unknown>)(txMock)),
+      signingSession: { findUnique: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)) },
       _txMock: txMock,
     };
 

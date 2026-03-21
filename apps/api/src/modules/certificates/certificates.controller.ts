@@ -77,10 +77,10 @@ export class CertificatesController {
   ) {
     const ip = extractClientIp(req);
     // Rate-limit by IP — public endpoint, protects against bulk scraping
-    this.rateLimiter.check('cert_verify', ip);
+    await this.rateLimiter.check('cert_verify', ip);
 
     // Expose rate limit state so callers can back off gracefully
-    const { remaining, resetAt } = this.rateLimiter.peek('cert_verify', ip);
+    const { remaining, resetAt } = await this.rateLimiter.peek('cert_verify', ip);
     res.setHeader('X-RateLimit-Limit', '10');
     res.setHeader('X-RateLimit-Remaining', String(remaining));
     res.setHeader('X-RateLimit-Reset', String(Math.ceil(resetAt.getTime() / 1000)));

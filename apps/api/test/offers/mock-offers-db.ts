@@ -4,9 +4,7 @@ import { jest } from '@jest/globals';
 
 export function createMockOffersDb() {
   const mock = {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof mock) => Promise<unknown>) =>
-      fn(mock),
-    ),
+    $transaction: jest.fn(),
     user: {
       findFirst: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -42,6 +40,10 @@ export function createMockOffersDb() {
       findMany: jest.fn(),
     },
   };
+  // Configure $transaction after `mock` is fully initialized to avoid circular type inference.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mock.$transaction.mockImplementation(async (fn: unknown) => (fn as (tx: any) => Promise<unknown>)(mock));
   return mock;
 }
 

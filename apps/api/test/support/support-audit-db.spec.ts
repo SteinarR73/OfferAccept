@@ -56,7 +56,7 @@ describe('SupportAuditService.log() — DB persistence', () => {
     service.log('agent-xyz', 'REVOKE_OFFER', 'offer:offer-1');
     await flushPromises();
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as { data: { actorId: string } };
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as { data: { actorId: string } };
     expect(call.data.actorId).toBe('agent-xyz');
   });
 
@@ -67,7 +67,7 @@ describe('SupportAuditService.log() — DB persistence', () => {
     service.log('agent-1', 'READ_TIMELINE', 'offer:offer-999');
     await flushPromises();
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { action: string; resourceType: string; resourceId: string };
     };
     expect(call.data.action).toBe('READ_TIMELINE');
@@ -82,7 +82,7 @@ describe('SupportAuditService.log() — DB persistence', () => {
     service.log('agent-1', 'RESEND_SESSION_OTP', 'session:sess-456');
     await flushPromises();
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { resourceType: string; resourceId: string };
     };
     expect(call.data.resourceType).toBe('session');
@@ -99,7 +99,7 @@ describe('SupportAuditService.log() — DB persistence', () => {
     });
     await flushPromises();
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { ipAddress: string; userAgent: string };
     };
     expect(call.data.ipAddress).toBe('10.0.0.1');
@@ -133,7 +133,7 @@ describe('SupportAuditService.log() — DB persistence', () => {
     service.log('agent-1', 'SEARCH_OFFERS', 'offers:search', undefined, safeDetail);
     await flushPromises();
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { metadata: Record<string, unknown> };
     };
 

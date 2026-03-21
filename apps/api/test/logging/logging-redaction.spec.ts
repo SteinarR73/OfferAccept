@@ -58,6 +58,7 @@ describe('Logging redaction — DevEmailAdapter', () => {
         offerTitle: 'Test Offer',
         signingUrl: 'http://localhost:3000/sign/oa_supersecrettoken',
         senderName: 'Bob',
+        expiresAt: null,
       });
       const link = adapter.getLastOfferLink('alice@example.com');
       expect(link?.signingUrl).toContain('oa_supersecrettoken');
@@ -174,6 +175,18 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         EMAIL_FROM: 'noreply@offeracept.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_abc123',
+        STORAGE_PROVIDER: 's3',
+        AWS_REGION: 'us-east-1',
+        AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+        AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        S3_BUCKET_NAME: 'my-bucket',
+        BILLING_PROVIDER: 'stripe',
+        STRIPE_SECRET_KEY: 'sk_live_abc123',
+        STRIPE_WEBHOOK_SECRET: 'whsec_abc123',
+        STRIPE_PRICE_STARTER: 'price_starter',
+        STRIPE_PRICE_PROFESSIONAL: 'price_professional',
+        STRIPE_PRICE_ENTERPRISE: 'price_enterprise',
+        COOKIE_SECURE: 'true',
       }),
     ).not.toThrow();
   });
@@ -192,6 +205,18 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         EMAIL_FROM: 'noreply@offeracept.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_abc123',
+        STORAGE_PROVIDER: 's3',
+        AWS_REGION: 'us-east-1',
+        AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+        AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        S3_BUCKET_NAME: 'my-bucket',
+        BILLING_PROVIDER: 'stripe',
+        STRIPE_SECRET_KEY: 'sk_live_abc123',
+        STRIPE_WEBHOOK_SECRET: 'whsec_abc123',
+        STRIPE_PRICE_STARTER: 'price_starter',
+        STRIPE_PRICE_PROFESSIONAL: 'price_professional',
+        STRIPE_PRICE_ENTERPRISE: 'price_enterprise',
+        COOKIE_SECURE: 'true',
       }),
     ).toThrow(/change-me/i);
   });
@@ -210,6 +235,18 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         EMAIL_FROM: 'noreply@offeracept.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_abc123',
+        STORAGE_PROVIDER: 's3',
+        AWS_REGION: 'us-east-1',
+        AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+        AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        S3_BUCKET_NAME: 'my-bucket',
+        BILLING_PROVIDER: 'stripe',
+        STRIPE_SECRET_KEY: 'sk_live_abc123',
+        STRIPE_WEBHOOK_SECRET: 'whsec_abc123',
+        STRIPE_PRICE_STARTER: 'price_starter',
+        STRIPE_PRICE_PROFESSIONAL: 'price_professional',
+        STRIPE_PRICE_ENTERPRISE: 'price_enterprise',
+        COOKIE_SECURE: 'true',
       }),
     ).toThrow(/change-me/i);
   });

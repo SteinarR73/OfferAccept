@@ -11,5 +11,5 @@ import { IsString, IsNotEmpty } from 'class-validator';
 export class DeclineOfferDto {
   @IsString()
   @IsNotEmpty()
-  challengeId: string;
+  challengeId!: string;
 }

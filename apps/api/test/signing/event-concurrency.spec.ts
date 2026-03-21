@@ -45,17 +45,17 @@ function createMockDb(lastSeqNumber: number | null = null) {
           ? { sequenceNumber: lastSeqNumber, eventHash: `hash-${lastSeqNumber}` }
           : null;
       }),
-      create: jest.fn().mockImplementation(async (args: { data: { sequenceNumber: number } }) => {
+      create: jest.fn().mockImplementation(async (args: unknown) => {
         callOrder.push('create');
-        return makeEventCreate(args.data.sequenceNumber);
+        return makeEventCreate((args as { data: { sequenceNumber: number } }).data.sequenceNumber);
       }),
     },
   };
 
   const db = {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => {
+    $transaction: jest.fn().mockImplementation(async (fn: unknown) => {
       callOrder.push('$transaction');
-      return fn(txMock);
+      return (fn as (tx: typeof txMock) => Promise<unknown>)(txMock);
     }),
     _txMock: txMock,
     _callOrder: callOrder,

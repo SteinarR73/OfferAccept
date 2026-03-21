@@ -8,6 +8,10 @@ import { DomainExceptionFilter } from './common/filters/domain-exception.filter'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: process.env.NODE_ENV === 'production' ? ['warn', 'error'] : ['log', 'warn', 'error'],
+    // rawBody: true makes the raw request body available via @RawBody() in controllers.
+    // Required for Stripe webhook signature verification — Stripe signs the raw bytes,
+    // not the parsed JSON. Without this, constructEvent() will throw a signature mismatch.
+    rawBody: true,
   });
 
   // ── Reverse-proxy trust ──────────────────────────────────────────────────────

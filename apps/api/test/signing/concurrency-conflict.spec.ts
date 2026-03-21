@@ -39,18 +39,21 @@ function createMockDb(updateCount: number = 1) {
     $queryRaw: jest.fn<() => Promise<never[]>>().mockResolvedValue([]),
     signingSession: {
       updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: updateCount }),
-      findUniqueOrThrow: jest.fn().mockResolvedValue(makeSession()),
-      findFirst: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'event-1', sequenceNumber: 1, eventHash: 'h1', previousEventHash: null }),
+      findUniqueOrThrow: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession()),
+      findFirst: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null),
+      create: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ id: 'event-1', sequenceNumber: 1, eventHash: 'h1', previousEventHash: null }),
     },
     signingEvent: {
-      findFirst: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'event-1', sequenceNumber: 1, eventHash: 'h1', previousEventHash: null, timestamp: new Date() }),
+      findFirst: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null),
+      create: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ id: 'event-1', sequenceNumber: 1, eventHash: 'h1', previousEventHash: null, timestamp: new Date() }),
     },
   };
 
   return {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock)),
+    $transaction: jest.fn().mockImplementation(async (fn: unknown) => (fn as (tx: typeof txMock) => Promise<unknown>)(txMock)),
+    signingSession: {
+      findUnique: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession()),
+    },
     _txMock: txMock,
   };
 }
@@ -81,7 +84,7 @@ describe('SigningSessionService.transition() — optimistic concurrency', () => 
     const session = makeSession({ version: 3 });
     await service.transition(session as never, 'ACCEPTED', {});
 
-    const call = db._txMock.signingSession.updateMany.mock.calls[0][0] as {
+    const call = ((db._txMock.signingSession.updateMany as jest.Mock).mock.calls as unknown[][])[0][0] as {
       where: { id: string; version: number };
       data: { version: { increment: number } };
     };

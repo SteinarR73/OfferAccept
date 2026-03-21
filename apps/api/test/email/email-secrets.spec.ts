@@ -78,8 +78,8 @@ describe('Email secrets — ResendEmailAdapter does not log secrets', () => {
     const API_KEY = 're_ultra_secret_key_xyz';
     const errorAdapter = new ResendEmailAdapter({ apiKey: API_KEY, fromEmail: 'noreply@test.com' });
     const errorLogger = (errorAdapter as unknown as { logger: { log: jest.Mock; error: jest.Mock } }).logger;
-    jest.spyOn(errorLogger, 'log').mockImplementation((msg: string) => { loggedMessages.push(msg); });
-    jest.spyOn(errorLogger, 'error').mockImplementation((msg: string) => { loggedMessages.push(msg); });
+    jest.spyOn(errorLogger, 'log').mockImplementation((msg: unknown) => { loggedMessages.push(msg as string); });
+    jest.spyOn(errorLogger, 'error').mockImplementation((msg: unknown) => { loggedMessages.push(msg as string); });
 
     global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
       ok: false,

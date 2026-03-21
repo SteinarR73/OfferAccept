@@ -122,7 +122,7 @@ export class SupportController {
     @Req() req: Request,
   ) {
     // Rate-limit by actorId — prevents a single support agent from mass-resending
-    this.rateLimiter.check('support_resend_link', agent.sub);
+    await this.rateLimiter.check('support_resend_link', agent.sub);
     const ip = extractClientIp(req);
     await this.audit.logCritical(agent.sub, 'RESEND_OFFER_LINK', `offer:${offerId}`, {
       ipAddress: ip,
@@ -145,7 +145,7 @@ export class SupportController {
     @Req() req: Request,
   ) {
     // Rate-limit by sessionId — prevents OTP spam to a single session
-    this.rateLimiter.check('support_resend_otp', sessionId);
+    await this.rateLimiter.check('support_resend_otp', sessionId);
     const ip = extractClientIp(req);
     const ctx = {
       ipAddress: ip,

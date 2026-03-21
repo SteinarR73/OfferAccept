@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -30,6 +31,7 @@ async function buildController() {
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
     ],
   }).compile();
 
@@ -75,7 +77,7 @@ describe('AuthController.signup()', () => {
 
   it('propagates EmailAlreadyExistsError (let exception filter handle it)', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.signup as jest.Mock).mockRejectedValue(new EmailAlreadyExistsError());
+    (authSvc.signup as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new EmailAlreadyExistsError());
 
     await expect(
       controller.signup(validBody as never, buildMockReq() as never),

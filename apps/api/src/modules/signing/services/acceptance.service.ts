@@ -30,6 +30,9 @@ export interface AcceptanceResult {
   senderEmail: string;
   recipientName: string;
   recipientEmail: string;
+  // Identifiers for webhook dispatch — loaded during accept().
+  offerId: string;
+  organizationId: string;
 }
 
 @Injectable()
@@ -180,6 +183,8 @@ export class AcceptanceService {
       senderEmail: snapshot.senderEmail,
       recipientName: recipient.name,
       recipientEmail: recipient.email,
+      offerId: offer.id,
+      organizationId: offer.organizationId,
     };
   }
 

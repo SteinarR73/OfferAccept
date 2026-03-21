@@ -19,6 +19,7 @@ import type {
   EmailVerificationParams,
   PasswordResetParams,
   PasswordChangedParams,
+  OrgInviteParams,
 } from '../email.port';
 
 export interface EmailTemplate {
@@ -360,6 +361,38 @@ export function passwordChangedEmail(p: PasswordChangedParams): EmailTemplate {
     <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:6px;padding:14px">
       <p style="margin:0;font-size:13px;color:#92400e"><strong>Not you?</strong> If you did not make this change, your account may be compromised. Please contact support immediately.</p>
     </div>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 9. Organization invite ───────────────────────────────────────────────────
+
+export function orgInviteEmail(p: OrgInviteParams): EmailTemplate {
+  const daysLeft = Math.ceil((p.expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  const subject = `You've been invited to join ${p.orgName} on OfferAccept`;
+
+  const text = [
+    `You've been invited to join ${p.orgName} on OfferAccept as ${p.role}.`,
+    ``,
+    `To accept this invitation, click the link below:`,
+    ``,
+    `  ${p.inviteUrl}`,
+    ``,
+    `This invitation expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`,
+    ``,
+    `If you were not expecting this invitation, you can safely ignore this message.`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 20px;color:#374151">You've been invited to join <strong>${escapeHtml(p.orgName)}</strong> on OfferAccept as <strong>${escapeHtml(p.role)}</strong>.</p>
+    <p style="margin:0 0 24px">${button(p.inviteUrl, 'Accept invitation')}</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
+    <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.inviteUrl)}</p>
+    <p style="margin:0;font-size:13px;color:#6b7280">This invitation expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. If you were not expecting it, you can safely ignore this message.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 

@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -58,6 +59,7 @@ async function buildController() {
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
     ],
   }).compile();
 
@@ -106,7 +108,7 @@ describe('AuthController.refresh()', () => {
 
   it('propagates SessionRevokedError (replay attack detection)', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.refresh as jest.Mock).mockRejectedValue(new SessionRevokedError());
+    (authSvc.refresh as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new SessionRevokedError());
 
     await expect(
       controller.refresh(buildMockReq('replayed-token') as never, buildMockRes() as never),
@@ -115,7 +117,7 @@ describe('AuthController.refresh()', () => {
 
   it('propagates AuthTokenInvalidError for expired tokens', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.refresh as jest.Mock).mockRejectedValue(new AuthTokenInvalidError());
+    (authSvc.refresh as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new AuthTokenInvalidError());
 
     await expect(
       controller.refresh(buildMockReq('expired-token') as never, buildMockRes() as never),

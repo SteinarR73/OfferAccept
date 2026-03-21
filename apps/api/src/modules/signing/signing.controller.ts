@@ -36,7 +36,7 @@ export class SigningController {
   // Does NOT create a session. Does NOT send an OTP.
   @Get(':token')
   async getContext(@Param('token') token: string, @Req() req: Request) {
-    this.rateLimiter.check('token_verification', extractClientIp(req));
+    await this.rateLimiter.check('token_verification', extractClientIp(req));
     return this.flow.getOfferContext(token);
   }
 
@@ -46,9 +46,9 @@ export class SigningController {
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Param('token') token: string, @Req() req: Request) {
     // Rate-limit by token hash (per-recipient) to prevent OTP spam
-    this.rateLimiter.check('otp_issuance', token);
+    await this.rateLimiter.check('otp_issuance', token);
     // Also rate-limit by IP as a secondary defence
-    this.rateLimiter.check('signing_global', extractClientIp(req));
+    await this.rateLimiter.check('signing_global', extractClientIp(req));
 
     const result = await this.flow.requestOtp(token, context(req));
     // Never expose challengeId's expiry timing in error paths — only in success response
@@ -68,7 +68,8 @@ export class SigningController {
     @Body() body: VerifyOtpDto,
     @Req() req: Request,
   ) {
-    this.rateLimiter.check('otp_verification', extractClientIp(req));
+    await this.rateLimiter.check('otp_verification', extractClientIp(req));
+    await this.rateLimiter.check('otp_verification_burst', extractClientIp(req));
 
     const result = await this.flow.verifyOtp(token, body.challengeId, body.code, context(req));
     return {
@@ -86,7 +87,7 @@ export class SigningController {
     @Body() body: AcceptOfferDto,
     @Req() req: Request,
   ) {
-    this.rateLimiter.check('signing_global', extractClientIp(req));
+    await this.rateLimiter.check('signing_global', extractClientIp(req));
 
     const result = await this.flow.accept(token, body.challengeId, {
       ...context(req),
@@ -113,7 +114,7 @@ export class SigningController {
     @Body() body: DeclineOfferDto,
     @Req() req: Request,
   ) {
-    this.rateLimiter.check('signing_global', extractClientIp(req));
+    await this.rateLimiter.check('signing_global', extractClientIp(req));
     await this.flow.decline(token, body.challengeId, context(req));
     return { declined: true };
   }
@@ -128,7 +129,7 @@ export class SigningController {
     @Req() req: Request,
   ) {
     // Not rate-limited tightly — document views are a low-risk operation
-    this.rateLimiter.check('signing_global', extractClientIp(req));
+    await this.rateLimiter.check('signing_global', extractClientIp(req));
     await this.flow.recordDocumentView(token, documentId, context(req));
     return { recorded: true };
   }

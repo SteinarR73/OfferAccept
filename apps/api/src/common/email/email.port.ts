@@ -75,6 +75,14 @@ export interface PasswordChangedParams {
   ipAddress?: string;
 }
 
+export interface OrgInviteParams {
+  to: string;
+  orgName: string;
+  role: string;
+  inviteUrl: string;   // contains raw token — never persist; log at DEBUG only
+  expiresAt: Date;
+}
+
 export interface EmailPort {
   sendOtp(params: OtpEmailParams): Promise<void>;
   sendOfferLink(params: OfferLinkEmailParams): Promise<void>;
@@ -84,6 +92,7 @@ export interface EmailPort {
   sendEmailVerification(params: EmailVerificationParams): Promise<void>;
   sendPasswordReset(params: PasswordResetParams): Promise<void>;
   sendPasswordChanged(params: PasswordChangedParams): Promise<void>;
+  sendOrgInvite(params: OrgInviteParams): Promise<void>;
 }
 
 export const EMAIL_PORT = 'EMAIL_PORT';

@@ -20,6 +20,15 @@ datasource db {
 
 // ─── Organization ─────────────────────────────────────────────────────────────
 
+// Role within an organization. Separate from UserRole (which includes
+// INTERNAL_SUPPORT — a platform-level role, not an org-level role).
+// Hierarchy for RBAC: OWNER > ADMIN > MEMBER
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -28,11 +37,101 @@ model Organization {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  users        User[]
-  offers       Offer[]
-  subscription Subscription?
+  users            User[]
+  offers           Offer[]
+  subscription     Subscription?
+  memberships      Membership[]
+  invites          Invite[]
+  files            File[]
+  apiKeys          ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
 
   @@map("organizations")
+}
+
+// ─── Membership ───────────────────────────────────────────────────────────────
+// Join table between users and organizations.
+// One row per user-organization pair. Role is the user's role within that org.
+// @@unique([userId, organizationId]) prevents duplicate memberships.
+
+model Membership {
+  id             String      @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole     @default(MEMBER)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+// ─── Invite ───────────────────────────────────────────────────────────────────
+// An invitation to join an organization.
+// tokenHash: SHA-256 of the raw token delivered in the invite URL.
+// Single-use: acceptedAt is set when consumed; revokedAt when cancelled.
+// TTL: expiresAt enforced in application layer + background cleanup.
+
+model Invite {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String
+  role           OrgRole   @default(MEMBER)
+  // SHA-256 hex of raw token — raw token is never stored
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  invitedById    String              // userId of the inviter
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invites")
+}
+
+// ─── File ─────────────────────────────────────────────────────────────────────
+// Org-scoped file registry. Tracks files uploaded via presigned S3 URLs.
+//
+// Upload lifecycle:
+//   1. POST /files/presign  → creates row with status=PENDING, returns presigned URL
+//   2. Client PUTs file bytes directly to S3
+//   3. POST /files/complete → validates SHA-256, sets status=READY
+//
+// sha256 is the client-provided hex digest, verified server-side after upload.
+// s3Key format: {organizationId}/{fileId}/{filename}
+// PENDING rows older than 1 hour may be cleaned up by a background job.
+
+enum FileStatus {
+  PENDING  // presigned URL issued; upload not yet confirmed
+  READY    // upload confirmed and hash verified
+  DELETED  // soft-deleted; row kept for audit history
+}
+
+model File {
+  id               String     @id @default(cuid())
+  organizationId   String
+  uploadedByUserId String?    // userId; null for system-initiated uploads
+  filename         String
+  mime             String
+  size             Int        // bytes
+  sha256           String     // hex-encoded SHA-256 of file content; '' while PENDING
+  s3Key            String     @unique
+  status           FileStatus @default(PENDING)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("files")
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────
@@ -63,6 +162,7 @@ model User {
   sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  memberships             Membership[]
 
   @@index([organizationId])
   @@map("users")
@@ -657,6 +757,15 @@ model Subscription {
   status               SubscriptionStatus @default(TRIALING)
   currentPeriodStart   DateTime?
   currentPeriodEnd     DateTime?
+  // Set by Stripe when the customer cancels but keeps access until end of period.
+  // On next subscription.deleted webhook, status becomes CANCELED.
+  cancelAtPeriodEnd    Boolean            @default(false)
+  // Running count of offers sent this calendar month. Reset by cron on the 1st.
+  monthlyOfferCount    Int                @default(0)
+  // Timestamp of the last monthly usage reset. Used by the reset job as an
+  // idempotency guard — prevents double-reset if the cron fires more than once
+  // in the same calendar month (e.g. after a restart on the 1st).
+  lastUsageReset       DateTime?
   stripeSubscriptionId String?            @unique
   stripeCustomerId     String?            @unique
   createdAt            DateTime           @default(now())
@@ -665,4 +774,109 @@ model Subscription {
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@map("subscriptions")
+}
+
+// ─── ApiKey ───────────────────────────────────────────────────────────────────
+// Programmatic access credential for enterprise integrations.
+//
+// Key format: oa_<base64url(32 random bytes)>  — 256 bits of entropy
+// Security model (identical to token/OTP pattern used throughout):
+//   - Raw key is generated once, returned to the user ONCE, never stored.
+//   - Only SHA-256(rawKey) is stored in keyHash.
+//   - Lookup: WHERE keyHash = SHA256(incoming) AND revokedAt IS NULL
+//             AND (expiresAt IS NULL OR expiresAt > NOW())
+//
+// keyPrefix: first 12 characters of the raw key (e.g. "oa_abc123xyz0").
+// Never enough to reconstruct the full key; used for display/revocation UIs only.
+//
+// lastUsedAt: updated on each successful authentication — visibility for key rotation.
+// revokedAt: set on explicit revocation — row kept for audit; not physically deleted.
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String    @db.VarChar(100)  // e.g. "CRM Integration", "Zapier"
+  // SHA-256 hex of the full raw key — raw key is NEVER stored
+  keyHash        String    @unique
+  // First 12 characters of the raw key for identification in the UI.
+  // Cannot be used to reconstruct or brute-force the full key.
+  keyPrefix      String    @db.VarChar(16)
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?            // null = never expires
+  revokedAt      DateTime?            // null = active; set on revocation
+  createdAt      DateTime  @default(now())
+  createdById    String               // userId of the creator
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("api_keys")
+}
+
+// ─── WebhookEndpoint ──────────────────────────────────────────────────────────
+// A customer-configured HTTPS endpoint that receives outgoing webhook events.
+//
+// secret: server-generated HMAC-SHA256 signing key (32 random bytes, hex-encoded).
+//   Returned ONCE at creation. Customers use it to verify the X-OfferAccept-Signature
+//   header on incoming payloads. Rotate via DELETE + POST if compromised.
+//
+// events: set of event types this endpoint is subscribed to.
+//   Valid values are a subset of ALL_WEBHOOK_EVENTS in webhook.service.ts.
+//
+// enabled: soft-disable without deleting history. Disabled endpoints receive no
+//   deliveries; jobs for them are dropped without retry.
+
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  organizationId String
+  url            String   @db.Text           // customer's HTTPS endpoint
+  // HMAC-SHA256 signing key — returned once at creation, never returned again.
+  // Stored server-side to sign outgoing payloads. Not a user credential.
+  secret         String   @db.VarChar(64)    // 32 bytes hex-encoded
+  // Subscribed event types. Application layer validates against allowed set.
+  events         String[]
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization     Organization             @relation(fields: [organizationId], references: [id])
+  deliveryAttempts WebhookDeliveryAttempt[]
+
+  @@index([organizationId])
+  @@map("webhook_endpoints")
+}
+
+// ─── WebhookDeliveryAttempt ───────────────────────────────────────────────────
+// Append-only audit log of every HTTP delivery attempt to a webhook endpoint.
+// One row per attempt (retries of the same logical event create separate rows).
+//
+// Replay protection:
+//   webhookEventId is a UUID stable across all retries of the same logical event
+//   (e.g. the same offer.accepted event for the same endpoint). Before making an
+//   HTTP call, the handler checks for an existing row with success=true. If found,
+//   it skips delivery — preventing re-delivery of already-confirmed events even if
+//   pg-boss re-runs the job (e.g. after a process crash post-delivery).
+//
+// attempt: 1-based retry counter — first delivery is attempt=1.
+// httpStatus: null if the connection failed before receiving a response.
+// responseBody: truncated to 1000 bytes; for debugging only.
+
+model WebhookDeliveryAttempt {
+  id             String   @id @default(cuid())
+  endpointId     String
+  // Stable across retries — identifies the logical event dispatch.
+  // Customers may use this as their own idempotency key.
+  webhookEventId String
+  event          String              // e.g. "offer.accepted"
+  httpStatus     Int?                // null on connection error
+  responseBody   String?  @db.Text  // truncated to 1000 bytes
+  attempt        Int                 // 1-based retry counter
+  success        Boolean             // true if HTTP 2xx received
+  deliveredAt    DateTime @default(now())
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id])
+
+  @@index([endpointId])
+  @@index([endpointId, webhookEventId])
+  @@map("webhook_delivery_attempts")
 }

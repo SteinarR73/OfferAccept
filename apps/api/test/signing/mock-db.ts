@@ -7,9 +7,7 @@ import { jest } from '@jest/globals';
 
 export function createMockDb() {
   const mock = {
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof mock) => Promise<unknown>) =>
-      fn(mock),
-    ),
+    $transaction: jest.fn(),
     offerRecipient: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -62,6 +60,11 @@ export function createMockDb() {
       create: jest.fn(),
     },
   };
+  // Configure $transaction after `mock` is fully initialized to avoid circular
+  // type inference (TS7022). The callback receives the same mock as the tx argument.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mock.$transaction.mockImplementation(async (fn: unknown) => (fn as (tx: any) => Promise<unknown>)(mock));
   return mock;
 }
 

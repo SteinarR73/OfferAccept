@@ -1,0 +1,129 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  IsString,
+  IsUrl,
+  IsArray,
+  ArrayMinSize,
+  IsBoolean,
+  IsOptional,
+} from 'class-validator';
+import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { CurrentUser } from '../../common/auth/current-user.decorator';
+import { OrgRoleGuard, RequireOrgRole } from '../organizations/guards/org-role.guard';
+import { WebhookService, WebhookEvent } from './webhook.service';
+
+// ─── DTOs ─────────────────────────────────────────────────────────────────────
+
+class CreateWebhookDto {
+  @IsUrl({ protocols: ['https'], require_tld: true })
+  url!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  events!: WebhookEvent[];
+}
+
+class UpdateWebhookDto {
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_tld: true })
+  url?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  events?: WebhookEvent[];
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
+
+// ─── WebhooksController ────────────────────────────────────────────────────────
+// Routes under /api/v1/webhooks
+//
+// All routes require JWT + ADMIN or OWNER role.
+//
+// POST   /webhooks         — create endpoint. Secret returned ONCE in response.
+// GET    /webhooks         — list endpoints (no secret in response)
+// PUT    /webhooks/:id     — update url, events, or enabled flag
+// DELETE /webhooks/:id     — delete endpoint + delivery history
+// POST   /webhooks/:id/test — send a test.ping delivery to verify the endpoint
+//
+// Events:
+//   offer.accepted     — emitted when a recipient accepts an offer
+//   certificate.issued — emitted when the AcceptanceCertificate is generated
+//
+// Signature header: X-OfferAccept-Signature: sha256=<HMAC-SHA256(secret, body)>
+// Delivery ID header: X-OfferAccept-Delivery: <webhookEventId>
+// Event header:       X-OfferAccept-Event: <event>
+//
+// The webhookEventId in the body and headers is stable across retries — customers
+// should use it as their own idempotency key.
+
+@Controller('webhooks')
+@UseGuards(JwtAuthGuard, OrgRoleGuard)
+@RequireOrgRole('ADMIN')
+export class WebhooksController {
+  constructor(private readonly webhookService: WebhookService) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Body() dto: CreateWebhookDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.webhookService.createEndpoint({
+      organizationId: user.orgId,
+      url: dto.url,
+      events: dto.events,
+    });
+    // Secret is in the response — returned ONCE. Customer must store it securely.
+  }
+
+  @Get()
+  async list(@CurrentUser() user: JwtPayload) {
+    return this.webhookService.listEndpoints(user.orgId);
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id') endpointId: string,
+    @Body() dto: UpdateWebhookDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.webhookService.updateEndpoint(endpointId, user.orgId, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async remove(
+    @Param('id') endpointId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ deleted: boolean }> {
+    await this.webhookService.deleteEndpoint(endpointId, user.orgId);
+    return { deleted: true };
+  }
+
+  @Post(':id/test')
+  @HttpCode(HttpStatus.OK)
+  async test(
+    @Param('id') endpointId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ queued: boolean }> {
+    await this.webhookService.testEndpoint(endpointId, user.orgId);
+    return { queued: true };
+  }
+}

@@ -15,6 +15,7 @@ import {
   TokenInvalidError,
 } from '../../../common/errors/domain.errors';
 import { buildAcceptanceStatement } from '../domain/acceptance-statement';
+import { WebhookService } from '../../enterprise/webhook.service';
 
 // ─── Response types ────────────────────────────────────────────────────────────
 
@@ -77,6 +78,7 @@ export class SigningFlowService {
     private readonly eventService: SigningEventService,
     private readonly certificateService: CertificateService,
     @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
+    private readonly webhookService: WebhookService,
   ) {}
 
   // Step 1: Validate token and return the frozen offer context.
@@ -233,6 +235,40 @@ export class SigningFlowService {
       });
     } catch (err) {
       this.logger.error('Failed to send acceptance notification emails', err);
+    }
+
+    // Dispatch outgoing webhooks — best-effort, enqueued via pg-boss.
+    // Failures here do not reverse the acceptance or block the response.
+    try {
+      // offer.accepted: emitted immediately after acceptance is committed.
+      await this.webhookService.dispatchEvent(
+        result.organizationId,
+        'offer.accepted',
+        {
+          offerId: result.offerId,
+          organizationId: result.organizationId,
+          recipientEmail: result.recipientEmail,
+          acceptedAt: result.acceptanceRecord.acceptedAt.toISOString(),
+          certificateId: certificateId ?? null,
+        },
+      );
+
+      // certificate.issued: emitted after the certificate is generated.
+      // certificateId is null only if generateForAcceptance() failed (rare).
+      if (certificateId) {
+        await this.webhookService.dispatchEvent(
+          result.organizationId,
+          'certificate.issued',
+          {
+            offerId: result.offerId,
+            organizationId: result.organizationId,
+            certificateId,
+            issuedAt: new Date().toISOString(),
+          },
+        );
+      }
+    } catch (err) {
+      this.logger.error('Failed to dispatch webhook events after acceptance', err);
     }
 
     return { ...result, certificateId };

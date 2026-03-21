@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -25,6 +26,7 @@ async function buildController() {
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
     ],
   }).compile();
 
@@ -50,7 +52,7 @@ describe('AuthController.verifyEmail()', () => {
 
   it('propagates AuthTokenInvalidError for invalid token', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.verifyEmail as jest.Mock).mockRejectedValue(new AuthTokenInvalidError());
+    (authSvc.verifyEmail as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new AuthTokenInvalidError());
 
     await expect(
       controller.verifyEmail({ token: 'bad-token' } as never),
@@ -59,7 +61,7 @@ describe('AuthController.verifyEmail()', () => {
 
   it('propagates AuthTokenInvalidError for already-used token', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.verifyEmail as jest.Mock).mockRejectedValue(new AuthTokenInvalidError());
+    (authSvc.verifyEmail as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new AuthTokenInvalidError());
 
     await expect(
       controller.verifyEmail({ token: 'used-token' } as never),
@@ -78,7 +80,7 @@ describe('AuthController.resendVerification()', () => {
   it('returns 200 even when the email is not registered (anti-enumeration)', async () => {
     const { controller, authSvc } = await buildController();
     // The service handles unknown emails silently and returns void
-    (authSvc.resendVerificationEmail as jest.Mock).mockResolvedValue(undefined);
+    (authSvc.resendVerificationEmail as jest.Mock<(...args: any[]) => any>).mockResolvedValue(undefined);
 
     await expect(
       controller.resendVerification({ email: 'nobody@void.io' } as never),

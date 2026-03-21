@@ -40,7 +40,6 @@ export type {
   OtpChallengeStatus,
   SigningEventType,
   SubscriptionPlan,
-  SubscriptionStatus,
-} from '@prisma/client';
+ } from '@prisma/client';
 
 export { Prisma } from '@prisma/client';

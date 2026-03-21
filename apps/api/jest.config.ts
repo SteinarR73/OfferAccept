@@ -2,15 +2,17 @@ import type { Config } from 'jest';
 
 const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
-  rootDir: 'src',
+  roots: ['<rootDir>/src', '<rootDir>/test'],
+  rootDir: '.',
   testRegex: '.*\\.spec\\.ts$',
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
-  collectCoverageFrom: ['**/*.(t|j)s'],
-  coverageDirectory: '../coverage',
+  collectCoverageFrom: ['src/**/*.(t|j)s'],
+  coverageDirectory: 'coverage',
   testEnvironment: 'node',
   moduleNameMapper: {
+    '^pg-boss$': '<rootDir>/test/__mocks__/pg-boss.ts',
     '^@offeracept/database$': '<rootDir>/../../packages/database/src/index.ts',
     '^@offeracept/types$': '<rootDir>/../../packages/types/src/index.ts',
   },

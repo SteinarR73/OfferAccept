@@ -1,12 +1,13 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { OffersModule } from '../../src/modules/offers/offers.module';
 import { EmailModule } from '../../src/common/email/email.module';
 import { AuthModule } from '../../src/common/auth/auth.module';
+import { DatabaseModule } from '../../src/modules/database/database.module';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { ResendDeliveryError } from '../../src/common/email/resend-email.adapter';
@@ -80,6 +81,7 @@ describe('Offer link delivery tracking', () => {
           })],
         }),
         JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+        DatabaseModule,
         AuthModule,
         EmailModule,
         OffersModule,
@@ -108,7 +110,7 @@ describe('Offer link delivery tracking', () => {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   function setupSendMocks(overrides: { recipient?: object; documents?: object[] } = {}) {
-    const recipient = makeRecipient(overrides.recipient ?? {});
+    const recipient = makeRecipient((overrides.recipient ?? {}) as Record<string, unknown>);
     const document = makeDocument();
     const offer = makeDraftOffer({ recipient, documents: overrides.documents ?? [document] });
 

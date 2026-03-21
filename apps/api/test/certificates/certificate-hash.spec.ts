@@ -198,7 +198,7 @@ describe('CertificatePayloadBuilder.build()', () => {
     const db = makeDb();
     // Override documents to be in reverse alphabetical order
     const record = (db.acceptanceRecord.findUniqueOrThrow as jest.Mock).getMockImplementation?.();
-    (db.acceptanceRecord.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+    (db.acceptanceRecord.findUniqueOrThrow as jest.Mock<(...args: any[]) => any>).mockResolvedValue({
       id: RECORD_ID,
       recipientId: 'recipient-1',
       snapshotId: 'snapshot-1',

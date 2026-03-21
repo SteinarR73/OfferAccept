@@ -157,7 +157,7 @@ export class SupportAuditService {
         timestamp: params.timestamp,
         ipAddress: params.ctx?.ipAddress ?? undefined,
         userAgent: params.ctx?.userAgent ?? undefined,
-        metadata: params.detail ?? undefined,
+        metadata: (params.detail ?? undefined) as never,
       },
     });
   }

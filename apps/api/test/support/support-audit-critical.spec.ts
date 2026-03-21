@@ -53,7 +53,7 @@ describe('SupportAuditService.logCritical() — synchronous audit', () => {
 
     await service.logCritical('agent-42', 'RESEND_OFFER_LINK', 'offer:offer-999');
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { actorId: string; action: string; resourceType: string; resourceId: string };
     };
     expect(call.data.actorId).toBe('agent-42');
@@ -68,7 +68,7 @@ describe('SupportAuditService.logCritical() — synchronous audit', () => {
 
     await service.logCritical('agent-1', 'RESEND_SESSION_OTP', 'session:sess-123');
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { resourceType: string; resourceId: string };
     };
     expect(call.data.resourceType).toBe('session');
@@ -84,7 +84,7 @@ describe('SupportAuditService.logCritical() — synchronous audit', () => {
       userAgent: 'internal/1.0',
     });
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { ipAddress: string; userAgent: string };
     };
     expect(call.data.ipAddress).toBe('10.0.0.5');
@@ -109,7 +109,7 @@ describe('SupportAuditService.logCritical() — synchronous audit', () => {
     const detail = { offerId: 'offer-1', reason: 'dispute' };
     await service.logCritical('agent-1', 'REVOKE_OFFER', 'offer:offer-1', undefined, detail);
 
-    const call = db.supportAuditLog.create.mock.calls[0][0] as {
+    const call = ((db.supportAuditLog.create as jest.Mock).mock.calls as unknown[][])[0][0] as {
       data: { metadata: Record<string, unknown> };
     };
     expect(call.data.metadata).toEqual(detail);

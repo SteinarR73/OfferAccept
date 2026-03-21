@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -52,6 +53,7 @@ async function buildController() {
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
     ],
   }).compile();
 
@@ -116,7 +118,7 @@ describe('AuthController.login()', () => {
 
   it('propagates InvalidCredentialsError', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.login as jest.Mock).mockRejectedValue(new InvalidCredentialsError());
+    (authSvc.login as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new InvalidCredentialsError());
 
     await expect(
       controller.login(
@@ -129,7 +131,7 @@ describe('AuthController.login()', () => {
 
   it('propagates EmailNotVerifiedError', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.login as jest.Mock).mockRejectedValue(new EmailNotVerifiedError());
+    (authSvc.login as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new EmailNotVerifiedError());
 
     await expect(
       controller.login(

@@ -38,20 +38,23 @@ function makeSession(overrides: Partial<{
 async function buildService(sessionRows: ReturnType<typeof makeSession>[] = []) {
   const dbMock = {
     session: {
-      create: jest.fn().mockImplementation(async ({ data }: { data: Record<string, unknown> }) =>
-        makeSession({ id: 'new-session', refreshTokenHash: data['refreshTokenHash'] as string })
-      ),
-      findUnique: jest.fn().mockImplementation(async ({ where }: { where: { refreshTokenHash: string } }) => {
+      create: jest.fn().mockImplementation(async (args: unknown) => {
+        const { data } = args as { data: Record<string, unknown> };
+        return makeSession({ id: 'new-session', refreshTokenHash: data['refreshTokenHash'] as string });
+      }),
+      findUnique: jest.fn().mockImplementation(async (args: unknown) => {
+        const { where } = args as { where: { refreshTokenHash: string } };
         return sessionRows.find((s) => s.refreshTokenHash === where.refreshTokenHash) ?? null;
       }),
-      update: jest.fn().mockImplementation(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+      update: jest.fn().mockImplementation(async (args: unknown) => {
+        const { where, data } = args as { where: { id: string }; data: Record<string, unknown> };
         const row = sessionRows.find((s) => s.id === where.id);
         if (row) Object.assign(row, data);
         return row ?? makeSession();
       }),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 1 }),
     },
-    $transaction: jest.fn().mockImplementation(async (ops: unknown[]) => Promise.all(ops)),
+    $transaction: jest.fn().mockImplementation(async (ops: unknown) => Promise.all(ops as unknown[])),
   };
 
   const configMock = { get: jest.fn().mockReturnValue(30) };
@@ -74,9 +77,9 @@ describe('SessionService', () => {
       const { rawToken } = await service.create('user-1', {});
 
       // The token stored in the DB must NOT be the raw token
-      const stored = (db.session.create as jest.Mock).mock.calls[0][0].data.refreshTokenHash;
-      expect(stored).not.toBe(rawToken);
-      expect(stored).toHaveLength(64); // SHA-256 hex
+      const stored = ((db.session.create as jest.Mock).mock.calls as unknown[][])[0][0] as { data: { refreshTokenHash: string } };
+      expect(stored.data.refreshTokenHash).not.toBe(rawToken);
+      expect(stored.data.refreshTokenHash).toHaveLength(64); // SHA-256 hex
     });
 
     it('returns a non-empty raw token for cookie delivery', async () => {
@@ -95,10 +98,10 @@ describe('SessionService', () => {
 
       // Create a session to get a valid hash
       const { rawToken } = await service.create('user-1', {});
-      const storedHash = (db.session.create as jest.Mock).mock.calls[0][0].data.refreshTokenHash;
+      const storedHash = (((db.session.create as jest.Mock).mock.calls as unknown[][])[0][0] as { data: { refreshTokenHash: string } }).data.refreshTokenHash;
 
       // Make findUnique return a revoked session with that hash
-      (db.session.findUnique as jest.Mock).mockResolvedValue(
+      (db.session.findUnique as jest.Mock<(...args: any[]) => any>).mockResolvedValue(
         makeSession({ refreshTokenHash: storedHash, revokedAt: new Date() })
       );
 
@@ -108,9 +111,9 @@ describe('SessionService', () => {
     it('returns null for an expired session', async () => {
       const { service, db } = await buildService();
       const { rawToken } = await service.create('user-1', {});
-      const storedHash = (db.session.create as jest.Mock).mock.calls[0][0].data.refreshTokenHash;
+      const storedHash = (((db.session.create as jest.Mock).mock.calls as unknown[][])[0][0] as { data: { refreshTokenHash: string } }).data.refreshTokenHash;
 
-      (db.session.findUnique as jest.Mock).mockResolvedValue(
+      (db.session.findUnique as jest.Mock<(...args: any[]) => any>).mockResolvedValue(
         makeSession({ refreshTokenHash: storedHash, expiresAt: new Date(Date.now() - 1000) })
       );
 
@@ -120,7 +123,7 @@ describe('SessionService', () => {
 
     it('returns null for an unknown token', async () => {
       const { service, db } = await buildService();
-      (db.session.findUnique as jest.Mock).mockResolvedValue(null);
+      (db.session.findUnique as jest.Mock<(...args: any[]) => any>).mockResolvedValue(null);
 
       const result = await service.findByRawToken('completely-unknown-token');
       expect(result).toBeNull();
