@@ -6,6 +6,9 @@ import {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  EmailVerificationParams,
+  PasswordResetParams,
+  PasswordChangedParams,
 } from './email.port';
 
 // ─── DevEmailAdapter ───────────────────────────────────────────────────────────
@@ -75,6 +78,8 @@ export class DevEmailAdapter implements EmailPort {
   private readonly sentAcceptanceSender: SentAcceptanceConfirmationSender[] = [];
   private readonly sentAcceptanceRecipient: SentAcceptanceConfirmationRecipient[] = [];
   private readonly sentDeclines: SentDeclineNotification[] = [];
+  private readonly sentVerifications: Array<{ to: string; url: string; sentAt: Date }> = [];
+  private readonly sentPasswordResets: Array<{ to: string; url: string; sentAt: Date }> = [];
 
   async sendOtp(params: OtpEmailParams): Promise<void> {
     this.sentOtps.push({
@@ -152,6 +157,22 @@ export class DevEmailAdapter implements EmailPort {
     );
   }
 
+  async sendEmailVerification(params: EmailVerificationParams): Promise<void> {
+    this.sentVerifications.push({ to: params.to, url: params.verificationUrl, sentAt: new Date() });
+    // Do not log verificationUrl — it contains the raw token
+    this.logger.log(`[DEV EMAIL] Email verification → ${params.to}`);
+  }
+
+  async sendPasswordReset(params: PasswordResetParams): Promise<void> {
+    this.sentPasswordResets.push({ to: params.to, url: params.resetUrl, sentAt: new Date() });
+    // Do not log resetUrl — it contains the raw token
+    this.logger.log(`[DEV EMAIL] Password reset → ${params.to}`);
+  }
+
+  async sendPasswordChanged(params: PasswordChangedParams): Promise<void> {
+    this.logger.log(`[DEV EMAIL] Password changed notification → ${params.to}`);
+  }
+
   // ─── Test helpers ────────────────────────────────────────────────────────────
   // These methods are only meaningful in dev/test. Production uses ResendEmailAdapter.
 
@@ -198,11 +219,27 @@ export class DevEmailAdapter implements EmailPort {
     return this.sentLinks;
   }
 
+  getLastVerificationUrl(email: string): string | null {
+    const records = this.sentVerifications
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0]?.url ?? null;
+  }
+
+  getLastPasswordResetUrl(email: string): string | null {
+    const records = this.sentPasswordResets
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0]?.url ?? null;
+  }
+
   reset(): void {
     this.sentOtps.length = 0;
     this.sentLinks.length = 0;
     this.sentAcceptanceSender.length = 0;
     this.sentAcceptanceRecipient.length = 0;
     this.sentDeclines.length = 0;
+    this.sentVerifications.length = 0;
+    this.sentPasswordResets.length = 0;
   }
 }

@@ -16,6 +16,9 @@ import type {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  EmailVerificationParams,
+  PasswordResetParams,
+  PasswordChangedParams,
 } from '../email.port';
 
 export interface EmailTemplate {
@@ -247,6 +250,116 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
       </tr>
     </table>
     <p style="margin:0;font-size:13px;color:#6b7280">Please keep this email for your records. The certificate ID is a tamper-evident reference to your acceptance that can be independently verified.</p>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 6. Email verification ────────────────────────────────────────────────────
+
+export function emailVerificationEmail(p: EmailVerificationParams): EmailTemplate {
+  const minutesLeft = Math.ceil((p.expiresAt.getTime() - Date.now()) / 60_000);
+  const subject = 'Verify your OfferAccept email address';
+
+  const text = [
+    `Hi ${p.name},`,
+    ``,
+    `Welcome to OfferAccept! Please verify your email address by clicking the link below:`,
+    ``,
+    `  ${p.verificationUrl}`,
+    ``,
+    `This link expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
+    ``,
+    `If you did not create an OfferAccept account, you can safely ignore this message.`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.name)},</p>
+    <p style="margin:0 0 20px;color:#374151">Welcome to OfferAccept! Please verify your email address to activate your account.</p>
+    <p style="margin:0 0 24px">${button(p.verificationUrl, 'Verify email address')}</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
+    <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.verificationUrl)}</p>
+    <p style="margin:0;font-size:13px;color:#6b7280">This link expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}. If you did not create an account, you can safely ignore this message.</p>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 7. Password reset ────────────────────────────────────────────────────────
+
+export function passwordResetEmail(p: PasswordResetParams): EmailTemplate {
+  const minutesLeft = Math.ceil((p.expiresAt.getTime() - Date.now()) / 60_000);
+  const subject = 'Reset your OfferAccept password';
+
+  const text = [
+    `Hi ${p.name},`,
+    ``,
+    `We received a request to reset your OfferAccept password. Click the link below to set a new password:`,
+    ``,
+    `  ${p.resetUrl}`,
+    ``,
+    `This link expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
+    ``,
+    `─────────────────────────────────────────`,
+    `Security notice:`,
+    `If you did not request a password reset, your account may be at risk. Please contact support immediately.`,
+    `OfferAccept will NEVER ask you to share your password by email, phone, or chat.`,
+    `─────────────────────────────────────────`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.name)},</p>
+    <p style="margin:0 0 20px;color:#374151">We received a request to reset your OfferAccept password. Click the button below to set a new password.</p>
+    <p style="margin:0 0 24px">${button(p.resetUrl, 'Reset password')}</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
+    <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.resetUrl)}</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#6b7280">This link expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.</p>
+    <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:6px;padding:14px">
+      <p style="margin:0;font-size:13px;color:#92400e"><strong>Security notice:</strong> If you did not request a password reset, your account may be at risk. Please contact support immediately. OfferAccept will never ask you to share your password.</p>
+    </div>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 8. Password changed confirmation ─────────────────────────────────────────
+
+export function passwordChangedEmail(p: PasswordChangedParams): EmailTemplate {
+  const changedAtStr = formatDate(p.changedAt);
+  const subject = 'Your OfferAccept password was changed';
+
+  const text = [
+    `Hi ${p.name},`,
+    ``,
+    `Your OfferAccept password was successfully changed.`,
+    ``,
+    `Changed at: ${changedAtStr}`,
+    p.ipAddress ? `IP address: ${p.ipAddress}` : '',
+    ``,
+    `─────────────────────────────────────────`,
+    `If you did not make this change, your account may be compromised.`,
+    `Please contact support immediately and change your password.`,
+    `─────────────────────────────────────────`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].filter(Boolean).join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.name)},</p>
+    <div style="border-left:4px solid #1d4ed8;padding:12px 16px;margin:0 0 24px;background:#eff6ff;border-radius:0 6px 6px 0">
+      <p style="margin:0;font-size:15px;font-weight:600;color:#1e40af">Password changed</p>
+      <p style="margin:4px 0 0;color:#1d4ed8;font-size:13px">Changed at: ${escapeHtml(changedAtStr)}${p.ipAddress ? ` · IP: ${escapeHtml(p.ipAddress)}` : ''}</p>
+    </div>
+    <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:6px;padding:14px">
+      <p style="margin:0;font-size:13px;color:#92400e"><strong>Not you?</strong> If you did not make this change, your account may be compromised. Please contact support immediately.</p>
+    </div>`,
     `${FOOTER_PRIVACY}`,
   );
 

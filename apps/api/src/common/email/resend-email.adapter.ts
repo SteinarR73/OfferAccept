@@ -6,6 +6,9 @@ import {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  EmailVerificationParams,
+  PasswordResetParams,
+  PasswordChangedParams,
 } from './email.port';
 import {
   otpEmail,
@@ -13,6 +16,9 @@ import {
   acceptanceConfirmationSenderEmail,
   acceptanceConfirmationRecipientEmail,
   declineNotificationEmail,
+  emailVerificationEmail,
+  passwordResetEmail,
+  passwordChangedEmail,
 } from './templates';
 
 // ─── ResendEmailAdapter ─────────────────────────────────────────────────────────
@@ -86,6 +92,26 @@ export class ResendEmailAdapter implements EmailPort {
   async sendDeclineNotification(params: DeclineNotificationParams): Promise<void> {
     const template = declineNotificationEmail(params);
     this.logger.log(`Sending decline notification to sender ${params.to} for offer "${params.offerTitle}"`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendEmailVerification(params: EmailVerificationParams): Promise<void> {
+    const template = emailVerificationEmail(params);
+    // Do not log verificationUrl — contains raw token
+    this.logger.log(`Sending email verification to ${params.to}`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendPasswordReset(params: PasswordResetParams): Promise<void> {
+    const template = passwordResetEmail(params);
+    // Do not log resetUrl — contains raw token
+    this.logger.log(`Sending password reset to ${params.to}`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendPasswordChanged(params: PasswordChangedParams): Promise<void> {
+    const template = passwordChangedEmail(params);
+    this.logger.log(`Sending password changed notification to ${params.to}`);
     await this.send(params.to, template.subject, template.html, template.text);
   }
 

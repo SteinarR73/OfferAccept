@@ -8,15 +8,23 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
 // ─── JwtAuthGuard ──────────────────────────────────────────────────────────────
-// Reads the Authorization: Bearer <token> header, verifies the JWT,
-// and attaches the decoded payload to request.user.
+// Verifies the short-lived access token and attaches the decoded payload to
+// request.user.
 //
-// Usage: @UseGuards(JwtAuthGuard) on controller or handler.
+// Token location (checked in order):
+//   1. Cookie 'accessToken' (HttpOnly — primary method for browser clients)
+//   2. Authorization: Bearer <token> header (fallback for API / mobile clients)
+//
+// If both are present, the cookie takes precedence.
+//
+// sessionId is included in the JWT payload so that logout/change-password can
+// revoke the specific session that issued this token.
 
 export interface JwtPayload {
   sub: string;         // userId
   orgId: string;
   role: string;
+  sessionId?: string;  // present on tokens issued by the new auth flow
   iat?: number;
   exp?: number;
 }
@@ -27,7 +35,7 @@ export class JwtAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    const token = extractBearerToken(request);
+    const token = extractToken(request);
 
     if (!token) {
       throw new UnauthorizedException('Authentication required.');
@@ -35,7 +43,6 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = this.jwtService.verify<JwtPayload>(token);
-      // Attach to request so controllers can access via @CurrentUser()
       (request as Request & { user: JwtPayload }).user = payload;
       return true;
     } catch {
@@ -44,8 +51,19 @@ export class JwtAuthGuard implements CanActivate {
   }
 }
 
-function extractBearerToken(req: Request): string | null {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function extractToken(req: Request): string | null {
+  // 1. HttpOnly cookie (preferred for browser clients)
+  const cookieToken: string | undefined = (req.cookies as Record<string, string> | undefined)?.['accessToken'];
+  if (cookieToken) return cookieToken;
+
+  // 2. Authorization: Bearer header (API / mobile clients)
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  return auth.slice(7).trim() || null;
+  if (auth?.startsWith('Bearer ')) {
+    const token = auth.slice(7).trim();
+    if (token) return token;
+  }
+
+  return null;
 }

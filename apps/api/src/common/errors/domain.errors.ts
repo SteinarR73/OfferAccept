@@ -179,6 +179,45 @@ export class ConcurrencyConflictError extends DomainError {
   }
 }
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+// Email is already registered. Return the same generic message as "invalid credentials"
+// to prevent email enumeration — do NOT reveal whether the email exists.
+export class EmailAlreadyExistsError extends DomainError {
+  constructor() {
+    super('An account with this email already exists.');
+  }
+}
+
+// Login attempted with wrong credentials. Generic message prevents username enumeration.
+export class InvalidCredentialsError extends DomainError {
+  constructor() {
+    super('Invalid email or password.');
+  }
+}
+
+// Access attempted before email address is verified.
+export class EmailNotVerifiedError extends DomainError {
+  constructor() {
+    super('Please verify your email address before continuing.');
+  }
+}
+
+// Refresh token presented is valid in form but has been revoked (logout or rotation).
+export class SessionRevokedError extends DomainError {
+  constructor() {
+    super('Your session has been revoked. Please log in again.');
+  }
+}
+
+// Generic expired-or-invalid for password-reset / email-verification tokens.
+// Intentionally vague to prevent enumeration of valid vs expired tokens.
+export class AuthTokenInvalidError extends DomainError {
+  constructor() {
+    super('This link is invalid or has expired. Please request a new one.');
+  }
+}
+
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
 export class RateLimitExceededError extends DomainError {

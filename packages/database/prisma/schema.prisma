@@ -58,11 +58,70 @@ model User {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization  Organization @relation(fields: [organizationId], references: [id])
-  offersCreated Offer[]      @relation("CreatedByUser")
+  organization            Organization             @relation(fields: [organizationId], references: [id])
+  offersCreated           Offer[]                  @relation("CreatedByUser")
+  sessions                Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
 
   @@index([organizationId])
   @@map("users")
+}
+
+// ─── Session ──────────────────────────────────────────────────────────────────
+// One row per active refresh-token issuance.
+// refreshTokenHash: SHA-256 of the raw random refresh token (never stored raw).
+// revokedAt: set on logout or token rotation — row is kept for audit purposes.
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  refreshTokenHash String    @unique
+  ipAddress        String?
+  userAgent        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ─── EmailVerificationToken ───────────────────────────────────────────────────
+// Single-use token sent by email to verify a user's address.
+// tokenHash: SHA-256 of the raw token delivered in the verification URL.
+// usedAt: set when the token is consumed — row is kept for audit purposes.
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+// ─── PasswordResetToken ───────────────────────────────────────────────────────
+// Single-use token sent by email to reset a user's password.
+// tokenHash: SHA-256 of the raw token delivered in the reset URL.
+// usedAt: set when the token is consumed — row is kept for audit purposes.
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ─── Offer ────────────────────────────────────────────────────────────────────

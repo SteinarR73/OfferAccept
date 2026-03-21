@@ -9,7 +9,19 @@ const envSchema = z
     API_PORT: z.coerce.number().default(3001),
     DATABASE_URL: z.string().url(),
     JWT_SECRET: z.string().min(32),
-    JWT_EXPIRY: z.string().default('7d'),
+    // Access token TTL (short-lived, delivered as HttpOnly cookie).
+    // Must be a value parseable by the jsonwebtoken 'expiresIn' option (e.g. '15m', '1h').
+    JWT_ACCESS_TTL: z.string().default('15m'),
+    // Refresh token TTL. Used to set Session.expiresAt in the database.
+    // Format: number of days (parsed as integer).
+    JWT_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
+    // Cookie domain — omit for same-origin (localhost dev). Set to '.yourdomain.com' in production.
+    COOKIE_DOMAIN: z.string().optional(),
+    // Whether to set the Secure flag on cookies. Should be true in production (HTTPS only).
+    COOKIE_SECURE: z
+      .string()
+      .transform((v) => v !== 'false' && v !== '0')
+      .default('true'),
     SIGNING_LINK_SECRET: z.string().min(32),
     WEB_BASE_URL: z.string().url(),
     EMAIL_FROM: z.string().email(),
@@ -53,6 +65,13 @@ const envSchema = z
     {
       message: 'SIGNING_LINK_SECRET appears to be the default placeholder. Replace it before running in production.',
       path: ['SIGNING_LINK_SECRET'],
+    },
+  )
+  .refine(
+    (data) => data.NODE_ENV !== 'production' || data.COOKIE_SECURE === true,
+    {
+      message: 'COOKIE_SECURE must be true in production. Cookies must be served over HTTPS only.',
+      path: ['COOKIE_SECURE'],
     },
   );
 

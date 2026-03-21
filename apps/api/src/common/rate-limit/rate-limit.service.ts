@@ -34,7 +34,11 @@ export type RateLimitProfile =
   | 'support_resend_otp'  // 3 OTP resends per session per 5 minutes (per-session key)
   | 'support_resend_link' // 5 link resends per actor per 10 minutes (per-actor key)
   // Public certificate verification
-  | 'cert_verify';        // 10 verifications per IP per minute
+  | 'cert_verify'         // 10 verifications per IP per minute
+  // Auth endpoints
+  | 'login_attempt'       // 10 login attempts per IP per 15 minutes
+  | 'forgot_password'     // 3 reset requests per IP per hour
+  | 'signup_attempt';     // 5 signups per IP per hour
 
 const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
   token_verification:  { limit: 10, windowMs: 15 * 60 * 1000 },
@@ -44,6 +48,9 @@ const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = 
   support_resend_otp:  { limit: 3,  windowMs:  5 * 60 * 1000 },
   support_resend_link: { limit: 5,  windowMs: 10 * 60 * 1000 },
   cert_verify:         { limit: 10, windowMs:      60 * 1000 },
+  login_attempt:       { limit: 10, windowMs: 15 * 60 * 1000 },
+  forgot_password:     { limit: 3,  windowMs: 60 * 60 * 1000 },
+  signup_attempt:      { limit: 5,  windowMs: 60 * 60 * 1000 },
 };
 
 @Injectable()

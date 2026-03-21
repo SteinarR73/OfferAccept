@@ -1,12 +1,28 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { AuthRepository } from './auth.repository';
+import { PasswordService } from './password.service';
+import { SessionService } from './session.service';
+import { JwtTokenService } from './jwt.service';
 
-// ─── AuthModule (feature) ─────────────────────────────────────────────────────
-// Thin feature module — only the login controller lives here.
-// JWT infrastructure (JwtService, JwtAuthGuard) comes from the global
-// AuthModule in common/auth.
+// ─── AuthFeatureModule ────────────────────────────────────────────────────────
+// Full authentication feature module.
+//
+// JWT infrastructure (JwtService, JwtAuthGuard) comes from the global AuthModule
+// in common/auth. This module provides the auth-specific business logic on top.
+//
+// RateLimitService is provided globally — no explicit import needed here.
 
 @Module({
   controllers: [AuthController],
+  providers: [
+    AuthService,
+    AuthRepository,
+    PasswordService,
+    SessionService,
+    JwtTokenService,
+  ],
+  exports: [AuthService, SessionService],
 })
 export class AuthFeatureModule {}

@@ -54,12 +54,36 @@ export interface DeclineNotificationParams {
   declinedAt: Date;
 }
 
+export interface EmailVerificationParams {
+  to: string;
+  name: string;
+  verificationUrl: string;  // full URL including raw token — never persist; log at DEBUG only
+  expiresAt: Date;
+}
+
+export interface PasswordResetParams {
+  to: string;
+  name: string;
+  resetUrl: string;         // full URL including raw token — never persist; log at DEBUG only
+  expiresAt: Date;
+}
+
+export interface PasswordChangedParams {
+  to: string;
+  name: string;
+  changedAt: Date;
+  ipAddress?: string;
+}
+
 export interface EmailPort {
   sendOtp(params: OtpEmailParams): Promise<void>;
   sendOfferLink(params: OfferLinkEmailParams): Promise<void>;
   sendAcceptanceConfirmationToSender(params: AcceptanceConfirmationSenderParams): Promise<void>;
   sendAcceptanceConfirmationToRecipient(params: AcceptanceConfirmationRecipientParams): Promise<void>;
   sendDeclineNotification(params: DeclineNotificationParams): Promise<void>;
+  sendEmailVerification(params: EmailVerificationParams): Promise<void>;
+  sendPasswordReset(params: PasswordResetParams): Promise<void>;
+  sendPasswordChanged(params: PasswordChangedParams): Promise<void>;
 }
 
 export const EMAIL_PORT = 'EMAIL_PORT';

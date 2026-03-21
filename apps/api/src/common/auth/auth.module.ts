@@ -15,7 +15,9 @@ import { JwtAuthGuard } from './jwt-auth.guard';
     JwtModule.registerAsync({
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get<string>('JWT_EXPIRY', '7d') },
+        // JWT_ACCESS_TTL controls the short-lived access token lifetime (default: 15m).
+        // This replaces the old JWT_EXPIRY (7d) default which was too long.
+        signOptions: { expiresIn: config.get<string>('JWT_ACCESS_TTL', '15m') },
       }),
       inject: [ConfigService],
     }),

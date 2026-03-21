@@ -27,6 +27,11 @@ import {
   TerminalStateError,
   RateLimitExceededError,
   ConcurrencyConflictError,
+  EmailAlreadyExistsError,
+  InvalidCredentialsError,
+  EmailNotVerifiedError,
+  SessionRevokedError,
+  AuthTokenInvalidError,
 } from '../errors/domain.errors';
 
 // ─── DomainExceptionFilter ─────────────────────────────────────────────────────
@@ -69,6 +74,27 @@ export class DomainExceptionFilter implements ExceptionFilter {
   }
 
   private resolve(err: DomainError): { statusCode: number; body: ErrorResponse } {
+    // ── Auth errors ────────────────────────────────────────────────────────────
+    // 401: credentials / session problems
+    if (err instanceof InvalidCredentialsError) {
+      return this.make(HttpStatus.UNAUTHORIZED, err.message, 'INVALID_CREDENTIALS');
+    }
+    if (err instanceof SessionRevokedError) {
+      return this.make(HttpStatus.UNAUTHORIZED, err.message, 'SESSION_REVOKED');
+    }
+    // 403: account state preventing access
+    if (err instanceof EmailNotVerifiedError) {
+      return this.make(HttpStatus.FORBIDDEN, err.message, 'EMAIL_NOT_VERIFIED');
+    }
+    // 409: duplicate email on signup
+    if (err instanceof EmailAlreadyExistsError) {
+      return this.make(HttpStatus.CONFLICT, err.message, 'EMAIL_ALREADY_EXISTS');
+    }
+    // 400: invalid/expired auth token (reset / verification link)
+    if (err instanceof AuthTokenInvalidError) {
+      return this.make(HttpStatus.BAD_REQUEST, err.message, 'AUTH_TOKEN_INVALID');
+    }
+
     // ── 404 errors ─────────────────────────────────────────────────────────────
     if (err instanceof TokenInvalidError) {
       return this.make(HttpStatus.NOT_FOUND, err.message, 'TOKEN_INVALID');
