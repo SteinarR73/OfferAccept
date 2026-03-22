@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Lock } from 'lucide-react';
 import { login } from '../../lib/offers-api';
 import { markAuthenticated } from '../../lib/auth';
-
-// ─── LoginPage ────────────────────────────────────────────────────────────────
-// Minimal sender login. On success, stores the JWT and redirects to dashboard.
+import { Card, CardSection } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Alert } from '../../components/ui/Alert';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,47 +23,82 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login({ email, password }); // sets HttpOnly cookies server-side
-      markAuthenticated();             // sets JS-readable session indicator
+      await login({ email, password });
+      markAuthenticated();
       router.replace('/dashboard');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed.');
+      setError(err instanceof Error ? err.message : 'Incorrect email or password.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main style={{ maxWidth: 380, margin: '120px auto', padding: '0 16px' }}>
-      <h1 style={{ marginBottom: 24 }}>OfferAccept</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label>Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: '8px', marginTop: 4 }}
-          />
+    <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
+      {/* Brand */}
+      <div className="flex items-center gap-2 mb-8">
+        <span className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-sm font-bold select-none">
+          OA
+        </span>
+        <span className="font-semibold text-gray-900">OfferAccept</span>
+      </div>
+
+      <Card className="w-full max-w-sm">
+        <div className="px-6 pt-6 pb-2 text-center">
+          <h1 className="text-lg font-semibold text-gray-900">Welcome back</h1>
+          <p className="mt-1 text-sm text-[--color-text-muted]">Secure offer letter management</p>
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Password</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: '8px', marginTop: 4 }}
-          />
+
+        <CardSection border={false} className="px-6 pb-2">
+          {error && (
+            <Alert variant="error" className="mb-4">{error}</Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <Input
+              label="Email address"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@company.com"
+            />
+            <div className="flex flex-col gap-1">
+              <Input
+                label="Password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+              />
+              <div className="flex justify-end">
+                <Link href="/forgot-password" className="text-xs text-[--color-text-muted] hover:text-gray-700 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+
+            <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full mt-1">
+              Sign in
+            </Button>
+          </form>
+        </CardSection>
+
+        <div className="px-6 pb-5 pt-1 flex items-center justify-center gap-1.5 text-[11px] text-[--color-text-muted]">
+          <Lock className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+          Secure offer acceptance with verifiable audit trails.
         </div>
-        {error && (
-          <p style={{ color: 'red', marginBottom: 12 }}>{error}</p>
-        )}
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: '10px' }}>
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+      </Card>
+
+      <p className="mt-5 text-xs text-[--color-text-muted]">
+        Don&apos;t have an account?{' '}
+        <Link href="/landing" className="text-blue-600 hover:text-blue-700 font-medium">
+          Learn more
+        </Link>
+      </p>
     </main>
   );
 }

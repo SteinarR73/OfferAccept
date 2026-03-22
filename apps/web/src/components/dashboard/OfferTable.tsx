@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { cn } from '@/lib/cn';
 
@@ -17,6 +18,8 @@ const STATUS_META: Record<OfferStatusValue, { label: string; classes: string }> 
 };
 
 type FilterTab = 'ALL' | OfferStatusValue;
+type SortKey = 'createdAt' | 'updatedAt' | 'status';
+type SortDir = 'asc' | 'desc';
 
 const TABS: Array<{ key: FilterTab; label: string }> = [
   { key: 'ALL',      label: 'All' },
@@ -24,6 +27,7 @@ const TABS: Array<{ key: FilterTab; label: string }> = [
   { key: 'SENT',     label: 'Sent' },
   { key: 'ACCEPTED', label: 'Accepted' },
   { key: 'DECLINED', label: 'Declined' },
+  { key: 'EXPIRED',  label: 'Expired' },
 ];
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -38,10 +42,55 @@ interface Props {
 
 export function OfferTable({ offers, loading = false, tourId }: Props) {
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  const filtered = activeTab === 'ALL'
-    ? offers
-    : offers.filter((o) => o.status === activeTab);
+  // Apply: status filter → search → sort
+  const filtered = useMemo(() => {
+    let result = activeTab === 'ALL' ? offers : offers.filter((o) => o.status === activeTab);
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(
+        (o) =>
+          o.title.toLowerCase().includes(q) ||
+          o.recipient?.email?.toLowerCase().includes(q) ||
+          o.recipient?.name?.toLowerCase().includes(q),
+      );
+    }
+
+    result = [...result].sort((a, b) => {
+      let va: string, vb: string;
+      if (sortKey === 'status') {
+        va = a.status; vb = b.status;
+      } else if (sortKey === 'updatedAt') {
+        va = a.updatedAt; vb = b.updatedAt;
+      } else {
+        va = a.createdAt; vb = b.createdAt;
+      }
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [offers, activeTab, search, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  }
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 text-gray-300 inline" aria-hidden="true" />;
+    return sortDir === 'asc'
+      ? <ArrowUp className="w-3 h-3 ml-1 text-blue-500 inline" aria-hidden="true" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-blue-500 inline" aria-hidden="true" />;
+  }
 
   return (
     <section
@@ -55,7 +104,7 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
           Offers
           {!loading && (
             <span className="ml-2 text-xs font-normal text-gray-400">
-              ({filtered.length}{activeTab !== 'ALL' ? ` of ${offers.length}` : ''})
+              ({filtered.length}{activeTab !== 'ALL' || search ? ` of ${offers.length}` : ''})
             </span>
           )}
         </h2>
@@ -63,7 +112,7 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
           href="/dashboard/offers/new"
           data-tour="create-offer"
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium',
+            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium btn-lift',
             'bg-blue-600 text-white hover:bg-blue-700 transition-colors',
             'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
           )}
@@ -76,16 +125,46 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
         </Link>
       </div>
 
+      {/* Search bar */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" aria-hidden="true" />
+          <input
+            type="search"
+            placeholder="Search by title or recipient…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search offers"
+            className={cn(
+              'w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200',
+              'placeholder:text-gray-400 text-gray-900 bg-gray-50',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white',
+              'transition-colors',
+            )}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Filter tabs */}
       <div
         role="tablist"
         aria-label="Filter offers by status"
-        className="flex gap-0.5 px-4 pt-3 pb-0"
+        className="flex gap-0.5 px-4 pt-2 pb-0 overflow-x-auto"
       >
         {TABS.map((tab) => {
           const count = tab.key === 'ALL'
             ? offers.length
             : offers.filter((o) => o.status === tab.key).length;
+          if (count === 0 && tab.key !== 'ALL') return null;
           return (
             <button
               key={tab.key}
@@ -93,7 +172,7 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
               aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                'px-3 py-1.5 rounded-t-lg text-xs font-medium transition-colors relative',
+                'px-3 py-1.5 rounded-t-lg text-xs font-medium transition-colors relative whitespace-nowrap',
                 'focus-visible:ring-2 focus-visible:ring-blue-500',
                 activeTab === tab.key
                   ? 'text-blue-700 bg-blue-50 border border-b-0 border-gray-200'
@@ -123,22 +202,40 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
         {loading ? (
           <OfferTableSkeleton />
         ) : filtered.length === 0 ? (
-          <EmptyState hasOffers={offers.length > 0} tab={activeTab} />
+          <EmptyState hasOffers={offers.length > 0} hasSearch={search.length > 0} tab={activeTab} onClear={() => setSearch('')} />
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[40%]">
-                  Title
+                <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[38%]">
+                  <button
+                    onClick={() => toggleSort('createdAt')}
+                    className="flex items-center hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                    aria-label={`Sort by created date ${sortKey === 'createdAt' && sortDir === 'asc' ? 'descending' : 'ascending'}`}
+                  >
+                    Title <SortIcon col="createdAt" />
+                  </button>
                 </th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                   Recipient
                 </th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
+                  <button
+                    onClick={() => toggleSort('status')}
+                    className="flex items-center hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                    aria-label={`Sort by status`}
+                  >
+                    Status <SortIcon col="status" />
+                  </button>
                 </th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                  Created
+                  <button
+                    onClick={() => toggleSort('updatedAt')}
+                    className="flex items-center hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                    aria-label={`Sort by last activity ${sortKey === 'updatedAt' && sortDir === 'asc' ? 'descending' : 'ascending'}`}
+                  >
+                    Activity <SortIcon col="updatedAt" />
+                  </button>
                 </th>
                 <th scope="col" className="sr-only">Actions</th>
               </tr>
@@ -154,9 +251,8 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
                       href={`/dashboard/offers/${offer.id}`}
                       className="font-medium text-gray-900 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
                     >
-                      {offer.title}
+                      {search ? <Highlight text={offer.title} query={search} /> : offer.title}
                     </Link>
-                    {/* Show recipient on mobile below title */}
                     {offer.recipient?.email && (
                       <p className="text-xs text-gray-400 mt-0.5 sm:hidden truncate max-w-[200px]">
                         {offer.recipient.email}
@@ -165,15 +261,18 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
                   </td>
                   <td className="px-4 py-3.5 text-gray-500 hidden sm:table-cell">
                     <span className="truncate max-w-[160px] block">
-                      {offer.recipient?.email ?? <span className="text-gray-300">—</span>}
+                      {offer.recipient?.email
+                        ? (search ? <Highlight text={offer.recipient.email} query={search} /> : offer.recipient.email)
+                        : <span className="text-gray-300">—</span>
+                      }
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
                     <StatusBadge status={offer.status} />
                   </td>
                   <td className="px-4 py-3.5 text-gray-400 text-xs hidden md:table-cell">
-                    <time dateTime={offer.createdAt}>
-                      {new Date(offer.createdAt).toLocaleDateString(undefined, {
+                    <time dateTime={offer.updatedAt}>
+                      {new Date(offer.updatedAt).toLocaleDateString(undefined, {
                         month: 'short', day: 'numeric', year: 'numeric',
                       })}
                     </time>
@@ -181,7 +280,7 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
                   <td className="px-3 py-3.5 text-right">
                     <Link
                       href={`/dashboard/offers/${offer.id}`}
-                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
                       aria-label={`Open offer: ${offer.title}`}
                     >
                       Open
@@ -200,20 +299,40 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
   );
 }
 
+// ── Highlight matching text ────────────────────────────────────────────────────
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-100 text-yellow-900 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: OfferStatusValue }) {
   const meta = STATUS_META[status] ?? { label: status, classes: 'bg-gray-100 text-gray-600' };
   return (
-    <span
-      className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold', meta.classes)}
-    >
+    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold transition-colors duration-200', meta.classes)}>
       {meta.label}
     </span>
   );
 }
 
-function EmptyState({ hasOffers, tab }: { hasOffers: boolean; tab: FilterTab }) {
+function EmptyState({
+  hasOffers, hasSearch, tab, onClear,
+}: {
+  hasOffers: boolean;
+  hasSearch: boolean;
+  tab: FilterTab;
+  onClear: () => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3" aria-hidden="true">
@@ -224,14 +343,24 @@ function EmptyState({ hasOffers, tab }: { hasOffers: boolean; tab: FilterTab }) 
         </svg>
       </div>
       <p className="text-sm font-medium text-gray-900">
-        {hasOffers ? `No ${tab.toLowerCase()} offers` : 'No offers yet'}
+        {hasSearch ? 'No matching offers' : hasOffers ? `No ${tab.toLowerCase()} offers` : 'No offers yet'}
       </p>
       <p className="text-xs text-gray-400 mt-1 mb-4">
-        {hasOffers
+        {hasSearch
+          ? 'Try a different search term.'
+          : hasOffers
           ? 'Try a different filter tab above.'
           : 'Create your first offer to get started.'}
       </p>
-      {!hasOffers && (
+      {hasSearch && (
+        <button
+          onClick={onClear}
+          className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+        >
+          Clear search
+        </button>
+      )}
+      {!hasOffers && !hasSearch && (
         <Link
           href="/dashboard/offers/new"
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors"
@@ -248,10 +377,10 @@ function OfferTableSkeleton() {
     <div className="px-5 py-4 space-y-3" aria-hidden="true">
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className="flex items-center gap-4">
-          <div className="skeleton h-4 bg-gray-200 rounded flex-1" />
-          <div className="skeleton h-4 bg-gray-200 rounded w-32 hidden sm:block" />
-          <div className="skeleton h-5 bg-gray-200 rounded-full w-16" />
-          <div className="skeleton h-3 bg-gray-200 rounded w-20 hidden md:block" />
+          <div className="skeleton-shimmer h-4 rounded flex-1" />
+          <div className="skeleton-shimmer h-4 rounded w-32 hidden sm:block" />
+          <div className="skeleton-shimmer h-5 rounded-full w-16" />
+          <div className="skeleton-shimmer h-3 rounded w-20 hidden md:block" />
         </div>
       ))}
     </div>

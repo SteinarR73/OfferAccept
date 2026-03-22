@@ -209,3 +209,144 @@ export async function sendOffer(id: string): Promise<SendOfferResponse> {
 export async function revokeOffer(id: string): Promise<RevokeOfferResponse> {
   return request<RevokeOfferResponse>(`/offers/${id}/revoke`, { method: 'POST' });
 }
+
+export async function resendOffer(id: string): Promise<{ sentAt: string }> {
+  return request<{ sentAt: string }>(`/offers/${id}/resend`, { method: 'POST' });
+}
+
+// ─── Delivery ─────────────────────────────────────────────────────────────────
+
+export interface DeliveryAttempt {
+  id: string;
+  attemptedAt: string;
+  outcome: string; // 'DISPATCHING' | 'DELIVERED_TO_PROVIDER' | 'FAILED'
+  recipientEmail: string;
+}
+
+export async function getDelivery(offerId: string): Promise<DeliveryAttempt[]> {
+  const res = await request<DeliveryAttempt[] | { attempts: DeliveryAttempt[] } | { data: DeliveryAttempt[] }>(
+    `/offers/${offerId}/delivery`,
+  );
+  // Gracefully handle both array and wrapped response shapes.
+  if (Array.isArray(res)) return res;
+  if ('attempts' in res) return (res as { attempts: DeliveryAttempt[] }).attempts ?? [];
+  if ('data' in res) return (res as { data: DeliveryAttempt[] }).data ?? [];
+  return [];
+}
+
+// ─── Billing (extended) ────────────────────────────────────────────────────────
+
+export async function getBillingCheckout(plan: SubscriptionPlan): Promise<{ url: string }> {
+  return request<{ url: string }>('/billing/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ plan }),
+  });
+}
+
+export async function getBillingPortal(): Promise<{ url: string }> {
+  return request<{ url: string }>('/billing/portal');
+}
+
+// ─── Organization members ─────────────────────────────────────────────────────
+
+export interface OrgMember {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  role: string;
+  createdAt: string;
+}
+
+export async function getOrgMembers(orgId: string): Promise<OrgMember[]> {
+  const res = await request<OrgMember[] | { data: OrgMember[] }>(`/organizations/${orgId}/members`);
+  return Array.isArray(res) ? res : (res as { data: OrgMember[] }).data ?? [];
+}
+
+export async function inviteMember(orgId: string, email: string, role: string): Promise<void> {
+  return request<void>(`/organizations/${orgId}/invite`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+}
+
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  return request<void>(`/organizations/${orgId}/member/${userId}`, { method: 'DELETE' });
+}
+
+// ─── API Keys ─────────────────────────────────────────────────────────────────
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface ApiKeyCreated extends ApiKey {
+  key: string; // raw key — shown only once, customer must store securely
+}
+
+export async function listApiKeys(): Promise<ApiKey[]> {
+  const res = await request<ApiKey[] | { data: ApiKey[] }>('/api-keys');
+  return Array.isArray(res) ? res : (res as { data: ApiKey[] }).data ?? [];
+}
+
+export async function createApiKey(data: { name: string; expiresAt?: string }): Promise<ApiKeyCreated> {
+  return request<ApiKeyCreated>('/api-keys', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteApiKey(id: string): Promise<void> {
+  return request<void>(`/api-keys/${id}`, { method: 'DELETE' });
+}
+
+// ─── Webhooks ─────────────────────────────────────────────────────────────────
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  enabled: boolean;
+  createdAt: string;
+}
+
+export async function listWebhooks(): Promise<Webhook[]> {
+  const res = await request<Webhook[] | { data: Webhook[] }>('/webhooks');
+  return Array.isArray(res) ? res : (res as { data: Webhook[] }).data ?? [];
+}
+
+export async function createWebhook(data: { url: string; events: string[] }): Promise<Webhook> {
+  return request<Webhook>('/webhooks', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateWebhook(
+  id: string,
+  data: { url?: string; events?: string[]; enabled?: boolean },
+): Promise<Webhook> {
+  return request<Webhook>(`/webhooks/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteWebhook(id: string): Promise<void> {
+  return request<void>(`/webhooks/${id}`, { method: 'DELETE' });
+}
+
+// ─── Certificates ─────────────────────────────────────────────────────────────
+
+export interface CertificateDetail {
+  certificateId: string;
+  certificateHash: string;
+  issuedAt: string;
+  offer: { title: string; message: string | null; expiresAt: string | null };
+  recipient: { email: string; name: string };
+  sender: { name: string; email: string };
+}
+
+export async function getCertificate(id: string): Promise<CertificateDetail> {
+  return request<CertificateDetail>(`/certificates/${id}`);
+}
+
+export async function exportCertificate(id: string): Promise<{ certificateId: string; canonicalJson: string; certificateHash: string }> {
+  return request(`/certificates/${id}/export`);
+}

@@ -1,25 +1,41 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { FileText, FileUp, Trash2 } from 'lucide-react';
 import {
   updateOffer,
   setRecipient,
-  sendOffer,
-  revokeOffer,
+  removeDocument,
 } from '../../../../lib/offers-api';
-import type { OfferItem } from '@offeraccept/types';
+import type { OfferItem, OfferDocumentItem } from '@offeraccept/types';
+import { FileUploadFlow } from '../../../../components/dashboard/FileUploadFlow';
+import { Card, CardHeader, CardSection, CardFooter } from '../../../../components/ui/Card';
+import { Button } from '../../../../components/ui/Button';
+import { Input, Textarea } from '../../../../components/ui/Input';
+import { Alert } from '../../../../components/ui/Alert';
 
 // ─── OfferEditor ──────────────────────────────────────────────────────────────
-// Client component for viewing and editing a single offer.
-// Read-only when offer is not DRAFT. Shows send/revoke actions appropriately.
+// Displays and edits the offer content (DRAFT only).
+// Non-DRAFT offers show read-only fields.
+// Send/Revoke actions are handled by the parent page (StatusActionBar).
 
 interface Props {
   initial: OfferItem;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function fileIcon(mimeType: string) {
+  if (mimeType === 'application/pdf') return '📄';
+  if (mimeType.includes('word') || mimeType.includes('docx')) return '📝';
+  return '📎';
+}
+
 export function OfferEditor({ initial }: Props) {
-  const router = useRouter();
   const [offer, setOffer] = useState<OfferItem>(initial);
   const [title, setTitle] = useState(offer.title);
   const [message, setMessage] = useState(offer.message ?? '');
@@ -29,13 +45,13 @@ export function OfferEditor({ initial }: Props) {
   const [recipientEmail, setRecipientEmail] = useState(offer.recipient?.email ?? '');
   const [recipientName, setRecipientName] = useState(offer.recipient?.name ?? '');
   const [saving, setSaving] = useState(false);
+  const [removingDoc, setRemovingDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const isDraft = offer.status === 'DRAFT';
-  const isSent = offer.status === 'SENT';
 
-  async function handleSave(e: FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
@@ -50,174 +66,169 @@ export function OfferEditor({ initial }: Props) {
         await setRecipient(offer.id, { email: recipientEmail, name: recipientName });
       }
       setOffer(updated);
-      setSuccess('Saved.');
+      setSuccess('Changes saved.');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save.');
+      setError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleSend() {
-    if (!confirm('Send this offer? This will freeze the content and email the recipient.')) return;
-    setError(null);
+  async function handleRemoveDoc(docId: string) {
+    setRemovingDoc(docId);
     try {
-      await sendOffer(offer.id);
-      router.refresh();
-      setOffer((o) => ({ ...o, status: 'SENT' }));
-      setSuccess('Offer sent! The recipient will receive an email shortly.');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send.');
+      await removeDocument(offer.id, docId);
+      setOffer((o) => ({ ...o, documents: o.documents.filter((d: OfferDocumentItem) => d.id !== docId) }));
+    } catch {
+      setError('Could not remove document. Please try again.');
+    } finally {
+      setRemovingDoc(null);
     }
   }
 
-  async function handleRevoke() {
-    if (!confirm('Revoke this offer? The signing link will be invalidated immediately.')) return;
-    setError(null);
-    try {
-      await revokeOffer(offer.id);
-      setOffer((o) => ({ ...o, status: 'REVOKED' }));
-      setSuccess('Offer revoked.');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke.');
-    }
+  function handleDocumentAdded(docId: string, filename: string) {
+    // Optimistically append a minimal document entry; full data loads on next refresh
+    const placeholder: OfferDocumentItem = {
+      id: docId,
+      filename,
+      mimeType: filename.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      sizeBytes: 0,
+      sha256Hash: '',
+    };
+    setOffer((o) => ({ ...o, documents: [...o.documents, placeholder] }));
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
-      {/* Status banner */}
-      {!isDraft && (
-        <div
-          style={{
-            padding: '10px 16px',
-            marginBottom: 20,
-            borderRadius: 4,
-            background: '#f3f4f6',
-            color: '#374151',
-          }}
-        >
-          This offer is <strong>{offer.status}</strong>. Content is read-only.
-          {offer.status === 'ACCEPTED' && ' The recipient has accepted.'}
-          {offer.status === 'DECLINED' && ' The recipient declined.'}
-          {offer.status === 'REVOKED' && ' The signing link has been invalidated.'}
-        </div>
-      )}
+    <form onSubmit={handleSave} noValidate>
+      {error && <Alert variant="error" dismissible className="mb-4">{error}</Alert>}
+      {success && <Alert variant="success" dismissible className="mb-4">{success}</Alert>}
 
-      <form onSubmit={handleSave}>
-        <Field label="Offer title">
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={!isDraft}
-          />
-        </Field>
-
-        <Field label="Message (optional)">
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            disabled={!isDraft}
-            rows={5}
-            style={{ width: '100%', fontFamily: 'inherit' }}
-          />
-        </Field>
-
-        <Field label="Offer expires (optional)">
-          <input
-            type="date"
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
-            disabled={!isDraft}
-          />
-        </Field>
-
-        <fieldset
-          style={{ border: '1px solid #e5e7eb', borderRadius: 4, padding: 16, marginBottom: 16 }}
-        >
-          <legend style={{ fontWeight: 600, padding: '0 4px' }}>Recipient</legend>
-          <Field label="Email">
-            <input
-              type="email"
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
+      {/* ── Section 1: Offer details ─────────────────────────────────────── */}
+      <Card className="mb-4">
+        <CardHeader title="Offer details" border />
+        <CardSection>
+          <div className="space-y-4">
+            <Input
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               disabled={!isDraft}
+              required
             />
-          </Field>
-          <Field label="Name">
-            <input
-              type="text"
+            <Textarea
+              label="Message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={!isDraft}
+              hint="Optional personalised message displayed to the recipient."
+              rows={4}
+            />
+            <Input
+              label="Expiry date"
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              disabled={!isDraft}
+              hint="Leave blank for no expiry."
+            />
+          </div>
+        </CardSection>
+        {isDraft && (
+          <CardFooter>
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
+              Save draft
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+
+      {/* ── Section 2: Recipient ─────────────────────────────────────────── */}
+      <Card className="mb-4">
+        <CardHeader title="Recipient" border />
+        <CardSection>
+          <div className="space-y-4">
+            <Input
+              label="Full name"
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
               disabled={!isDraft}
             />
-          </Field>
-        </fieldset>
-
-        {/* Documents — v1 metadata only, no upload UI */}
-        {offer.documents.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <strong>Documents ({offer.documents.length})</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
-              {offer.documents.map((d) => (
-                <li key={d.id} style={{ fontSize: 14, color: '#374151' }}>
-                  {d.filename} ({formatBytes(d.sizeBytes)})
-                </li>
-              ))}
-            </ul>
+            <Input
+              label="Email address"
+              type="email"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              disabled={!isDraft}
+              hint={isDraft ? 'A secure signing link will be delivered to this address.' : undefined}
+            />
           </div>
+        </CardSection>
+        {isDraft && (
+          <CardFooter>
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
+              Save
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+
+      {/* ── Section 3: Documents ─────────────────────────────────────────── */}
+      <Card>
+        <CardHeader title="Documents" description="PDF and DOCX files attached to this offer." border />
+
+        {/* Document list */}
+        {offer.documents.length > 0 && (
+          <ul className="divide-y divide-gray-50">
+            {offer.documents.map((doc: OfferDocumentItem) => (
+              <li key={doc.id} className="flex items-center gap-3 px-5 py-3">
+                <span className="text-base flex-shrink-0" aria-hidden="true">{fileIcon(doc.mimeType)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate">{doc.filename}</p>
+                  <p className="text-[11px] text-[--color-text-muted] mt-0.5">
+                    {formatBytes(doc.sizeBytes)}
+                    {doc.sha256Hash && (
+                      <span className="ml-2 font-mono">SHA-256: {doc.sha256Hash.slice(0, 8)}…</span>
+                    )}
+                  </p>
+                </div>
+                <FileText className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" aria-hidden="true" />
+                {isDraft && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    loading={removingDoc === doc.id}
+                    onClick={() => handleRemoveDoc(doc.id)}
+                    aria-label={`Remove ${doc.filename}`}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
 
-        {error && <p style={{ color: 'red', marginBottom: 12 }}>{error}</p>}
-        {success && <p style={{ color: '#16a34a', marginBottom: 12 }}>{success}</p>}
+        {offer.documents.length === 0 && !isDraft && (
+          <p className="px-5 py-4 text-xs text-[--color-text-muted]">No documents attached.</p>
+        )}
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {isDraft && (
-            <>
-              <button
-                type="submit"
-                disabled={saving}
-                style={{ padding: '8px 16px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                {saving ? 'Saving…' : 'Save draft'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSend}
-                style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Send offer
-              </button>
-            </>
-          )}
-
-          {isSent && (
-            <button
-              type="button"
-              onClick={handleRevoke}
-              style={{ padding: '8px 16px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Revoke offer
-            </button>
-          )}
-        </div>
-      </form>
-    </div>
+        {/* Upload — DRAFT only */}
+        {isDraft && (
+          <div className="px-5 py-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-xs text-[--color-text-muted] mb-3">
+              <FileUp className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Upload additional documents (PDF or DOCX, max 20 MB each)</span>
+            </div>
+            <FileUploadFlow
+              offerId={offer.id}
+              onUploaded={handleDocumentAdded}
+            />
+          </div>
+        )}
+      </Card>
+    </form>
   );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

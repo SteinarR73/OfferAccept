@@ -1,11 +1,21 @@
-// Dashboard root — placeholder until auth and routing are implemented.
-// In production this will redirect to /dashboard if authenticated,
-// or to /login if not.
+'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated } from '../lib/auth';
+import { SpinnerPage } from '../components/ui/Spinner';
+
+// Smart router: authenticated → /dashboard, unauthenticated → /landing
 export default function RootPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-gray-500">OfferAccept — coming soon.</p>
-    </main>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.replace('/dashboard');
+    } else {
+      router.replace('/landing');
+    }
+  }, [router]);
+
+  return <SpinnerPage />;
 }

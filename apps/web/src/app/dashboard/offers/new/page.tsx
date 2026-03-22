@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { FileText, CheckCircle, Send, Shield } from 'lucide-react';
 import { createOffer } from '../../../../lib/offers-api';
+import { PageHeader } from '../../../../components/ui/PageHeader';
+import { Card, CardHeader, CardSection, CardFooter } from '../../../../components/ui/Card';
+import { Button } from '../../../../components/ui/Button';
+import { Input } from '../../../../components/ui/Input';
+import { Alert } from '../../../../components/ui/Alert';
 
 // ─── NewOfferPage ─────────────────────────────────────────────────────────────
-// Creates a new DRAFT offer and redirects to the editor page.
 
 export default function NewOfferPage() {
   const router = useRouter();
@@ -15,7 +20,7 @@ export default function NewOfferPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -32,62 +37,125 @@ export default function NewOfferPage() {
   }
 
   return (
-    <div style={{ maxWidth: 600 }}>
-      <h1 style={{ marginBottom: 24 }}>New offer</h1>
-      <form onSubmit={handleSubmit}>
-        <Field label="Offer title *">
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </Field>
+    <div className="max-w-5xl mx-auto">
+      <PageHeader
+        title="New offer"
+        description="Create a draft offer letter to send to your candidate."
+        backHref="/dashboard/offers"
+        backLabel="All offers"
+      />
 
-        <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 4, padding: 16, marginBottom: 16 }}>
-          <legend style={{ fontWeight: 600, padding: '0 4px' }}>Recipient</legend>
-          <Field label="Email *">
-            <input
-              type="email"
-              required
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-            />
-          </Field>
-          <Field label="Name *">
-            <input
-              type="text"
-              required
-              value={recipientName}
-              onChange={(e) => setRecipientName(e.target.value)}
-            />
-          </Field>
-        </fieldset>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── Form ─────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-2">
+          <form onSubmit={handleSubmit} noValidate>
+            {error && <Alert variant="error" dismissible className="mb-4">{error}</Alert>}
 
-        {error && <p style={{ color: 'red', marginBottom: 12 }}>{error}</p>}
+            <Card className="mb-4">
+              <CardHeader title="Offer details" border />
+              <CardSection>
+                <Input
+                  label="Offer title"
+                  placeholder="e.g. Senior Software Engineer — Q2 2026"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  hint="This title will appear in the offer email and acceptance certificate."
+                  autoFocus
+                />
+              </CardSection>
+            </Card>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button type="button" onClick={() => router.back()} style={{ padding: '8px 16px' }}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ padding: '8px 16px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-          >
-            {loading ? 'Creating…' : 'Create draft'}
-          </button>
+            <Card className="mb-6">
+              <CardHeader title="Recipient" description="Who will receive this offer?" border />
+              <CardSection>
+                <div className="space-y-4">
+                  <Input
+                    label="Full name"
+                    placeholder="Jane Smith"
+                    value={recipientName}
+                    onChange={(e) => setRecipientName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    label="Email address"
+                    type="email"
+                    placeholder="jane.smith@company.com"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    required
+                    hint="A secure signing link will be sent to this address."
+                  />
+                </div>
+              </CardSection>
+            </Card>
+
+            <div className="flex items-center gap-3">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                loading={loading}
+                leftIcon={<FileText className="w-4 h-4" aria-hidden="true" />}
+              >
+                Create draft
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => router.back()}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
         </div>
-      </form>
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{label}</label>
-      <div style={{ display: 'block' }}>{children}</div>
+        {/* ── Info sidebar ─────────────────────────────────────────────────── */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader title="What happens next?" border />
+            <CardSection>
+              <ol className="space-y-4">
+                {[
+                  {
+                    icon: <FileText className="w-4 h-4 text-blue-600" aria-hidden="true" />,
+                    title: 'Draft created',
+                    body: 'Your offer is saved as a draft. Add terms and upload documents before sending.',
+                  },
+                  {
+                    icon: <Send className="w-4 h-4 text-blue-600" aria-hidden="true" />,
+                    title: 'Send to recipient',
+                    body: 'When ready, send the offer. The recipient gets a secure email with a signing link.',
+                  },
+                  {
+                    icon: <CheckCircle className="w-4 h-4 text-green-600" aria-hidden="true" />,
+                    title: 'Accepted & certified',
+                    body: 'Once accepted via OTP verification, a tamper-proof certificate is generated instantly.',
+                  },
+                  {
+                    icon: <Shield className="w-4 h-4 text-purple-600" aria-hidden="true" />,
+                    title: 'Audit trail secured',
+                    body: 'Every action is logged with a timestamp and SHA-256 hash for legal compliance.',
+                  },
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-gray-500 mt-0.5">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-900">{step.title}</p>
+                      <p className="text-[11px] text-[--color-text-muted] mt-0.5">{step.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </CardSection>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

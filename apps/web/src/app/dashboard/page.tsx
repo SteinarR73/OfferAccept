@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { listOffers } from '../../lib/offers-api';
 import type { OfferItem } from '@offeraccept/types';
 import { StatsCard, StatsCardSkeleton } from '../../components/dashboard/StatsCard';
 import { OfferTable } from '../../components/dashboard/OfferTable';
-import { BillingCard } from '../../components/dashboard/BillingCard';
 import { OnboardingBanner } from '../../components/dashboard/OnboardingBanner';
 import { OnboardingTour, type TourStep } from '../../components/dashboard/OnboardingTour';
+import { ActionPanel } from '../../components/dashboard/ActionPanel';
+import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
+import { Button } from '../../components/ui/Button';
 
 // ─── Tour steps ────────────────────────────────────────────────────────────────
 
@@ -92,20 +96,27 @@ export default function DashboardPage() {
 
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
         {/* ── Page heading ─────────────────────────────────────────────────── */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Overview</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-[--color-text-primary]">Overview</h1>
+            <p className="text-sm text-[--color-text-muted] mt-0.5">
+              {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <Link href="/dashboard/offers/new">
+            <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />} data-tour="create-offer">
+              New offer
+            </Button>
+          </Link>
         </div>
 
         {/* ── Onboarding checklist (first session) ─────────────────────── */}
         {isFirstSession && (
-          <OnboardingBanner
-            completedStepIds={[]}
-            tourId="onboarding-banner"
-          />
+          <OnboardingBanner completedStepIds={[]} tourId="onboarding-banner" />
         )}
+
+        {/* ── Action panel (derived from offers, no extra API call) ──────── */}
+        <ActionPanel offers={offers} loading={loading} />
 
         {/* ── Stats row ────────────────────────────────────────────────────── */}
         <div
@@ -158,20 +169,13 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ── Main grid: Offer table + Billing sidebar ──────────────────────── */}
+        {/* ── Main grid: Offer table + Activity feed ────────────────────────── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Offer table — takes 2/3 on desktop */}
           <div className="lg:col-span-2">
-            <OfferTable
-              offers={offers}
-              loading={loading}
-              tourId="offer-table"
-            />
+            <OfferTable offers={offers} loading={loading} tourId="offer-table" />
           </div>
-
-          {/* Billing card — 1/3 on desktop */}
           <div className="lg:col-span-1">
-            <BillingCard tourId="billing-card" />
+            <ActivityFeed offers={offers} loading={loading} />
           </div>
         </div>
       </div>

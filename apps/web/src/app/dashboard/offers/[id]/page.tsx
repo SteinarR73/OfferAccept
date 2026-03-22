@@ -1,38 +1,288 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { getOffer } from '../../../../lib/offers-api';
+import { Send, RotateCcw, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import {
+  getOffer,
+  sendOffer,
+  revokeOffer,
+  resendOffer,
+} from '../../../../lib/offers-api';
+import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { OfferEditor } from './offer-editor';
-import type { OfferItem } from '@offeraccept/types';
-
-// ─── OfferDetailPage ──────────────────────────────────────────────────────────
-// Client-side data fetch (localStorage JWT → not available server-side).
-// Renders the OfferEditor once data is loaded.
+import { DeliveryTimeline } from '../../../../components/dashboard/DeliveryTimeline';
+import { CertificateShowcase } from '../../../../components/dashboard/CertificateShowcase';
+import { PageHeader } from '../../../../components/ui/PageHeader';
+import { Card, CardHeader, CardSection } from '../../../../components/ui/Card';
+import { Button } from '../../../../components/ui/Button';
+import { Alert } from '../../../../components/ui/Alert';
+import { OfferStatusBadge } from '../../../../components/ui/Badge';
+import { SpinnerPage } from '../../../../components/ui/Spinner';
 
 export const dynamic = 'force-dynamic';
 
-export default function OfferDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [offer, setOffer] = useState<OfferItem | null>(null);
+// ─── Extended offer type (API may return certificateId beyond the shared type) ─
+
+interface OfferItemExtended extends OfferItem {
+  certificateId?: string;
+}
+
+// ─── Status action bar ────────────────────────────────────────────────────────
+
+interface StatusActionBarProps {
+  offer: OfferItemExtended;
+  onSend: () => Promise<void>;
+  onRevoke: () => Promise<void>;
+  onResend: () => Promise<void>;
+}
+
+function StatusActionBar({ offer, onSend, onRevoke, onResend }: StatusActionBarProps) {
+  const [loading, setLoading] = useState<'send' | 'revoke' | 'resend' | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  async function handle(action: 'send' | 'revoke' | 'resend', fn: () => Promise<void>) {
+    setLoading(action);
+    setError(null);
+    try {
+      await fn();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Action failed. Please try again.');
+    } finally {
+      setLoading(null);
+      setConfirmRevoke(false);
+    }
+  }
+
+  if (offer.status === 'DRAFT') {
+    const canSend = !!offer.recipient?.email;
+    return (
+      <div className="space-y-2">
+        {error && <Alert variant="error" dismissible>{error}</Alert>}
+        {!canSend && (
+          <Alert variant="warning">Add a recipient before sending this offer.</Alert>
+        )}
+        <Button
+          variant="primary"
+          size="sm"
+          loading={loading === 'send'}
+          disabled={!canSend}
+          onClick={() => handle('send', onSend)}
+          leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}
+        >
+          Send offer
+        </Button>
+      </div>
+    );
+  }
+
+  if (offer.status === 'SENT') {
+    return (
+      <div className="space-y-2">
+        {error && <Alert variant="error" dismissible>{error}</Alert>}
+        {confirmRevoke ? (
+          <Alert variant="warning">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold">Revoke this offer?</p>
+              <p className="text-xs">The recipient's signing link will be invalidated immediately.</p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={loading === 'revoke'}
+                  onClick={() => handle('revoke', onRevoke)}
+                  leftIcon={<XCircle className="w-3.5 h-3.5" aria-hidden="true" />}
+                >
+                  Yes, revoke
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setConfirmRevoke(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Alert>
+        ) : (
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={loading === 'resend'}
+              onClick={() => handle('resend', onResend)}
+              leftIcon={<RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />}
+            >
+              Resend
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmRevoke(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              leftIcon={<XCircle className="w-3.5 h-3.5" aria-hidden="true" />}
+            >
+              Revoke
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+
+// ─── OfferDetailPage ──────────────────────────────────────────────────────────
+
+export default function OfferDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [offer, setOffer] = useState<OfferItemExtended | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
     getOffer(id)
-      .then(setOffer)
+      .then((data) => setOffer(data as OfferItemExtended))
       .catch((err: Error) => setError(err.message));
   }, [id]);
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
-  if (!offer) return <p>Loading…</p>;
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // Optimistic status updates — revert on error
+  async function handleSend() {
+    const prev = offer!.status;
+    setOffer((o) => o ? { ...o, status: 'SENT' as OfferStatusValue } : o);
+    try {
+      await sendOffer(id);
+    } catch (err) {
+      setOffer((o) => o ? { ...o, status: prev } : o);
+      throw err;
+    }
+    refresh();
+  }
+
+  async function handleRevoke() {
+    const prev = offer!.status;
+    setOffer((o) => o ? { ...o, status: 'REVOKED' as OfferStatusValue } : o);
+    try {
+      await revokeOffer(id);
+    } catch (err) {
+      setOffer((o) => o ? { ...o, status: prev } : o);
+      throw err;
+    }
+  }
+
+  async function handleResend() {
+    await resendOffer(id);
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <PageHeader title="Offer" backHref="/dashboard/offers" backLabel="All offers" />
+        <Alert variant="error">{error}</Alert>
+      </div>
+    );
+  }
+
+  if (!offer) return <SpinnerPage label="Loading offer…" />;
+
+  const showActions = offer.status === 'DRAFT' || offer.status === 'SENT';
+  const terminalStatus = ['ACCEPTED', 'DECLINED', 'EXPIRED', 'REVOKED'].includes(offer.status);
 
   return (
-    <div>
-      <div style={{ marginBottom: 20, color: '#6b7280', fontSize: 14 }}>
-        <a href="/dashboard">← Offers</a>
+    <div className="max-w-5xl mx-auto">
+      <PageHeader
+        title={offer.title}
+        backHref="/dashboard/offers"
+        backLabel="All offers"
+        action={
+          <div className="flex items-center gap-2">
+            <OfferStatusBadge status={offer.status} />
+          </div>
+        }
+      />
+
+      {/* ── Terminal status alert ─────────────────────────────────────────── */}
+      {offer.status === 'REVOKED' && (
+        <Alert variant="warning" className="mb-4">
+          This offer has been revoked. The recipient's signing link is no longer valid.
+        </Alert>
+      )}
+      {offer.status === 'EXPIRED' && (
+        <Alert variant="warning" className="mb-4">
+          This offer has expired. Create a new offer to re-engage the candidate.
+        </Alert>
+      )}
+      {offer.status === 'DECLINED' && (
+        <Alert variant="error" className="mb-4">
+          The recipient declined this offer.
+        </Alert>
+      )}
+
+      {/* ── Certificate card (when accepted) ────────────────────────────── */}
+      {offer.status === 'ACCEPTED' && offer.certificateId && (
+        <CertificateShowcase certificateId={offer.certificateId} />
+      )}
+      {offer.status === 'ACCEPTED' && !offer.certificateId && (
+        <Alert variant="success" className="mb-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
+            <span>This offer was accepted. Certificate generation may still be in progress.</span>
+          </div>
+        </Alert>
+      )}
+
+      {/* ── Main grid ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Offer editor — left 2/3 */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Action bar above editor */}
+          {showActions && (
+            <Card>
+              <CardSection className="py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-700">
+                      {offer.status === 'DRAFT' ? 'Draft — not yet sent to recipient' : 'Awaiting recipient action'}
+                    </p>
+                    {offer.status === 'SENT' && offer.recipient?.email && (
+                      <p className="text-[11px] text-[--color-text-muted] mt-0.5">
+                        Sent to {offer.recipient.email}
+                      </p>
+                    )}
+                  </div>
+                  <StatusActionBar
+                    offer={offer}
+                    onSend={handleSend}
+                    onRevoke={handleRevoke}
+                    onResend={handleResend}
+                  />
+                </div>
+              </CardSection>
+            </Card>
+          )}
+
+          {terminalStatus && (
+            <Card>
+              <CardSection className="py-3">
+                <div className="flex items-center gap-2 text-xs text-[--color-text-muted]">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                  <span>This offer is {offer.status.toLowerCase()} and can no longer be edited.</span>
+                </div>
+              </CardSection>
+            </Card>
+          )}
+
+          <OfferEditor initial={offer} />
+        </div>
+
+        {/* Delivery timeline — right 1/3 */}
+        <div className="lg:col-span-1">
+          <DeliveryTimeline offerId={id} offerStatus={offer.status as 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'REVOKED'} />
+        </div>
       </div>
-      <h1 style={{ marginBottom: 24 }}>{offer.title}</h1>
-      <OfferEditor initial={offer} />
     </div>
   );
 }
