@@ -1,4 +1,4 @@
-import { Offer, OfferDocument, OfferRecipient } from '@offeracept/database';
+import { Offer, OfferDocument, OfferRecipient } from '@offeraccept/database';
 import { OfferIncompleteError } from '../../../common/errors/domain.errors';
 
 // ─── Offer Completeness Rules ─────────────────────────────────────────────────

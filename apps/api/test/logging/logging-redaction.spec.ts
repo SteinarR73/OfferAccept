@@ -154,8 +154,8 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         DATABASE_URL: 'postgresql://user:pass@host:5432/db',
         JWT_SECRET: 'a-valid-secret-at-least-32-chars-long!!',
         SIGNING_LINK_SECRET: 'another-valid-secret-32-chars-long!!',
-        WEB_BASE_URL: 'https://app.offeracept.com',
-        EMAIL_FROM: 'noreply@offeracept.com',
+        WEB_BASE_URL: 'https://app.offeraccept.com',
+        EMAIL_FROM: 'noreply@offeraccept.com',
         EMAIL_PROVIDER: 'dev',  // ← must be rejected
       }),
     ).toThrow();
@@ -171,8 +171,8 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         DATABASE_URL: 'postgresql://user:pass@host:5432/db',
         JWT_SECRET: 'a-valid-secret-at-least-32-chars-long!!',
         SIGNING_LINK_SECRET: 'another-valid-secret-32-chars-long!!',
-        WEB_BASE_URL: 'https://app.offeracept.com',
-        EMAIL_FROM: 'noreply@offeracept.com',
+        WEB_BASE_URL: 'https://app.offeraccept.com',
+        EMAIL_FROM: 'noreply@offeraccept.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_abc123',
         STORAGE_PROVIDER: 's3',
@@ -201,8 +201,8 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         DATABASE_URL: 'postgresql://user:pass@host:5432/db',
         JWT_SECRET: 'change-me-in-production-min-32-chars',  // ← placeholder
         SIGNING_LINK_SECRET: 'another-valid-secret-32-chars-long!!',
-        WEB_BASE_URL: 'https://app.offeracept.com',
-        EMAIL_FROM: 'noreply@offeracept.com',
+        WEB_BASE_URL: 'https://app.offeraccept.com',
+        EMAIL_FROM: 'noreply@offeraccept.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_abc123',
         STORAGE_PROVIDER: 's3',
@@ -231,8 +231,8 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         DATABASE_URL: 'postgresql://user:pass@host:5432/db',
         JWT_SECRET: 'a-valid-secret-at-least-32-chars-long!!',
         SIGNING_LINK_SECRET: 'change-me-in-production-min-32-chars',  // ← placeholder
-        WEB_BASE_URL: 'https://app.offeracept.com',
-        EMAIL_FROM: 'noreply@offeracept.com',
+        WEB_BASE_URL: 'https://app.offeraccept.com',
+        EMAIL_FROM: 'noreply@offeraccept.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_abc123',
         STORAGE_PROVIDER: 's3',

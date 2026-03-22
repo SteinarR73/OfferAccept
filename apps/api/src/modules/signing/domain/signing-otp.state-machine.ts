@@ -1,4 +1,4 @@
-import { OtpChallengeStatus } from '@offeracept/database';
+import { OtpChallengeStatus } from '@offeraccept/database';
 import { StateMachine } from '../../../common/state-machine/state-machine';
 
 // ─── SigningOtpChallenge State Machine ────────────────────────────────────────

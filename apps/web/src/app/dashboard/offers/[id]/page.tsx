@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { getOffer } from '../../../../lib/offers-api';
 import { OfferEditor } from './offer-editor';
-import type { OfferItem } from '@offeracept/types';
+import type { OfferItem } from '@offeraccept/types';
 
 // ─── OfferDetailPage ──────────────────────────────────────────────────────────
 // Client-side data fetch (localStorage JWT → not available server-side).

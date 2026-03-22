@@ -1,4 +1,4 @@
-import { OfferStatus } from '@offeracept/database';
+import { OfferStatus } from '@offeraccept/database';
 import { StateMachine } from '../../../common/state-machine/state-machine';
 
 // ─── Offer State Machine ───────────────────────────────────────────────────────

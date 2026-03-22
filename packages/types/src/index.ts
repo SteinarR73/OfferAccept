@@ -1,8 +1,8 @@
-// @offeracept/types
+// @offeraccept/types
 // Shared API contracts between the web app and the API.
 // Plain TypeScript types — no runtime dependencies.
 //
-// Domain types (Prisma models) are exported from @offeracept/database.
+// Domain types (Prisma models) are exported from @offeraccept/database.
 // This package contains API request/response shapes.
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

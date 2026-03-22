@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { OfferItem, OfferStatusValue } from '@offeracept/types';
+import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { cn } from '@/lib/cn';
 
 // ─── Status config ─────────────────────────────────────────────────────────────

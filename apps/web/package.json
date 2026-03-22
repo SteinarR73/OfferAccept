@@ -1,5 +1,5 @@
 {
-  "name": "@offeracept/web",
+  "name": "@offeraccept/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@offeracept/types": "*",
+    "@offeraccept/types": "*",
     "next": "^15.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

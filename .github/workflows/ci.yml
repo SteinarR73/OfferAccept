@@ -128,9 +128,9 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: offeracept_test
-          POSTGRES_USER: offeracept
-          POSTGRES_PASSWORD: offeracept
+          POSTGRES_DB: offeraccept_test
+          POSTGRES_USER: offeraccept
+          POSTGRES_PASSWORD: offeraccept
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
@@ -149,7 +149,7 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://offeracept:offeracept@localhost:5432/offeracept_test
+      DATABASE_URL: postgresql://offeraccept:offeraccept@localhost:5432/offeraccept_test
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret-that-is-at-least-32-characters
       JWT_ACCESS_TTL: 15m

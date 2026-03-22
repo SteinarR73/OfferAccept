@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/steir/.claude/projects/c--Users-steir-OfferAccept/memory/**)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -v \"PASS\\\\|FAIL\\\\|●\\\\|✓\\\\|✗\\\\|✕\\\\|✘\\\\|✔\\\\|>$\\\\|>  \")",
+      "Bash(grep -n \"OFFER_EXPIRED\\\\|OFFEREXPIRED\\\\|OFFER_ALREADY\\\\|OFFERALREADY\" c:/Users/steir/OfferAccept/apps/api/src/common/errors/domain.errors.ts c:/Users/steir/OfferAccept/apps/api/src/modules/signing/services/*.ts)",
+      "Bash(grep -n \"async revoke\\\\|offer\\\\.update\\\\|offer\\\\.updateMany\\\\|$queryRaw\" c:/Users/steir/OfferAccept/apps/api/src/modules/offers/services/send-offer.service.ts)",
+      "Bash(ls -la \"c:\\\\Users\\\\steir\\\\OfferAccept\\\\apps\\\\web\"\" | grep -E \"tailwind)",
+      "Bash(next.config \")",
+      "Bash(grep -r AddDocumentRequest /c/Users/steir/OfferAccept/packages --include=*.ts -l)",
+      "Bash(npm test:*)",
+      "Bash(grep -r \"REDIS\\\\|ioredis\\\\|RedisRateLimit\\\\|InMemoryRateLimit\\\\|redis\" /c/Users/steir/OfferAccept/apps/api/src --include=*.ts -l)",
+      "Bash(head -10 grep -E \"helmet|compression|useGlobalGuard|globalPrefix\" /c/Users/steir/OfferAccept/apps/api/src/main.ts)",
+      "Bash(grep -E \"Resend\\\\|resend\\\\|EmailAdapter\\\\|email\" /c/Users/steir/OfferAccept/apps/api/src/common/email -r --include=*.ts -l)",
+      "Bash(grep -r \"pg-boss\\\\|JobsModule\\\\|JobService\" /c/Users/steir/OfferAccept/apps/api/src --include=*.ts -l)",
+      "Bash(grep -r offeraccept /c/Users/steir/OfferAccept --include=*.json --include=*.ts --include=*.tsx --include=*.md --include=*.yml --include=*.yaml --include=*.sql --include=*.prisma --include=*.css --include=*.env* --include=*.txt -l)",
+      "Read(//dev/**)",
+      "Bash(grep -r offeracept /c/Users/steir/OfferAccept --include=*.json --include=*.ts --include=*.tsx --include=*.md --include=*.yml --include=*.prisma --include=*.sql --include=*.env* --exclude=package-lock.json -l)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\steir\\.claude\\projects\\c--Users-steir-OfferAccept\\memory"
+    ]
+  }
+}

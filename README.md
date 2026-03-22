@@ -29,7 +29,7 @@ See [docs/architecture.md](docs/architecture.md) for the full domain model and d
 ## Repository layout
 
 ```
-offeracept/
+offeraccept/
 ├── apps/
 │   ├── api/          NestJS 11 REST API
 │   └── web/          Next.js 15 — dashboard + public signing flow
@@ -70,7 +70,7 @@ Minimum changes for local dev:
 
 ```env
 # Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/offeracept_dev
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/offeraccept_dev
 
 # Redis (rate limiter) — use redis://localhost:6379 for a local instance
 REDIS_URL=redis://localhost:6379
@@ -215,7 +215,7 @@ RESEND_API_KEY=re_...
 EMAIL_FROM=offers@yourdomain.com
 STORAGE_PROVIDER=s3
 AWS_REGION=eu-west-1
-S3_BUCKET_NAME=offeracept-docs
+S3_BUCKET_NAME=offeraccept-docs
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 STRIPE_SECRET_KEY=sk_live_...
@@ -251,9 +251,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: offeracept_dev
-      POSTGRES_USER: offeracept
-      POSTGRES_PASSWORD: offeracept
+      POSTGRES_DB: offeraccept_dev
+      POSTGRES_USER: offeraccept
+      POSTGRES_PASSWORD: offeraccept
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 

@@ -8,7 +8,7 @@ import {
   sendOffer,
   revokeOffer,
 } from '../../../../lib/offers-api';
-import type { OfferItem } from '@offeracept/types';
+import type { OfferItem } from '@offeraccept/types';
 
 // ─── OfferEditor ──────────────────────────────────────────────────────────────
 // Client component for viewing and editing a single offer.

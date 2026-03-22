@@ -87,7 +87,7 @@ describe('Email templates', () => {
       recipientName: 'Bob Client',
       offerTitle: 'Web Redesign Proposal',
       senderName: 'Alice Sender',
-      signingUrl: 'https://app.offeracept.com/sign/oa_abc123',
+      signingUrl: 'https://app.offeraccept.com/sign/oa_abc123',
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     };
 
@@ -99,12 +99,12 @@ describe('Email templates', () => {
 
     it('text body contains the signing URL', () => {
       const { text } = offerLinkEmail(params);
-      expect(text).toContain('https://app.offeracept.com/sign/oa_abc123');
+      expect(text).toContain('https://app.offeraccept.com/sign/oa_abc123');
     });
 
     it('HTML body contains the signing URL as an href', () => {
       const { html } = offerLinkEmail(params);
-      expect(html).toContain('href="https://app.offeracept.com/sign/oa_abc123"');
+      expect(html).toContain('href="https://app.offeraccept.com/sign/oa_abc123"');
     });
 
     it('HTML body also shows the URL as visible text for copy-paste', () => {

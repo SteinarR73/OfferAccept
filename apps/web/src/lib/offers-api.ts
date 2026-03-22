@@ -10,7 +10,7 @@ import type {
   SendOfferResponse,
   RevokeOfferResponse,
   OfferItem,
-} from '@offeracept/types';
+} from '@offeraccept/types';
 
 // ─── API client — authenticated sender endpoints ───────────────────────────────
 // Authentication is handled entirely via HttpOnly cookies (accessToken).

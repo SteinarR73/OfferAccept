@@ -8,8 +8,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@offeracept/database": ["../../packages/database/src/index.ts"],
-      "@offeracept/types": ["../../packages/types/src/index.ts"]
+      "@offeraccept/database": ["../../packages/database/src/index.ts"],
+      "@offeraccept/types": ["../../packages/types/src/index.ts"]
     }
   },
   "include": ["src", "test"],

@@ -1,4 +1,4 @@
-import { SessionStatus } from '@offeracept/database';
+import { SessionStatus } from '@offeraccept/database';
 import { StateMachine } from '../../../common/state-machine/state-machine';
 
 // ─── SigningSession State Machine ─────────────────────────────────────────────

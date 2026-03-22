@@ -1,5 +1,5 @@
 import { Global, Module, OnApplicationShutdown } from '@nestjs/common';
-import { prisma } from '@offeracept/database';
+import { prisma } from '@offeraccept/database';
 
 // Exported so all modules can inject the PrismaClient via DI.
 // Marked @Global so it does not need to be re-imported per module.

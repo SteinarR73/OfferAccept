@@ -1,5 +1,5 @@
 {
-  "name": "@offeracept/api",
+  "name": "@offeraccept/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,8 +19,8 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.1.17",
     "@nestjs/terminus": "^11.1.1",
-    "@offeracept/database": "*",
-    "@offeracept/types": "*",
+    "@offeraccept/database": "*",
+    "@offeraccept/types": "*",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

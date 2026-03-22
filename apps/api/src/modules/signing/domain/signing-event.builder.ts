@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { SigningEventType } from '@offeracept/database';
+import { SigningEventType } from '@offeraccept/database';
 
 // ─── Signing Event Hash Chain Builder ─────────────────────────────────────────
 //

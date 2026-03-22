@@ -13,8 +13,8 @@ const config: Config = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^pg-boss$': '<rootDir>/test/__mocks__/pg-boss.ts',
-    '^@offeracept/database$': '<rootDir>/../../packages/database/src/index.ts',
-    '^@offeracept/types$': '<rootDir>/../../packages/types/src/index.ts',
+    '^@offeraccept/database$': '<rootDir>/../../packages/database/src/index.ts',
+    '^@offeraccept/types$': '<rootDir>/../../packages/types/src/index.ts',
   },
 };
 

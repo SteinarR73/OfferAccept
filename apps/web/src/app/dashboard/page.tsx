@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { listOffers } from '../../lib/offers-api';
-import type { OfferItem } from '@offeracept/types';
+import type { OfferItem } from '@offeraccept/types';
 import { StatsCard, StatsCardSkeleton } from '../../components/dashboard/StatsCard';
 import { OfferTable } from '../../components/dashboard/OfferTable';
 import { BillingCard } from '../../components/dashboard/BillingCard';

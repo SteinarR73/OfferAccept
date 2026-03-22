@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { Injectable, Inject } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { OfferRecipient } from '@offeracept/database';
+import { OfferRecipient } from '@offeraccept/database';
 import { TokenInvalidError } from '../../../common/errors/domain.errors';
 
 // Raw token format: oa_<base64url(32 bytes)>

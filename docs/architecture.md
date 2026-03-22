@@ -70,13 +70,13 @@ graph TB
 ## Repository structure
 
 ```
-offeracept/
+offeraccept/
 ├── apps/
 │   ├── api/          NestJS 11 — REST API, business logic
 │   └── web/          Next.js 15 — dashboard + public signing flow
 ├── packages/
 │   ├── database/     Prisma 5 schema, migrations, PrismaClient singleton
-│   └── types/        Shared TypeScript API contracts (@offeracept/types)
+│   └── types/        Shared TypeScript API contracts (@offeraccept/types)
 └── docs/
 ```
 

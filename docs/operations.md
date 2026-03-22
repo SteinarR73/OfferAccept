@@ -23,14 +23,14 @@ container images). Set them via your platform's secrets manager (AWS Secrets Man
 Doppler, Vercel environment variables, etc.).
 
 ```
-DATABASE_URL=postgresql://user:password@host:5432/offeracept?sslmode=require
+DATABASE_URL=postgresql://user:password@host:5432/offeraccept?sslmode=require
 NODE_ENV=production
 API_PORT=3001
 JWT_SECRET=<64-char random secret — never reuse dev value>
 JWT_EXPIRY=7d
 SIGNING_LINK_SECRET=<64-char random secret — never reuse dev value>
-WEB_BASE_URL=https://app.offeracept.com
-EMAIL_FROM=noreply@offeracept.com
+WEB_BASE_URL=https://app.offeraccept.com
+EMAIL_FROM=noreply@offeraccept.com
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=re_live_...
 ```
@@ -70,7 +70,7 @@ INSERT INTO users (id, organization_id, email, name, role, hashed_password, emai
 VALUES (
   gen_random_uuid(),
   '<internal-org-id>',
-  'support@offeracept.com',
+  'support@offeraccept.com',
   'Support Staff Name',
   'INTERNAL_SUPPORT',
   '<bcrypt-hash>',
