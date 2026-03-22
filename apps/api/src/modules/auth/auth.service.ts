@@ -98,7 +98,13 @@ export class AuthService {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    return { userId: user.id, orgId: user.organizationId ?? '' };
+    // user.organizationId is always set by createOrgAndOwner (set in the same transaction).
+    // Guard defensively in case a future refactor changes that invariant.
+    if (!user.organizationId) {
+      throw new Error(`Signup produced a user (${user.id}) with no organizationId — data integrity violation.`);
+    }
+
+    return { userId: user.id, orgId: user.organizationId };
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -124,10 +130,21 @@ export class AuthService {
     const { rawToken, session } = await this.sessionService.create(user.id, context);
 
     // Resolve org context from Membership (canonical for multi-org).
-    // Falls back to User.organizationId for accounts that predate the migration.
+    // Falls back to User.organizationId for accounts that predate the Membership migration.
+    // Throws if neither source yields an org — this should never happen for a valid account
+    // and indicates a data integrity problem that must not be silently swallowed.
     const membership = await this.repo.findPrimaryMembership(user.id);
-    const orgId = membership?.organizationId ?? user.organizationId ?? '';
+    const orgId = membership?.organizationId ?? user.organizationId;
     const orgRole = membership?.role ?? user.role;
+
+    if (!orgId) {
+      // Guard: a user with no org context cannot operate the system correctly.
+      // Log with userId so the problem account can be identified and repaired.
+      throw new Error(
+        `User ${user.id} has no resolvable orgId — missing Membership row and User.organizationId is null. ` +
+        `Account requires data repair before login is possible.`,
+      );
+    }
 
     const payload: AccessTokenPayload = {
       sub: user.id,
@@ -179,8 +196,16 @@ export class AuthService {
     );
 
     const membership = await this.repo.findPrimaryMembership(user.id);
-    const orgId = membership?.organizationId ?? user.organizationId ?? '';
+    const orgId = membership?.organizationId ?? user.organizationId;
     const orgRole = membership?.role ?? user.role;
+
+    if (!orgId) {
+      await this.sessionService.revoke(session.id);
+      throw new Error(
+        `User ${user.id} has no resolvable orgId during token refresh — ` +
+        `missing Membership row and User.organizationId is null. Account requires data repair.`,
+      );
+    }
 
     const payload: AccessTokenPayload = {
       sub: user.id,

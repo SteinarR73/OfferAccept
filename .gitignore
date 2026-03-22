@@ -45,3 +45,6 @@ coverage/
 
 # Type declarations (generated)
 *.d.ts.map
+
+# TypeScript incremental build cache — never commit build artefacts
+*.tsbuildinfo

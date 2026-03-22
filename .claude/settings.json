@@ -16,7 +16,11 @@
       "Bash(grep -r \"pg-boss\\\\|JobsModule\\\\|JobService\" /c/Users/steir/OfferAccept/apps/api/src --include=*.ts -l)",
       "Bash(grep -r offeraccept /c/Users/steir/OfferAccept --include=*.json --include=*.ts --include=*.tsx --include=*.md --include=*.yml --include=*.yaml --include=*.sql --include=*.prisma --include=*.css --include=*.env* --include=*.txt -l)",
       "Read(//dev/**)",
-      "Bash(grep -r offeracept /c/Users/steir/OfferAccept --include=*.json --include=*.ts --include=*.tsx --include=*.md --include=*.yml --include=*.prisma --include=*.sql --include=*.env* --exclude=package-lock.json -l)"
+      "Bash(grep -r offeracept /c/Users/steir/OfferAccept --include=*.json --include=*.ts --include=*.tsx --include=*.md --include=*.yml --include=*.prisma --include=*.sql --include=*.env* --exclude=package-lock.json -l)",
+      "Bash(npx turbo:*)",
+      "Bash(git fetch:*)",
+      "Bash(git diff:*)",
+      "Bash(__NEW_LINE_8583b9540ea37670__ git:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\steir\\.claude\\projects\\c--Users-steir-OfferAccept\\memory"

@@ -7,7 +7,8 @@ import { JobScheduler } from './job.scheduler';
 import { ExpireSessionsHandler } from './handlers/expire-sessions.handler';
 import { ExpireOffersHandler } from './handlers/expire-offers.handler';
 import { IssueCertificateHandler } from './handlers/issue-certificate.handler';
-import { SendEmailHandler } from './handlers/send-email.handler';
+// SendEmailHandler is NOT registered as a provider — it is a stub, not wired into JobWorker.
+// Add it back here when the handler is implemented and ready for activation.
 import { SendWebhookHandler } from './handlers/send-webhook.handler';
 import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.handler';
 import { CertificatesModule } from '../certificates/certificates.module';
@@ -69,7 +70,8 @@ import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
     ExpireSessionsHandler,
     ExpireOffersHandler,
     IssueCertificateHandler,
-    SendEmailHandler,
+    // SendEmailHandler deliberately omitted — stub, not yet wired into JobWorker.
+    // When implementing: add it here, add it back to JobWorker constructor + work() call.
     SendWebhookHandler,
     ResetMonthlyBillingHandler,
   ],
