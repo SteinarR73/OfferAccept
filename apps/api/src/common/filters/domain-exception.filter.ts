@@ -175,8 +175,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     // ── 410 Gone — resource was valid but is now permanently unavailable ───────
-    if (err instanceof OfferExpiredError || err instanceof OfferAlreadyAcceptedError) {
-      return this.make(HttpStatus.GONE, err.message, err.name.replace('Error', '').toUpperCase());
+    if (err instanceof OfferExpiredError) {
+      return this.make(HttpStatus.GONE, err.message, 'OFFER_EXPIRED');
+    }
+    if (err instanceof OfferAlreadyAcceptedError) {
+      return this.make(HttpStatus.GONE, err.message, 'OFFER_ALREADY_ACCEPTED');
     }
 
     // ── 422 Unprocessable — valid request but wrong business state ─────────────

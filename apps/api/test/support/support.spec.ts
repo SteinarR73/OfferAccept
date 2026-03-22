@@ -37,8 +37,9 @@ function makeJwt(jwtService: JwtService, role = 'INTERNAL_SUPPORT') {
 // ─── Shared mock DB factory ────────────────────────────────────────────────────
 
 function createMockDb() {
-  return {
-    $transaction: jest.fn().mockImplementation(async (fn: unknown) => (fn as (tx: unknown) => Promise<unknown>)({})),
+  const mock = {
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
     offer: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
@@ -87,7 +88,13 @@ function createMockDb() {
     user: {
       findUniqueOrThrow: jest.fn(),
     },
+    supportAuditLog: {
+      create: jest.fn<() => Promise<{ id: string }>>().mockResolvedValue({ id: 'audit-1' }),
+    },
   };
+  // $transaction must pass `mock` as the tx argument so tx.offer.update etc. resolve correctly.
+  mock.$transaction.mockImplementation(async (fn: unknown) => (fn as (tx: typeof mock) => Promise<unknown>)(mock));
+  return mock;
 }
 
 type MockDb = ReturnType<typeof createMockDb>;
@@ -233,7 +240,7 @@ async function buildApp(db: MockDb) {
     .useValue({ dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) })
     // Override REDIS_CLIENT so RateLimitModule factory doesn't crash on undefined REDIS_URL.
     .overrideProvider(REDIS_CLIENT)
-    .useValue({ eval: jest.fn<() => Promise<null>>().mockResolvedValue(null), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
+    .useValue({ eval: jest.fn<() => Promise<number[]>>().mockResolvedValue([1, 0, 0]), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
     .compile();
 
   const app = module.createNestApplication();
@@ -663,8 +670,9 @@ describe('Support API — safe actions', () => {
 
   it('POST /support/offers/:id/resend-link — resends offer link and records attempt', async () => {
     const recipient = { ...makeRecipient(), tokenInvalidatedAt: null };
+    // resend() uses findFirst with include: { recipient: true } — recipient must be embedded
     db.offer.findUnique.mockResolvedValue(makeOffer() as never);
-    db.offer.findFirst.mockResolvedValue(makeOffer() as never);
+    db.offer.findFirst.mockResolvedValue({ ...makeOffer(), recipient } as never);
     db.offerRecipient.findUnique.mockResolvedValue(recipient as never);
     db.offerRecipient.update.mockResolvedValue(recipient as never);
     db.offerSnapshot.findUniqueOrThrow.mockResolvedValue(makeSnapshot() as never);

@@ -8,18 +8,23 @@ import { jest } from '@jest/globals';
 export function createMockDb() {
   const mock = {
     $transaction: jest.fn(),
+    // pg_advisory_xact_lock is called inside transactions via $queryRaw.
+    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
     offerRecipient: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
-      updateMany: jest.fn(),
+      // Used by verifyAndAdvanceSession() for optimistic concurrency check.
+      updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 1 }),
       create: jest.fn(),
     },
     offer: {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      // Used by acceptanceService.accept/decline for atomic compare-and-swap.
+      updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 1 }),
     },
     offerSnapshot: {
       findFirst: jest.fn(),
@@ -36,6 +41,8 @@ export function createMockDb() {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      // Used by doTransition() for optimistic concurrency — default allows state changes to succeed.
+      updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 1 }),
     },
     signingEvent: {
       create: jest.fn(),

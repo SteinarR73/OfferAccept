@@ -78,7 +78,9 @@ describe('Public Signing Flow (e2e)', () => {
       // Override REDIS_CLIENT to prevent the RateLimitModule factory from crashing
       // when REDIS_URL is undefined in the test ConfigModule.
       .overrideProvider(REDIS_CLIENT)
-      .useValue({ eval: jest.fn<() => Promise<null>>().mockResolvedValue(null), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
+      // Return [1, 0, 0] = [allowed=1, count, resetAtMs] — RateLimitService destructures this tuple.
+      // Returning null would cause "null is not iterable" outside the try-catch.
+      .useValue({ eval: jest.fn<() => Promise<number[]>>().mockResolvedValue([1, 0, 0]), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
       .compile();
 
     app = module.createNestApplication();
@@ -228,6 +230,8 @@ describe('Public Signing Flow (e2e)', () => {
       });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
+      // verifyAndAdvanceSession() uses findUnique (not findFirst) for recipient version check
+      db.offerRecipient.findUnique.mockResolvedValue(recipient as never);
       db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
       // New flow: verifyAndAdvanceSession() loads session via findUnique (from challenge.sessionId),
       // not findFirst. findFirst is still set for other uses (e.g., decline).
@@ -249,7 +253,8 @@ describe('Public Signing Flow (e2e)', () => {
         .expect(200);
 
       expect(res.body).toMatchObject({ verified: true, verifiedAt: expect.any(String) });
-      expect(db.signingSession.update).toHaveBeenCalledWith(
+      // Service uses updateMany (optimistic concurrency) not update
+      expect(db.signingSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'OTP_VERIFIED' }) }),
       );
     });
@@ -358,7 +363,8 @@ describe('Public Signing Flow (e2e)', () => {
       });
 
       expect(db.acceptanceRecord.create).toHaveBeenCalled();
-      expect(db.offer.update).toHaveBeenCalledWith(
+      // Service uses updateMany (atomic compare-and-swap on status='SENT') not update
+      expect(db.offer.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: 'ACCEPTED' } }),
       );
     });
@@ -426,11 +432,16 @@ describe('Public Signing Flow (e2e)', () => {
 
   describe('POST /api/v1/signing/:token/decline — decline', () => {
     it('declines the offer and transitions all entities', async () => {
-      const recipient = makeRecipient({ status: 'VIEWED' as 'PENDING' });
-      const session = makeSession({ status: 'AWAITING_OTP' });
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
+      // State machine only allows DECLINED from OTP_VERIFIED, not from AWAITING_OTP.
+      const session = makeSession({ status: 'OTP_VERIFIED', otpVerifiedAt: new Date() });
+      const challenge = makeChallenge();
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
+      db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findUniqueOrThrow.mockResolvedValue({ ...session, status: 'DECLINED' } as never);
       db.signingSession.findFirst.mockResolvedValue(session as never);
       db.offer.findUniqueOrThrow.mockResolvedValue(makeOffer() as never);
       db.signingSession.update.mockResolvedValue({ ...session, status: 'DECLINED' } as never);
@@ -441,10 +452,12 @@ describe('Public Signing Flow (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/signing/${VALID_RAW_TOKEN}/decline`)
+        .send({ challengeId: 'challenge-1' })
         .expect(200);
 
       expect(res.body).toMatchObject({ declined: true });
-      expect(db.offer.update).toHaveBeenCalledWith(
+      // Service uses updateMany (atomic compare-and-swap on status='SENT') not update
+      expect(db.offer.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: 'DECLINED' } }),
       );
     });
@@ -454,6 +467,7 @@ describe('Public Signing Flow (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/api/v1/signing/oa_bad_token/decline')
+        .send({ challengeId: 'challenge-1' })
         .expect(404);
     });
   });
