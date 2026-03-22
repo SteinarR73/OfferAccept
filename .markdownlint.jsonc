@@ -1,0 +1,19 @@
+{
+  // https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+  "default": true,
+
+  // MD013 — line length: disabled (long tables and code blocks are intentional)
+  "MD013": false,
+
+  // MD033 — inline HTML: allowed (we use <br/> in Mermaid labels)
+  "MD033": false,
+
+  // MD041 — first line must be top-level heading: disabled for docs that start with front-matter
+  "MD041": false,
+
+  // MD024 — no duplicate headings: disabled (same heading in different sections is fine)
+  "MD024": false,
+
+  // MD007 — unordered list indent: 2 spaces
+  "MD007": { "indent": 2 }
+}

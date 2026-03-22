@@ -8,7 +8,8 @@ import { roleAtLeast } from '../membership.service';
 
 // OrgRole values as a plain union — mirrors the Prisma enum without importing it.
 // Using a string literal type here keeps the guard decoupled from Prisma generation state.
-type OrgRoleValue = 'OWNER' | 'ADMIN' | 'MEMBER';
+// Hierarchy: OWNER > ADMIN > MEMBER > VIEWER
+type OrgRoleValue = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
 
 // ─── RequireOrgRole decorator ──────────────────────────────────────────────────
 // Applied to controller methods that require the caller to have at least `role`

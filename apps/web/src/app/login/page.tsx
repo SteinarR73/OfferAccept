@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '../../lib/offers-api';
-import { setToken } from '../../lib/auth';
+import { markAuthenticated } from '../../lib/auth';
 
 // ─── LoginPage ────────────────────────────────────────────────────────────────
 // Minimal sender login. On success, stores the JWT and redirects to dashboard.
@@ -20,8 +20,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { token } = await login({ email, password });
-      setToken(token);
+      await login({ email, password }); // sets HttpOnly cookies server-side
+      markAuthenticated();             // sets JS-readable session indicator
       router.replace('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed.');

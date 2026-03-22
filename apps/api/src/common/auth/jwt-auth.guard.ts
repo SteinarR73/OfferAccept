@@ -22,8 +22,9 @@ import { Request } from 'express';
 
 export interface JwtPayload {
   sub: string;         // userId
-  orgId: string;
-  role: string;
+  orgId: string;       // primary org from Membership
+  orgRole?: string;    // OrgRole from Membership (present on tokens issued after multi-org migration)
+  role: string;        // platform UserRole (OWNER/ADMIN/MEMBER/INTERNAL_SUPPORT)
   sessionId?: string;  // present on tokens issued by the new auth flow
   iat?: number;
   exp?: number;

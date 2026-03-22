@@ -12,9 +12,10 @@ import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 // Refresh tokens are NOT JWTs — they are handled by SessionService.
 
 export interface AccessTokenPayload {
-  sub: string;     // userId
-  orgId: string;
-  role: string;
+  sub: string;       // userId
+  orgId: string;     // primary org from Membership
+  orgRole: string;   // OrgRole from Membership (OWNER/ADMIN/MEMBER/VIEWER)
+  role: string;      // platform UserRole (OWNER/ADMIN/MEMBER/INTERNAL_SUPPORT)
   sessionId: string;
 }
 

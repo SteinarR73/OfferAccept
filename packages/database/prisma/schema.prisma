@@ -22,11 +22,12 @@ datasource db {
 
 // Role within an organization. Separate from UserRole (which includes
 // INTERNAL_SUPPORT — a platform-level role, not an org-level role).
-// Hierarchy for RBAC: OWNER > ADMIN > MEMBER
+// Hierarchy for RBAC: OWNER > ADMIN > MEMBER > VIEWER
 enum OrgRole {
   OWNER
   ADMIN
   MEMBER
+  VIEWER
 }
 
 model Organization {
@@ -147,7 +148,10 @@ enum UserRole {
 
 model User {
   id             String    @id @default(cuid())
-  organizationId String
+  // Legacy single-org FK — nullable since multi-org uses Membership as canonical source.
+  // New code reads org context from Membership; this field is kept as a fallback
+  // for backward compatibility until a full data migration removes it.
+  organizationId String?
   email          String    @unique
   name           String
   role           UserRole  @default(MEMBER)
@@ -157,7 +161,7 @@ model User {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization            Organization             @relation(fields: [organizationId], references: [id])
+  organization            Organization?            @relation(fields: [organizationId], references: [id])
   offersCreated           Offer[]                  @relation("CreatedByUser")
   sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]

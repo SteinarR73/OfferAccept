@@ -264,12 +264,17 @@ export class AuthController {
     return { message: 'Password changed. Please log in again.' };
   }
 
-  // GET /auth/me (authenticated — health-check that the access token is valid)
+  // GET /auth/me (authenticated — returns current user's identity and org context)
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  me(@Req() req: Request): { userId: string; orgId: string; role: string } {
+  me(@Req() req: Request): { userId: string; orgId: string; orgRole: string; role: string } {
     const user = (req as Request & { user: JwtPayload }).user;
-    return { userId: user.sub, orgId: user.orgId, role: user.role };
+    return {
+      userId: user.sub,
+      orgId: user.orgId,
+      orgRole: user.orgRole ?? user.role, // orgRole added after multi-org migration; fall back to platform role
+      role: user.role,
+    };
   }
 }
 

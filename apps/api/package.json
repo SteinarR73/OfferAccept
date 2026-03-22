@@ -13,10 +13,10 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1014.0",
     "@aws-sdk/s3-request-presigner": "^3.1014.0",
-    "@nestjs/common": "^10.4.15",
+    "@nestjs/common": "^11.1.17",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.17",
-    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.1.17",
     "@nestjs/terminus": "^11.1.1",
     "@offeracept/database": "*",
@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.16",
-    "@nestjs/schematics": "^7.3.1",
+    "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.17",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.8",

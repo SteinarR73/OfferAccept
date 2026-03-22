@@ -12,9 +12,10 @@ export interface LoginRequest {
   password: string;
 }
 
+// Cookie-based auth: tokens are delivered as HttpOnly cookies by the server.
+// The response body only confirms success — no token in JSON.
 export interface LoginResponse {
-  token: string;    // JWT bearer token
-  expiresIn: string;
+  message: string;
 }
 
 // ─── Offers (authenticated sender) ───────────────────────────────────────────

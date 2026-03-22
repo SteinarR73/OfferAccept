@@ -9,13 +9,14 @@ import {
 } from '../../common/errors/domain.errors';
 
 // ─── Role hierarchy ────────────────────────────────────────────────────────────
-// OWNER(3) > ADMIN(2) > MEMBER(1)
+// OWNER(4) > ADMIN(3) > MEMBER(2) > VIEWER(1)
 // Used to check whether a caller's role satisfies a minimum requirement.
 
 const ROLE_RANK: Record<OrgRole, number> = {
-  OWNER: 3,
-  ADMIN: 2,
-  MEMBER: 1,
+  OWNER: 4,
+  ADMIN: 3,
+  MEMBER: 2,
+  VIEWER: 1,
 };
 
 export function roleAtLeast(actual: OrgRole, required: OrgRole): boolean {

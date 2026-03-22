@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import { Injectable, Inject } from '@nestjs/common';
-import { PrismaClient, User, EmailVerificationToken, PasswordResetToken } from '@prisma/client';
+import { PrismaClient, User, Membership, EmailVerificationToken, PasswordResetToken } from '@prisma/client';
 
 // ─── AuthRepository ────────────────────────────────────────────────────────────
 // All DB queries for the auth domain. Keeps auth.service.ts free of Prisma details.
@@ -33,6 +33,18 @@ export class AuthRepository {
 
   async findUserById(userId: string): Promise<User | null> {
     return this.db.user.findUnique({ where: { id: userId, deletedAt: null } });
+  }
+
+  // Returns the user's primary membership (OWNER role preferred, then earliest created).
+  // Falls back to null if the user has no memberships (should not happen for normal users).
+  async findPrimaryMembership(userId: string): Promise<Membership | null> {
+    // Prefer the membership where the user is OWNER, then fallback to most-recently created.
+    const memberships = await this.db.membership.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+    if (memberships.length === 0) return null;
+    return memberships.find((m) => m.role === 'OWNER') ?? memberships[0];
   }
 
   // Creates an org + owner user + OWNER Membership atomically.

@@ -1,4 +1,4 @@
-import { authHeaders } from './auth';
+import { refreshAccessToken, markUnauthenticated } from './auth';
 import type {
   LoginRequest,
   LoginResponse,
@@ -13,8 +13,14 @@ import type {
 } from '@offeracept/types';
 
 // ─── API client — authenticated sender endpoints ───────────────────────────────
-// All calls include the Authorization: Bearer header from localStorage.
-// Throws ApiError on non-2xx responses.
+// Authentication is handled entirely via HttpOnly cookies (accessToken).
+// credentials: 'include' is required so the browser sends the cookies.
+//
+// Automatic token refresh:
+//   On 401 the client silently calls POST /auth/refresh once.
+//   If the refresh succeeds (new accessToken cookie set), the original request
+//   is retried. If the refresh also fails, markUnauthenticated() is called and
+//   an ApiError(401) is thrown so the caller can redirect to /login.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -29,12 +35,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+// Internal: single fetch attempt, no retry logic.
+async function fetchOnce<T>(path: string, init: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: 'include', // sends HttpOnly cookies on every request
     headers: {
       'Content-Type': 'application/json',
-      ...authHeaders(),
       ...(init.headers ?? {}),
     },
   });
@@ -44,18 +51,81 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(res.status, body.code, body.message ?? `HTTP ${res.status}`);
   }
 
-  // 204 No Content
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
+// Public fetch wrapper with one transparent refresh-and-retry on 401.
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  try {
+    return await fetchOnce<T>(path, init);
+  } catch (err) {
+    if (err instanceof ApiError && err.statusCode === 401) {
+      // Access token expired — attempt silent refresh.
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        // Retry with the fresh accessToken cookie now in place.
+        return fetchOnce<T>(path, init);
+      }
+      // Refresh token also expired or invalid — session is dead.
+      markUnauthenticated();
+    }
+    throw err;
+  }
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+// Login: credentials are sent as JSON, tokens arrive as HttpOnly cookies.
+// The response body only contains { message } — no token in JSON.
+// Call markAuthenticated() after this returns to set the session indicator.
 export async function login(data: LoginRequest): Promise<LoginResponse> {
-  return request<LoginResponse>('/auth/login', {
+  return fetchOnce<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// Returns the current user's identity and org context from the JWT claims.
+export async function getMe(): Promise<{ userId: string; orgId: string; orgRole: string; role: string }> {
+  return request('/auth/me');
+}
+
+// ─── Organization ──────────────────────────────────────────────────────────────
+
+export interface OrgInfo {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export async function getOrg(): Promise<OrgInfo> {
+  return request<OrgInfo>('/organizations/me');
+}
+
+// ─── Billing ───────────────────────────────────────────────────────────────────
+
+export type SubscriptionPlan = 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+export type SubscriptionStatus = 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED';
+
+export interface BillingSubscription {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  monthlyOfferCount: number;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  lastUsageReset: string | null;
+}
+
+export const PLAN_LIMITS: Record<SubscriptionPlan, number | null> = {
+  FREE: 3,
+  STARTER: 25,
+  PROFESSIONAL: 100,
+  ENTERPRISE: null,
+};
+
+export async function getBillingSubscription(): Promise<BillingSubscription> {
+  return request<BillingSubscription>('/billing/subscription');
 }
 
 // ─── Offers ───────────────────────────────────────────────────────────────────
@@ -91,8 +161,38 @@ export async function setRecipient(id: string, data: SetRecipientRequest) {
   });
 }
 
-export async function addDocument(id: string, data: AddDocumentRequest) {
-  return request(`/offers/${id}/documents`, {
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+export interface DocumentUploadUrl {
+  uploadUrl: string;
+  storageKey: string;
+}
+
+// Get a presigned S3 URL for direct browser upload.
+export async function getDocumentUploadUrl(
+  offerId: string,
+  filename: string,
+  mimeType: string,
+): Promise<DocumentUploadUrl> {
+  return request<DocumentUploadUrl>(`/offers/${offerId}/documents/upload-url`, {
+    method: 'POST',
+    body: JSON.stringify({ filename, mimeType }),
+  });
+}
+
+// Upload directly to S3 using the presigned URL.
+// Content-Type must match what was requested; do NOT include credentials here.
+export async function uploadFileToS3(uploadUrl: string, file: File): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: { 'Content-Type': file.type },
+  });
+  if (!res.ok) throw new Error(`S3 upload failed: HTTP ${res.status}`);
+}
+
+export async function addDocument(id: string, data: AddDocumentRequest): Promise<{ id: string }> {
+  return request<{ id: string }>(`/offers/${id}/documents`, {
     method: 'POST',
     body: JSON.stringify(data),
   });

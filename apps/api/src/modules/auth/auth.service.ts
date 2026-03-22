@@ -98,7 +98,7 @@ export class AuthService {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    return { userId: user.id, orgId: user.organizationId };
+    return { userId: user.id, orgId: user.organizationId ?? '' };
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -123,9 +123,16 @@ export class AuthService {
 
     const { rawToken, session } = await this.sessionService.create(user.id, context);
 
+    // Resolve org context from Membership (canonical for multi-org).
+    // Falls back to User.organizationId for accounts that predate the migration.
+    const membership = await this.repo.findPrimaryMembership(user.id);
+    const orgId = membership?.organizationId ?? user.organizationId ?? '';
+    const orgRole = membership?.role ?? user.role;
+
     const payload: AccessTokenPayload = {
       sub: user.id,
-      orgId: user.organizationId,
+      orgId,
+      orgRole,
       role: user.role,
       sessionId: session.id,
     };
@@ -171,9 +178,14 @@ export class AuthService {
       context,
     );
 
+    const membership = await this.repo.findPrimaryMembership(user.id);
+    const orgId = membership?.organizationId ?? user.organizationId ?? '';
+    const orgRole = membership?.role ?? user.role;
+
     const payload: AccessTokenPayload = {
       sub: user.id,
-      orgId: user.organizationId,
+      orgId,
+      orgRole,
       role: user.role,
       sessionId: newSession.id,
     };

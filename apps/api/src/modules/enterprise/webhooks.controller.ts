@@ -10,56 +10,22 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  IsString,
-  IsUrl,
-  IsArray,
-  ArrayMinSize,
-  IsBoolean,
-  IsOptional,
-} from 'class-validator';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { OrgRoleGuard, RequireOrgRole } from '../organizations/guards/org-role.guard';
-import { WebhookService, WebhookEvent } from './webhook.service';
-
-// ─── DTOs ─────────────────────────────────────────────────────────────────────
-
-class CreateWebhookDto {
-  @IsUrl({ protocols: ['https'], require_tld: true })
-  url!: string;
-
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  events!: WebhookEvent[];
-}
-
-class UpdateWebhookDto {
-  @IsOptional()
-  @IsUrl({ protocols: ['https'], require_tld: true })
-  url?: string;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  events?: WebhookEvent[];
-
-  @IsOptional()
-  @IsBoolean()
-  enabled?: boolean;
-}
+import { WebhookService } from './webhook.service';
+import { CreateWebhookDto } from './dtos/create-webhook.dto';
+import { UpdateWebhookDto } from './dtos/update-webhook.dto';
 
 // ─── WebhooksController ────────────────────────────────────────────────────────
 // Routes under /api/v1/webhooks
 //
 // All routes require JWT + ADMIN or OWNER role.
 //
-// POST   /webhooks         — create endpoint. Secret returned ONCE in response.
-// GET    /webhooks         — list endpoints (no secret in response)
-// PUT    /webhooks/:id     — update url, events, or enabled flag
-// DELETE /webhooks/:id     — delete endpoint + delivery history
+// POST   /webhooks          — create endpoint. Secret returned ONCE in response.
+// GET    /webhooks          — list endpoints (no secret in response)
+// PUT    /webhooks/:id      — update url, events, or enabled flag
+// DELETE /webhooks/:id      — delete endpoint + delivery history
 // POST   /webhooks/:id/test — send a test.ping delivery to verify the endpoint
 //
 // Events:
@@ -69,9 +35,6 @@ class UpdateWebhookDto {
 // Signature header: X-OfferAccept-Signature: sha256=<HMAC-SHA256(secret, body)>
 // Delivery ID header: X-OfferAccept-Delivery: <webhookEventId>
 // Event header:       X-OfferAccept-Event: <event>
-//
-// The webhookEventId in the body and headers is stable across retries — customers
-// should use it as their own idempotency key.
 
 @Controller('webhooks')
 @UseGuards(JwtAuthGuard, OrgRoleGuard)
@@ -81,10 +44,7 @@ export class WebhooksController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(
-    @Body() dto: CreateWebhookDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async create(@Body() dto: CreateWebhookDto, @CurrentUser() user: JwtPayload) {
     return this.webhookService.createEndpoint({
       organizationId: user.orgId,
       url: dto.url,
