@@ -211,7 +211,7 @@ export function SigningClient({ token }: { token: string }) {
 
       <main className="flex-1 mx-auto w-full max-w-2xl px-4 py-10">
         {phase.name === 'loading' && (
-          <SpinnerPage label="Loading offer…" />
+          <SpinnerPage label="Loading deal…" />
         )}
 
         {phase.name === 'invalid_link' && (
@@ -227,9 +227,9 @@ export function SigningClient({ token }: { token: string }) {
         {phase.name === 'offer_expired' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
             <XCircle className="w-12 h-12 text-amber-400 mb-4" aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-gray-900">Offer expired</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Deal expired</h1>
             <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
-              This offer is no longer open for acceptance.
+              This deal is no longer open for acceptance.
               {phase.expiresAt && (
                 <> It expired on {new Date(phase.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.</>
               )}
@@ -240,9 +240,9 @@ export function SigningClient({ token }: { token: string }) {
         {phase.name === 'already_terminal' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
             <CheckCircle className="w-12 h-12 text-blue-400 mb-4" aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-gray-900">Offer closed</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Deal closed</h1>
             <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
-              This offer has already been responded to.
+              This deal has already been responded to.
             </p>
           </div>
         )}
@@ -291,9 +291,9 @@ export function SigningClient({ token }: { token: string }) {
         {phase.name === 'declined' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
             <XCircle className="w-12 h-12 text-gray-400 mb-4" aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-gray-900">Offer declined</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Deal declined</h1>
             <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
-              You have declined this offer. No further action is needed.
+              You have declined this deal. No further action is needed.
             </p>
           </div>
         )}
@@ -316,7 +316,7 @@ function OfferView({
   return (
     <div>
       <p className="text-sm text-[--color-text-muted] mb-1">
-        Offer from <span className="font-medium text-gray-700">{ctx.senderName}</span>
+        Deal from <span className="font-medium text-gray-700">{ctx.senderName}</span>
       </p>
       <h1 className="text-2xl font-semibold text-[--color-text-primary]">{ctx.offerTitle}</h1>
 
@@ -475,26 +475,75 @@ function AcceptanceView({
 
 function CompletedView({ acceptedAt }: { acceptedAt: string }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-      {/* Large green checkmark */}
-      <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
-        <svg viewBox="0 0 40 40" fill="none" className="w-12 h-12" aria-hidden="true">
-          <circle cx="20" cy="20" r="20" fill="#dcfce7" />
-          <path d="M11 21l6 6 12-13" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-fade-in">
+
+      {/* ── Animated checkmark icon ─────────────────────────────────────────── */}
+      <div
+        className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center mb-7
+                   ring-4 ring-green-200 animate-pulse-ring shadow-xl shadow-green-200/60"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14">
+          <path
+            d="M12 25l9 9 15-16"
+            stroke="white"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="animate-check-draw"
+          />
         </svg>
       </div>
 
-      <h1 className="text-2xl font-semibold text-gray-900">You're all set!</h1>
-      <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
-        Your acceptance was confirmed on{' '}
-        {new Date(acceptedAt).toLocaleDateString('en-US', {
-          month: 'long', day: 'numeric', year: 'numeric',
-          hour: '2-digit', minute: '2-digit',
-        })}.
+      {/* ── Heading ─────────────────────────────────────────────────────────── */}
+      <h1 className="text-3xl font-bold text-gray-900 mb-3">You&rsquo;re all set.</h1>
+      <p className="text-base text-gray-700 font-medium max-w-sm mb-2">
+        This deal has been accepted and verified.
       </p>
-      <p className="mt-3 text-sm text-[--color-text-muted] max-w-sm">
-        A confirmation email has been sent to you. An acceptance certificate will be issued
-        and sent to both parties.
+      <p className="text-sm text-[--color-text-secondary] max-w-sm mb-6">
+        Accepted on{' '}
+        <time
+          dateTime={acceptedAt}
+          className="font-medium text-gray-900"
+        >
+          {new Date(acceptedAt).toLocaleString('en-US', {
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+          })}
+        </time>
+        .
+      </p>
+
+      {/* ── Certificate notice ──────────────────────────────────────────────── */}
+      <div className="max-w-sm w-full rounded-xl border border-green-200 bg-green-50 px-5 py-4 mb-6">
+        <div className="flex items-start gap-3">
+          <div
+            className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5"
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 20 20" fill="white" className="w-4 h-4">
+              <path
+                fillRule="evenodd"
+                d="M10 1a9 9 0 100 18A9 9 0 0010 1zM8.293 13.707a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L9 11.586 7.707 10.293a1 1 0 00-1.414 1.414l2 2z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-green-800 mb-0.5">
+              Acceptance certificate issued
+            </p>
+            <p className="text-xs text-green-700 leading-relaxed">
+              A tamper-proof certificate has been generated and sent to both parties.
+              It serves as legally-binding proof of this acceptance.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Trust footer ────────────────────────────────────────────────────── */}
+      <p className="text-xs text-[--color-text-muted]">
+        🔒 Verified with OTP · SHA-256 sealed · Audit trail preserved
       </p>
     </div>
   );

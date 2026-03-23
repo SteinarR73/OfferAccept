@@ -94,6 +94,25 @@
 }
 .animate-scale-in { animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+/* ── Acceptance moment: pulsing ring ─────────────────────────────── */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0   rgb(34 197 94 / 0.4); }
+  70%  { box-shadow: 0 0 0 16px rgb(34 197 94 / 0); }
+  100% { box-shadow: 0 0 0 0   rgb(34 197 94 / 0); }
+}
+.animate-pulse-ring { animation: pulse-ring 1.8s ease-out 0.3s 2; }
+
+/* ── Check draw animation ────────────────────────────────────────── */
+@keyframes check-draw {
+  from { stroke-dashoffset: 60; }
+  to   { stroke-dashoffset: 0; }
+}
+.animate-check-draw {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: check-draw 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
 /* ── Shimmer skeleton ───────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }

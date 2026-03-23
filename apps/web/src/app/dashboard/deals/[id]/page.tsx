@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import { CheckCircle2 } from 'lucide-react';
 import {
   getOffer,
   sendOffer,
@@ -135,9 +136,15 @@ export default function DealDetailPage() {
         <CertificateShowcase certificateId={offer.certificateId} />
       )}
       {isAccepted && !offer.certificateId && (
-        <Alert variant="success">
-          Deal accepted. Certificate generation may still be in progress.
-        </Alert>
+        <div className="rounded-2xl border-2 border-green-300 bg-gradient-to-b from-green-50 to-emerald-50/30 p-8 mb-5 animate-scale-in text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-green-200 animate-pulse-ring shadow-lg shadow-green-200/60">
+              <CheckCircle2 className="w-8 h-8 text-white" aria-hidden="true" />
+            </div>
+          </div>
+          <h2 className="text-lg font-bold text-green-800 mb-1">Acceptance verified</h2>
+          <p className="text-sm text-green-700">Certificate generation is in progress — refresh in a moment.</p>
+        </div>
       )}
 
       {/* ── Row 1: Deal summary (2/3) + Customer (1/3) ─────────────────────── */}
