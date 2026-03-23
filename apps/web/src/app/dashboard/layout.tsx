@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, FileText, CreditCard, Settings,
+  LayoutDashboard, Briefcase, FolderOpen, Users, CreditCard, Settings,
   LogOut, Menu, X, ChevronRight, Search,
 } from 'lucide-react';
 import { isAuthenticated, logout } from '../../lib/auth';
@@ -20,10 +20,12 @@ import { cn } from '../../lib/cn';
 interface NavItem { href: string; label: string; icon: ReactNode; exact?: boolean; }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',          label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" aria-hidden="true" />, exact: true },
-  { href: '/dashboard/offers',   label: 'Offers',   icon: <FileText       className="w-4 h-4" aria-hidden="true" /> },
-  { href: '/dashboard/billing',  label: 'Billing',  icon: <CreditCard     className="w-4 h-4" aria-hidden="true" /> },
-  { href: '/dashboard/settings', label: 'Settings', icon: <Settings       className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard',              label: 'Overview',  icon: <LayoutDashboard className="w-4 h-4" aria-hidden="true" />, exact: true },
+  { href: '/dashboard/deals',        label: 'Deals',     icon: <Briefcase       className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/customers',    label: 'Customers', icon: <Users           className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/documents',    label: 'Documents', icon: <FolderOpen      className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/billing',      label: 'Billing',   icon: <CreditCard      className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/settings',     label: 'Settings',  icon: <Settings        className="w-4 h-4" aria-hidden="true" /> },
 ];
 
 // ─── Breadcrumb builder ────────────────────────────────────────────────────────
@@ -32,8 +34,11 @@ function buildBreadcrumb(pathname: string) {
   const segments = pathname.split('/').filter(Boolean);
   const LABELS: Record<string, string> = {
     dashboard: 'Overview',
-    offers: 'Offers',
-    new: 'New offer',
+    deals: 'Deals',
+    customers: 'Customers',
+    documents: 'Documents',
+    offers: 'Deals',
+    new: 'New deal',
     billing: 'Billing',
     settings: 'Settings',
   };

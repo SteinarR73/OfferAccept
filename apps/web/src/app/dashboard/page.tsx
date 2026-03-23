@@ -14,6 +14,7 @@ import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
 import { InsightsPanel } from '../../components/dashboard/InsightsPanel';
 import { AcceptanceTrend } from '../../components/dashboard/AcceptanceTrend';
 import { UsageProgress } from '../../components/dashboard/UsageProgress';
+import { DealsPipeline } from '../../components/dashboard/DealsPipeline';
 import { Button } from '../../components/ui/Button';
 
 // ─── Tour steps ────────────────────────────────────────────────────────────────
@@ -21,26 +22,26 @@ import { Button } from '../../components/ui/Button';
 const TOUR_STEPS: TourStep[] = [
   {
     target: 'stats-total',
-    title: 'Your offer overview',
-    body: 'These cards show a live summary of all your offers — total sent, accepted, pending, and your acceptance rate.',
+    title: 'Your deals overview',
+    body: 'These cards show a live summary of all your deals — total sent, accepted, pending, and your acceptance rate.',
     placement: 'bottom',
   },
   {
     target: 'create-offer',
-    title: 'Create an offer',
-    body: 'Click here to draft a new offer. Add the job title, terms, and recipient — then send with one click.',
+    title: 'Create a deal',
+    body: 'Click here to draft a new deal. Add the title, terms, and customer — then send with one click.',
     placement: 'bottom',
   },
   {
     target: 'offer-table',
-    title: 'Track your offers',
-    body: 'All offers appear here. Filter by status and click any row to view details or take action.',
+    title: 'Track your deals',
+    body: 'All deals appear here. Filter by status and click any row to view details or take action.',
     placement: 'top',
   },
   {
     target: 'billing-card',
     title: 'Plan & usage',
-    body: 'Monitor how many offers you\'ve used this month. Upgrade anytime to unlock higher limits.',
+    body: 'Monitor how many deals you\'ve sent this month. Upgrade anytime to unlock higher limits.',
     placement: 'left',
   },
 ];
@@ -55,16 +56,11 @@ interface Stats {
 }
 
 function deriveStats(offers: OfferItem[]): Stats {
-  const sent = offers.filter((o) => o.status !== 'DRAFT');
-  const accepted = offers.filter((o) => o.status === 'ACCEPTED');
-  const pending = offers.filter((o) => o.status === 'SENT');
+  const sent       = offers.filter((o) => o.status !== 'DRAFT');
+  const accepted   = offers.filter((o) => o.status === 'ACCEPTED');
+  const pending    = offers.filter((o) => o.status === 'SENT');
   const conversionPct = sent.length > 0 ? Math.round((accepted.length / sent.length) * 100) : 0;
-  return {
-    total: offers.length,
-    accepted: accepted.length,
-    pending: pending.length,
-    conversionPct,
-  };
+  return { total: offers.length, accepted: accepted.length, pending: pending.length, conversionPct };
 }
 
 // ─── DashboardPage ─────────────────────────────────────────────────────────────
@@ -108,7 +104,7 @@ export default function DashboardPage() {
           </div>
           <Link href="/dashboard/offers/new">
             <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />} data-tour="create-offer">
-              New offer
+              New deal
             </Button>
           </Link>
         </div>
@@ -124,7 +120,7 @@ export default function DashboardPage() {
         {/* ── Stats row ────────────────────────────────────────────────────── */}
         <div
           className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-          aria-label="Offer statistics"
+          aria-label="Deal statistics"
         >
           {loading ? (
             <>
@@ -136,35 +132,32 @@ export default function DashboardPage() {
           ) : (
             <>
               <StatsCard
-                label="Total offers"
+                label="Total deals"
                 value={stats.total}
                 tourId="stats-total"
-                description={`Total offers: ${stats.total}`}
+                description={`Total deals: ${stats.total}`}
               />
               <StatsCard
                 label="Accepted"
                 value={stats.accepted}
                 trend="positive"
                 sub={stats.accepted > 0 ? `${stats.conversionPct}% rate` : undefined}
-                description={`Accepted offers: ${stats.accepted}`}
+                description={`Accepted deals: ${stats.accepted}`}
               />
               <StatsCard
-                label="Pending"
+                label="Awaiting response"
                 value={stats.pending}
-                trend={stats.pending > 0 ? 'neutral' : 'neutral'}
-                description={`Pending offers: ${stats.pending}`}
+                trend="neutral"
+                description={`Deals awaiting response: ${stats.pending}`}
               />
               <StatsCard
                 label="Acceptance rate"
                 value={`${stats.conversionPct}%`}
                 trend={
-                  stats.conversionPct >= 70
-                    ? 'positive'
-                    : stats.conversionPct >= 40
-                    ? 'neutral'
-                    : stats.total > 0
-                    ? 'negative'
-                    : 'neutral'
+                  stats.conversionPct >= 70 ? 'positive'
+                  : stats.conversionPct >= 40 ? 'neutral'
+                  : stats.total > 0 ? 'negative'
+                  : 'neutral'
                 }
                 description={`Acceptance rate: ${stats.conversionPct}%`}
               />
@@ -172,13 +165,22 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* ── Deals pipeline ─────────────────────────────────────────────────── */}
+        <DealsPipeline offers={offers} loading={loading} />
+
         {/* ── Usage progress (billing — independent fetch inside component) ─── */}
         <UsageProgress />
 
         {/* ── Main grid: Offer table + right sidebar ────────────────────────── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <OfferTable offers={offers} loading={loading} tourId="offer-table" />
+            <OfferTable
+            offers={offers}
+            loading={loading}
+            tourId="offer-table"
+            headingLabel="Recent deals"
+            columnLabels={{ title: 'Deal name', recipient: 'Customer' }}
+          />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-5">
             <InsightsPanel offers={offers} loading={loading} />

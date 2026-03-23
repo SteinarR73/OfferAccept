@@ -66,15 +66,32 @@ const TABS: Array<{ key: FilterTab; label: string }> = [
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
+interface ColumnLabels {
+  title?: string;
+  recipient?: string;
+}
+
 interface Props {
   offers: OfferItem[];
   loading?: boolean;
   tourId?: string;
+  /** Override the section heading (default: "Offers") */
+  headingLabel?: string;
+  /** Override column header labels */
+  columnLabels?: ColumnLabels;
 }
 
 // ─── OfferTable ────────────────────────────────────────────────────────────────
 
-export function OfferTable({ offers, loading = false, tourId }: Props) {
+export function OfferTable({
+  offers,
+  loading = false,
+  tourId,
+  headingLabel = 'Offers',
+  columnLabels = {},
+}: Props) {
+  const colTitle     = columnLabels.title     ?? 'Deal name';
+  const colRecipient = columnLabels.recipient ?? 'Customer';
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
@@ -135,7 +152,7 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <h2 id="offers-heading" className="text-base font-semibold text-gray-900">
-          Offers
+          {headingLabel}
           {!loading && (
             <span className="ml-2 text-xs font-normal text-gray-400">
               ({filtered.length}{activeTab !== 'ALL' || search ? ` of ${offers.length}` : ''})
@@ -150,12 +167,12 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
             'bg-blue-600 text-white hover:bg-blue-700 transition-colors',
             'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
           )}
-          aria-label="Create a new offer"
+          aria-label="Create a new deal"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          New offer
+          New deal
         </Link>
       </div>
 
@@ -247,11 +264,11 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
                     className="flex items-center hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
                     aria-label={`Sort by created date ${sortKey === 'createdAt' && sortDir === 'asc' ? 'descending' : 'ascending'}`}
                   >
-                    Title <SortIcon col="createdAt" />
+                    {colTitle} <SortIcon col="createdAt" />
                   </button>
                 </th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                  Recipient
+                  {colRecipient}
                 </th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   <button
