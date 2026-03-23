@@ -11,6 +11,9 @@ import { OnboardingBanner } from '../../components/dashboard/OnboardingBanner';
 import { OnboardingTour, type TourStep } from '../../components/dashboard/OnboardingTour';
 import { ActionPanel } from '../../components/dashboard/ActionPanel';
 import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
+import { InsightsPanel } from '../../components/dashboard/InsightsPanel';
+import { AcceptanceTrend } from '../../components/dashboard/AcceptanceTrend';
+import { UsageProgress } from '../../components/dashboard/UsageProgress';
 import { Button } from '../../components/ui/Button';
 
 // ─── Tour steps ────────────────────────────────────────────────────────────────
@@ -169,12 +172,17 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ── Main grid: Offer table + Activity feed ────────────────────────── */}
+        {/* ── Usage progress (billing — independent fetch inside component) ─── */}
+        <UsageProgress />
+
+        {/* ── Main grid: Offer table + right sidebar ────────────────────────── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <OfferTable offers={offers} loading={loading} tourId="offer-table" />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 flex flex-col gap-5">
+            <InsightsPanel offers={offers} loading={loading} />
+            <AcceptanceTrend offers={offers} loading={loading} />
             <ActivityFeed offers={offers} loading={loading} />
           </div>
         </div>

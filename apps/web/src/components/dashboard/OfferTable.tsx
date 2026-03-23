@@ -6,6 +6,40 @@ import { Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { cn } from '@/lib/cn';
 
+// ─── Health indicator ──────────────────────────────────────────────────────────
+
+type HealthState = 'expiring' | 'slow' | 'healthy' | null;
+
+function getHealth(offer: OfferItem): HealthState {
+  if (offer.status !== 'SENT') return null;
+  const now = Date.now();
+  const MS_DAY = 86_400_000;
+  if (offer.expiresAt && new Date(offer.expiresAt).getTime() - now < MS_DAY && new Date(offer.expiresAt).getTime() > now) {
+    return 'expiring';
+  }
+  if (now - new Date(offer.updatedAt).getTime() > 3 * MS_DAY) return 'slow';
+  return 'healthy';
+}
+
+const HEALTH_META: Record<NonNullable<HealthState>, { dot: string; label: string }> = {
+  expiring: { dot: 'bg-red-500',   label: 'Expiring soon' },
+  slow:     { dot: 'bg-amber-400', label: 'Slow response' },
+  healthy:  { dot: 'bg-green-400', label: 'Active'        },
+};
+
+function HealthDot({ offer }: { offer: OfferItem }) {
+  const state = getHealth(offer);
+  if (!state) return null;
+  const meta = HEALTH_META[state];
+  return (
+    <span
+      className={cn('inline-block w-1.5 h-1.5 rounded-full flex-shrink-0', meta.dot)}
+      title={meta.label}
+      aria-label={meta.label}
+    />
+  );
+}
+
 // ─── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<OfferStatusValue, { label: string; classes: string }> = {
@@ -247,14 +281,17 @@ export function OfferTable({ offers, loading = false, tourId }: Props) {
                   className="table-row-hover border-b border-gray-50 last:border-0 transition-colors"
                 >
                   <td className="px-5 py-3.5">
-                    <Link
-                      href={`/dashboard/offers/${offer.id}`}
-                      className="font-medium text-gray-900 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
-                    >
-                      {search ? <Highlight text={offer.title} query={search} /> : offer.title}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <HealthDot offer={offer} />
+                      <Link
+                        href={`/dashboard/offers/${offer.id}`}
+                        className="font-medium text-gray-900 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
+                      >
+                        {search ? <Highlight text={offer.title} query={search} /> : offer.title}
+                      </Link>
+                    </div>
                     {offer.recipient?.email && (
-                      <p className="text-xs text-gray-400 mt-0.5 sm:hidden truncate max-w-[200px]">
+                      <p className="text-xs text-gray-400 mt-0.5 sm:hidden truncate max-w-[200px] pl-3">
                         {offer.recipient.email}
                       </p>
                     )}
