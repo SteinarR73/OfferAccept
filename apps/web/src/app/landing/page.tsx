@@ -100,7 +100,7 @@ function Hero() {
           <div className="flex items-start gap-3 mb-4">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">OA</div>
             <div>
-              <p className="text-xs font-semibold text-gray-900">Acme Corp has sent you an offer</p>
+              <p className="text-xs font-semibold text-gray-900">Acme Corp has sent you a deal</p>
               <p className="text-xs text-gray-400 mt-0.5">Senior Engineer — Q1 2026</p>
             </div>
           </div>
@@ -113,7 +113,7 @@ function Hero() {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-xs text-white font-medium">Accept offer</div>
+            <div className="flex-1 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-xs text-white font-medium">Accept deal</div>
             <div className="flex-1 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500">Decline</div>
           </div>
         </div>
@@ -154,7 +154,7 @@ function TrustStrip() {
 const STEPS = [
   {
     n: '1',
-    title: 'Draft the offer',
+    title: 'Draft the deal',
     desc: 'Add a title, personal message, attach documents (PDF, DOCX), and set an expiry date.',
   },
   {
@@ -200,7 +200,7 @@ function CertificatePreview() {
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-gray-900">See what gets generated</h2>
           <p className="mt-2 text-gray-500 text-sm max-w-md mx-auto">
-            Every accepted offer produces a tamper-proof acceptance certificate — verifiable by any third party.
+            Every accepted deal produces a tamper-proof acceptance certificate — verifiable by any third party.
           </p>
         </div>
 
@@ -225,7 +225,7 @@ function CertificatePreview() {
           {/* Fields */}
           <div className="px-5 py-4 space-y-3">
             {[
-              { label: 'Offer', value: 'Senior Engineer — Q1 2026' },
+              { label: 'Deal', value: 'Senior Engineer — Q1 2026' },
               { label: 'Accepted', value: 'March 22, 2026 at 14:32 UTC' },
               { label: 'By', value: '████████████@company.com' },
               { label: 'Method', value: 'OTP-verified email' },
@@ -268,7 +268,7 @@ function PricingBand() {
   return (
     <section className="bg-blue-600 py-16">
       <div className="max-w-2xl mx-auto px-6 text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">Start free — 3 offers per month</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Start free — 3 deals per month</h2>
         <p className="text-blue-200 text-sm mb-6">No credit card required. Upgrade any time as you grow.</p>
         <Link
           href="/login"

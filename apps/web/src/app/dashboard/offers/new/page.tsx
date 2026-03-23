@@ -31,7 +31,7 @@ export default function NewOfferPage() {
       });
       router.push(`/dashboard/offers/${offerId}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create offer.');
+      setError(err instanceof Error ? err.message : 'Failed to create deal.');
       setLoading(false);
     }
   }
@@ -39,10 +39,10 @@ export default function NewOfferPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <PageHeader
-        title="New offer"
-        description="Create a draft offer letter to send to your candidate."
+        title="New deal"
+        description="Create a draft deal to send to your customer."
         backHref="/dashboard/offers"
-        backLabel="All offers"
+        backLabel="All deals"
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -52,22 +52,22 @@ export default function NewOfferPage() {
             {error && <Alert variant="error" dismissible className="mb-4">{error}</Alert>}
 
             <Card className="mb-4">
-              <CardHeader title="Offer details" border />
+              <CardHeader title="Deal details" border />
               <CardSection>
                 <Input
-                  label="Offer title"
+                  label="Deal name"
                   placeholder="e.g. Senior Software Engineer — Q2 2026"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  hint="This title will appear in the offer email and acceptance certificate."
+                  hint="This title will appear in the deal email and acceptance certificate."
                   autoFocus
                 />
               </CardSection>
             </Card>
 
             <Card className="mb-6">
-              <CardHeader title="Recipient" description="Who will receive this offer?" border />
+              <CardHeader title="Customer" description="Who will receive this deal?" border />
               <CardSection>
                 <div className="space-y-4">
                   <Input
@@ -123,12 +123,12 @@ export default function NewOfferPage() {
                   {
                     icon: <FileText className="w-4 h-4 text-blue-600" aria-hidden="true" />,
                     title: 'Draft created',
-                    body: 'Your offer is saved as a draft. Add terms and upload documents before sending.',
+                    body: 'Your deal is saved as a draft. Add terms and upload documents before sending.',
                   },
                   {
                     icon: <Send className="w-4 h-4 text-blue-600" aria-hidden="true" />,
-                    title: 'Send to recipient',
-                    body: 'When ready, send the offer. The recipient gets a secure email with a signing link.',
+                    title: 'Send to customer',
+                    body: 'When ready, send the deal. The customer gets a secure email with a signing link.',
                   },
                   {
                     icon: <CheckCircle className="w-4 h-4 text-green-600" aria-hidden="true" />,

@@ -91,7 +91,7 @@ export function DeliveryTimeline({ offerId, offerStatus }: Props) {
             <li className="flex items-start gap-3">
               <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1">
-                <p className="text-xs font-semibold text-green-700">Offer accepted by recipient</p>
+                <p className="text-xs font-semibold text-green-700">Deal accepted</p>
                 <p className="text-[11px] text-[--color-text-muted] mt-0.5">Certificate generation initiated</p>
               </div>
             </li>
@@ -100,7 +100,7 @@ export function DeliveryTimeline({ offerId, offerStatus }: Props) {
             <li className="flex items-start gap-3">
               <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1">
-                <p className="text-xs font-semibold text-red-700">Offer declined by recipient</p>
+                <p className="text-xs font-semibold text-red-700">Deal declined</p>
               </div>
             </li>
           )}

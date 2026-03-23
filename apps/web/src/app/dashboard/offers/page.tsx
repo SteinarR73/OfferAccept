@@ -32,12 +32,12 @@ export default function OffersPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <PageHeader
-        title="Offers"
-        description="Send, track, and manage all your offer letters."
+        title="Deals"
+        description="Send, track, and manage all your deals."
         action={
           <Link href="/dashboard/offers/new">
             <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />}>
-              New offer
+              New deal
             </Button>
           </Link>
         }
@@ -49,7 +49,7 @@ export default function OffersPage() {
       {!loading && total > PAGE_SIZE && (
         <div className="mt-4 flex items-center justify-between text-xs text-[--color-text-muted]">
           <span>
-            Showing {startRow}–{endRow} of {total} offers
+            Showing {startRow}–{endRow} of {total} deals
           </span>
           <div className="flex items-center gap-2">
             <Button

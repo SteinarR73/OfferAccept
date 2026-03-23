@@ -96,7 +96,7 @@ export function ActionPanel({ offers, loading }: ActionPanelProps) {
     <Card className="border-l-4 border-l-amber-400 mb-6 animate-fade-in">
       <CardHeader
         title="Action required"
-        description={`${actions.length} offer${actions.length !== 1 ? 's' : ''} need${actions.length === 1 ? 's' : ''} attention`}
+        description={`${actions.length} deal${actions.length !== 1 ? 's' : ''} need${actions.length === 1 ? 's' : ''} attention`}
         border
       />
       <ul className="divide-y divide-gray-50">

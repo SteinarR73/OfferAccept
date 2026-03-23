@@ -61,7 +61,7 @@ function StatusActionBar({ offer, onSend, onRevoke, onResend }: StatusActionBarP
       <div className="space-y-2">
         {error && <Alert variant="error" dismissible>{error}</Alert>}
         {!canSend && (
-          <Alert variant="warning">Add a recipient before sending this offer.</Alert>
+          <Alert variant="warning">Add a recipient before sending this deal.</Alert>
         )}
         <Button
           variant="primary"
@@ -71,7 +71,7 @@ function StatusActionBar({ offer, onSend, onRevoke, onResend }: StatusActionBarP
           onClick={() => handle('send', onSend)}
           leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}
         >
-          Send offer
+          Send deal
         </Button>
       </div>
     );
@@ -84,7 +84,7 @@ function StatusActionBar({ offer, onSend, onRevoke, onResend }: StatusActionBarP
         {confirmRevoke ? (
           <Alert variant="warning">
             <div className="space-y-2">
-              <p className="text-xs font-semibold">Revoke this offer?</p>
+              <p className="text-xs font-semibold">Revoke this deal?</p>
               <p className="text-xs">The recipient's signing link will be invalidated immediately.</p>
               <div className="flex gap-2 mt-2">
                 <Button
@@ -180,13 +180,13 @@ export default function OfferDetailPage() {
   if (error) {
     return (
       <div className="max-w-5xl mx-auto">
-        <PageHeader title="Offer" backHref="/dashboard/offers" backLabel="All offers" />
+        <PageHeader title="Deal" backHref="/dashboard/offers" backLabel="All deals" />
         <Alert variant="error">{error}</Alert>
       </div>
     );
   }
 
-  if (!offer) return <SpinnerPage label="Loading offer…" />;
+  if (!offer) return <SpinnerPage label="Loading deal…" />;
 
   const showActions = offer.status === 'DRAFT' || offer.status === 'SENT';
   const terminalStatus = ['ACCEPTED', 'DECLINED', 'EXPIRED', 'REVOKED'].includes(offer.status);
@@ -196,7 +196,7 @@ export default function OfferDetailPage() {
       <PageHeader
         title={offer.title}
         backHref="/dashboard/offers"
-        backLabel="All offers"
+        backLabel="All deals"
         action={
           <div className="flex items-center gap-2">
             <OfferStatusBadge status={offer.status} />
@@ -207,17 +207,17 @@ export default function OfferDetailPage() {
       {/* ── Terminal status alert ─────────────────────────────────────────── */}
       {offer.status === 'REVOKED' && (
         <Alert variant="warning" className="mb-4">
-          This offer has been revoked. The recipient's signing link is no longer valid.
+          This deal has been revoked. The recipient's signing link is no longer valid.
         </Alert>
       )}
       {offer.status === 'EXPIRED' && (
         <Alert variant="warning" className="mb-4">
-          This offer has expired. Create a new offer to re-engage the candidate.
+          This deal has expired. Create a new deal to re-engage the customer.
         </Alert>
       )}
       {offer.status === 'DECLINED' && (
         <Alert variant="error" className="mb-4">
-          The recipient declined this offer.
+          The customer declined this deal.
         </Alert>
       )}
 
@@ -229,7 +229,7 @@ export default function OfferDetailPage() {
         <Alert variant="success" className="mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
-            <span>This offer was accepted. Certificate generation may still be in progress.</span>
+            <span>This deal was accepted. Certificate generation may still be in progress.</span>
           </div>
         </Alert>
       )}
@@ -245,7 +245,7 @@ export default function OfferDetailPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-medium text-gray-700">
-                      {offer.status === 'DRAFT' ? 'Draft — not yet sent to recipient' : 'Awaiting recipient action'}
+                      {offer.status === 'DRAFT' ? 'Draft — not yet sent to customer' : 'Awaiting customer acceptance'}
                     </p>
                     {offer.status === 'SENT' && offer.recipient?.email && (
                       <p className="text-[11px] text-[--color-text-muted] mt-0.5">
@@ -269,7 +269,7 @@ export default function OfferDetailPage() {
               <CardSection className="py-3">
                 <div className="flex items-center gap-2 text-xs text-[--color-text-muted]">
                   <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-                  <span>This offer is {offer.status.toLowerCase()} and can no longer be edited.</span>
+                  <span>This deal is {offer.status.toLowerCase()} and can no longer be edited.</span>
                 </div>
               </CardSection>
             </Card>

@@ -87,7 +87,7 @@ export function OfferTable({
   offers,
   loading = false,
   tourId,
-  headingLabel = 'Offers',
+  headingLabel = 'Deals',
   columnLabels = {},
 }: Props) {
   const colTitle     = columnLabels.title     ?? 'Deal name';
@@ -182,10 +182,10 @@ export function OfferTable({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" aria-hidden="true" />
           <input
             type="search"
-            placeholder="Search by title or recipient…"
+            placeholder="Search by name or customer…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search offers"
+            aria-label="Search deals"
             className={cn(
               'w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200',
               'placeholder:text-gray-400 text-gray-900 bg-gray-50',
@@ -208,7 +208,7 @@ export function OfferTable({
       {/* Filter tabs */}
       <div
         role="tablist"
-        aria-label="Filter offers by status"
+        aria-label="Filter deals by status"
         className="flex gap-0.5 px-4 pt-2 pb-0 overflow-x-auto"
       >
         {TABS.map((tab) => {
@@ -248,7 +248,7 @@ export function OfferTable({
       <div
         className="overflow-x-auto"
         role="tabpanel"
-        aria-label={`${activeTab === 'ALL' ? 'All offers' : STATUS_META[activeTab as OfferStatusValue]?.label ?? activeTab} offers`}
+        aria-label={`${activeTab === 'ALL' ? 'All deals' : STATUS_META[activeTab as OfferStatusValue]?.label ?? activeTab} deals`}
       >
         {loading ? (
           <OfferTableSkeleton />
@@ -335,7 +335,7 @@ export function OfferTable({
                     <Link
                       href={`/dashboard/offers/${offer.id}`}
                       className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
-                      aria-label={`Open offer: ${offer.title}`}
+                      aria-label={`Open deal: ${offer.title}`}
                     >
                       Open
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -397,14 +397,14 @@ function EmptyState({
         </svg>
       </div>
       <p className="text-sm font-medium text-gray-900">
-        {hasSearch ? 'No matching offers' : hasOffers ? `No ${tab.toLowerCase()} offers` : 'No offers yet'}
+        {hasSearch ? 'No matching deals' : hasOffers ? `No ${tab.toLowerCase()} deals` : 'No deals yet'}
       </p>
       <p className="text-xs text-gray-400 mt-1 mb-4">
         {hasSearch
           ? 'Try a different search term.'
           : hasOffers
           ? 'Try a different filter tab above.'
-          : 'Create your first offer to get started.'}
+          : 'Create your first deal to get started.'}
       </p>
       {hasSearch && (
         <button
@@ -419,7 +419,7 @@ function EmptyState({
           href="/dashboard/offers/new"
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors"
         >
-          Create first offer
+          Create first deal
         </Link>
       )}
     </div>

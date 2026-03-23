@@ -104,9 +104,9 @@ export function OfferEditor({ initial }: Props) {
       {error && <Alert variant="error" dismissible className="mb-4">{error}</Alert>}
       {success && <Alert variant="success" dismissible className="mb-4">{success}</Alert>}
 
-      {/* ── Section 1: Offer details ─────────────────────────────────────── */}
+      {/* ── Section 1: Deal details ─────────────────────────────────────── */}
       <Card className="mb-4">
-        <CardHeader title="Offer details" border />
+        <CardHeader title="Deal details" border />
         <CardSection>
           <div className="space-y-4">
             <Input
@@ -175,7 +175,7 @@ export function OfferEditor({ initial }: Props) {
 
       {/* ── Section 3: Documents ─────────────────────────────────────────── */}
       <Card>
-        <CardHeader title="Documents" description="PDF and DOCX files attached to this offer." border />
+        <CardHeader title="Documents" description="PDF and DOCX files attached to this deal." border />
 
         {/* Document list */}
         {offer.documents.length > 0 && (
