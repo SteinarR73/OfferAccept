@@ -14,12 +14,12 @@ import type { ExpireOffersPayload } from '../job.types';
 // Schedule: every 30 minutes (offers rarely need sub-minute precision).
 //
 // Cascade logic:
-//   1. Find SENT offer IDs that have expired.
-//   2. Update Offer.status → EXPIRED for those IDs.
-//   3. Update OfferRecipient.status → EXPIRED for those offer IDs.
-//   Steps 2 and 3 are not atomic — a crash between them leaves the recipient
-//   in a stale state. The signing flow guards against this by checking
-//   offer.status before processing any token, so partial state is safe.
+//   1. Find SENT offer IDs that have expired (outside the transaction — read-only).
+//   2. In a single transaction:
+//      a. Update Offer.status → EXPIRED for those IDs.
+//      b. Update OfferRecipient.status → EXPIRED for those offer IDs.
+//   The transaction ensures that a crash or error after step 2a cannot leave
+//   OfferRecipient rows in a stale SENT state while the parent Offer is EXPIRED.
 
 @Injectable()
 export class ExpireOffersHandler {
@@ -46,20 +46,22 @@ export class ExpireOffersHandler {
 
     const offerIds = expiredOffers.map((o) => o.id);
 
-    // Step 2: expire offers.
-    const offerResult = await this.db.offer.updateMany({
-      where: { id: { in: offerIds } },
-      data: { status: 'EXPIRED' },
-    });
-
-    // Step 3: expire recipients that are not yet in a terminal state.
-    const recipientResult = await this.db.offerRecipient.updateMany({
-      where: {
-        offerId: { in: offerIds },
-        status: { notIn: ['ACCEPTED', 'DECLINED', 'EXPIRED'] },
-      },
-      data: { status: 'EXPIRED' },
-    });
+    // Steps 2 + 3: atomic — both updates commit or both roll back.
+    const [offerResult, recipientResult] = await this.db.$transaction([
+      // Step 2: expire offers.
+      this.db.offer.updateMany({
+        where: { id: { in: offerIds } },
+        data: { status: 'EXPIRED' },
+      }),
+      // Step 3: expire recipients that are not yet in a terminal state.
+      this.db.offerRecipient.updateMany({
+        where: {
+          offerId: { in: offerIds },
+          status: { notIn: ['ACCEPTED', 'DECLINED', 'EXPIRED'] },
+        },
+        data: { status: 'EXPIRED' },
+      }),
+    ]);
 
     this.logger.log(
       `Expired ${offerResult.count} offer(s) and ${recipientResult.count} recipient(s)`,

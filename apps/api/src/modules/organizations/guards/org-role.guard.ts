@@ -29,10 +29,15 @@ export const RequireOrgRole = (role: OrgRoleValue) => SetMetadata(REQUIRE_ORG_RO
 // caller's Membership in the DB, and enforces the hierarchy check.
 //
 // Requires JwtAuthGuard to have run first (so request.user is populated).
-// Reads orgId from request.params.id.
+//
+// Org resolution — in priority order:
+//   1. request.params.id  — used by OrgController routes that have an `:id` param
+//      (GET /org/:id, POST /org/:id/invite, etc.)
+//   2. request.user.orgId — JWT claim; used by controllers that are org-scoped but
+//      have no `:id` route param (ApiKeysController, WebhooksController, etc.)
 //
 // Throws domain errors (mapped to HTTP by DomainExceptionFilter):
-//   - NotOrgMemberError   → 403
+//   - NotOrgMemberError        → 403
 //   - InsufficientOrgRoleError → 403
 
 @Injectable()
@@ -53,9 +58,14 @@ export class OrgRoleGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request & { user: JwtPayload }>();
     const userId = request.user?.sub;
-    // params.id can be string | string[] in Express types; always take the first value
+
+    // Prefer the explicit :id route param (OrgController pattern).
+    // Fall back to the orgId embedded in the JWT for resource controllers that are
+    // implicitly scoped to the caller's org (ApiKeysController, WebhooksController, etc.)
+    // and therefore carry no :id in their route path.
     const rawId = request.params?.id;
-    const orgId: string | undefined = Array.isArray(rawId) ? rawId[0] : rawId;
+    const paramOrgId = Array.isArray(rawId) ? rawId[0] : rawId;
+    const orgId: string | undefined = paramOrgId ?? request.user?.orgId;
 
     if (!userId || !orgId) {
       throw new NotOrgMemberError();

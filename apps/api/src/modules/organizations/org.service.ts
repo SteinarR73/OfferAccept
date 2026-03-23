@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { OrgRepository, OrgWithMemberCount } from './org.repository';
 import { OrgNotFoundError, NotOrgMemberError } from '../../common/errors/domain.errors';
 
@@ -13,15 +14,28 @@ export class OrgService {
 
   // Create a new organization owned by the calling user.
   // Org slug is auto-derived from the name; a numeric suffix is appended if taken.
+  //
+  // Race-safety: the slug uniqueness check (slugExists) and the INSERT are not atomic.
+  // A concurrent create can win the race and insert the same slug, causing Prisma P2002.
+  // The retry loop re-derives a unique slug and retries up to 5 times before giving up.
   async create(
     actorId: string,
     params: { name: string },
   ): Promise<{ id: string; name: string; slug: string }> {
     const baseSlug = slugify(params.name);
-    const slug = await this.uniqueSlug(baseSlug);
 
-    const org = await this.repo.createWithOwner({ name: params.name, slug }, actorId);
-    return { id: org.id, name: org.name, slug: org.slug };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slug = await this.uniqueSlug(baseSlug);
+      try {
+        const org = await this.repo.createWithOwner({ name: params.name, slug }, actorId);
+        return { id: org.id, name: org.name, slug: org.slug };
+      } catch (err) {
+        if (isSlugUniqueViolation(err)) continue; // concurrent insert won the race — retry
+        throw err;
+      }
+    }
+
+    throw new Error('Could not generate a unique organisation slug. Please try again.');
   }
 
   // Return all orgs the user is a member of.
@@ -90,4 +104,15 @@ function slugify(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 55) || 'org';
+}
+
+// Returns true when the error is a Prisma unique-constraint violation on the
+// slug column — i.e., a concurrent insert won the TOCTOU race.
+function isSlugUniqueViolation(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === 'P2002' &&
+    Array.isArray((err.meta as { target?: unknown })?.target) &&
+    ((err.meta as { target: string[] }).target).includes('slug')
+  );
 }

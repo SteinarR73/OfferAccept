@@ -17,7 +17,7 @@ interface Step {
   icon: React.ReactNode;
 }
 
-function buildSteps(status: OfferStatusValue): Step[] {
+export function buildSteps(status: OfferStatusValue): Step[] {
   const isDraft   = status === 'DRAFT';
   const isSent    = status === 'SENT';
   const accepted  = status === 'ACCEPTED';

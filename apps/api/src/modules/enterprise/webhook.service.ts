@@ -212,6 +212,34 @@ export class WebhookService {
     return crypto.createHmac('sha256', secret).update(body).digest('hex');
   }
 
+  // ── Secret rotation ──────────────────────────────────────────────────────────
+
+  // Generates and stores a new HMAC secret for an existing endpoint.
+  // The old secret is immediately invalidated — any in-flight webhook deliveries
+  // signed with the old secret will fail the customer's signature verification.
+  // The new secret is returned ONCE; the customer must update their handler.
+  async rotateSecret(
+    endpointId: string,
+    organizationId: string,
+  ): Promise<{ id: string; secret: string }> {
+    const existing = await this.db.webhookEndpoint.findFirst({
+      where: { id: endpointId, organizationId },
+    });
+    if (!existing) throw new WebhookEndpointNotFoundError();
+
+    const newSecret = crypto.randomBytes(32).toString('hex');
+
+    await this.db.webhookEndpoint.update({
+      where: { id: endpointId },
+      data: { secret: newSecret },
+    });
+
+    this.logger.log(`Webhook secret rotated: endpoint=${endpointId} org=${organizationId}`);
+
+    // New secret returned ONCE — not re-retrievable. Customer must store it.
+    return { id: endpointId, secret: newSecret };
+  }
+
   // ── Test delivery ────────────────────────────────────────────────────────────
 
   // Enqueues a test.ping event to the specified endpoint (ignores event subscription filter).

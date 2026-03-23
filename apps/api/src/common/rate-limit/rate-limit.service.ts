@@ -57,6 +57,7 @@ export type RateLimitProfile =
   | 'forgot_password'        // 3 reset requests per IP per hour
   | 'signup_attempt'         // 5 signups per IP per hour
   | 'signup_attempt_burst'   // 2 per 30 s — catches automated account creation
+  | 'resend_verification'    // 3 resend-verification requests per IP per hour
   // Organisation / invite endpoints
   | 'invite_attempt'         // 10 invitations sent per actor (userId) per hour
   | 'invite_accept_attempt'; // 5 accept attempts per IP per 15 minutes
@@ -75,6 +76,7 @@ export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: numbe
   forgot_password:        { limit: 3,  windowMs: 60 * 60 * 1000 },
   signup_attempt:         { limit: 5,  windowMs: 60 * 60 * 1000 },
   signup_attempt_burst:   { limit: 2,  windowMs:      30 * 1000 },
+  resend_verification:    { limit: 3,  windowMs: 60 * 60 * 1000 },
   invite_attempt:         { limit: 10, windowMs: 60 * 60 * 1000 },
   invite_accept_attempt:  { limit: 5,  windowMs: 15 * 60 * 1000 },
 };

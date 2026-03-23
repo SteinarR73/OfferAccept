@@ -82,27 +82,37 @@ export class S3Adapter implements StoragePort {
     return getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
   }
 
-  async getObjectSha256(key: string): Promise<string | null> {
+  private async headObject(key: string): Promise<{ sha256: string | null; mimeType: string | null }> {
     try {
       const command = new HeadObjectCommand({ Bucket: this.bucket, Key: key });
       const response = await this.client.send(command);
 
-      // If bucket has checksum enabled, AWS returns x-amz-checksum-sha256.
-      // Fall back to null if not present (caller will trust client-provided hash).
+      // Extract SHA-256: available when bucket has checksum configuration enabled.
       const checksumHeader = (response as unknown as Record<string, unknown>)['ChecksumSHA256'];
-      if (typeof checksumHeader === 'string') {
-        // AWS returns base64 — convert to hex
-        return Buffer.from(checksumHeader, 'base64').toString('hex');
-      }
+      const sha256 =
+        typeof checksumHeader === 'string'
+          ? Buffer.from(checksumHeader, 'base64').toString('hex')
+          : null;
 
-      return null;
+      // ContentType is always present for uploaded objects.
+      const mimeType = response.ContentType ?? null;
+
+      return { sha256, mimeType };
     } catch (err: unknown) {
       const awsErr = err as { name?: string };
       if (awsErr?.name === 'NotFound' || awsErr?.name === 'NoSuchKey') {
-        return null;
+        return { sha256: null, mimeType: null };
       }
       throw err;
     }
+  }
+
+  async getObjectSha256(key: string): Promise<string | null> {
+    return (await this.headObject(key)).sha256;
+  }
+
+  async getObjectMimeType(key: string): Promise<string | null> {
+    return (await this.headObject(key)).mimeType;
   }
 
   async delete(key: string): Promise<void> {

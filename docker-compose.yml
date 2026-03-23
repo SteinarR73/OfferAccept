@@ -1,0 +1,82 @@
+# Local development stack — not for production use.
+# Starts Postgres + Redis as backing services.
+# The API and web apps are run via 'npm run dev' outside of Docker in normal dev.
+#
+# Usage:
+#   docker compose up -d          # start Postgres + Redis
+#   docker compose down           # stop
+#   docker compose down -v        # stop and delete volumes (wipes DB)
+#
+# To run the full stack in containers:
+#   docker compose --profile full up -d
+
+services:
+
+  # ── Postgres ───────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: offeraccept
+      POSTGRES_USER: offeraccept
+      POSTGRES_PASSWORD: offeraccept
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U offeraccept"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis ──────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── API (full stack profile only) ─────────────────────────────────────────────
+  api:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://offeraccept:offeraccept@postgres:5432/offeraccept
+      REDIS_URL: redis://redis:6379
+      # Set remaining required vars in .env or as environment overrides:
+      # JWT_SECRET, SIGNING_LINK_SECRET, WEB_BASE_URL, EMAIL_FROM, EMAIL_PROVIDER, ...
+    env_file:
+      - apps/api/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Web (full stack profile only) ─────────────────────────────────────────────
+  web:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:

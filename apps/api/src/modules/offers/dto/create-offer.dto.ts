@@ -7,6 +7,7 @@ import {
   IsEmail,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsFutureDate } from '../../../common/validators/is-future-date.validator';
 
 class RecipientDto {
   @IsEmail()
@@ -29,6 +30,7 @@ export class CreateOfferDto {
 
   @IsOptional()
   @IsISO8601()
+  @IsFutureDate()
   expiresAt?: string;
 
   @IsOptional()

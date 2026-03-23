@@ -56,10 +56,13 @@ interface Stats {
 }
 
 function deriveStats(offers: OfferItem[]): Stats {
-  const sent       = offers.filter((o) => o.status !== 'DRAFT');
   const accepted   = offers.filter((o) => o.status === 'ACCEPTED');
   const pending    = offers.filter((o) => o.status === 'SENT');
-  const conversionPct = sent.length > 0 ? Math.round((accepted.length / sent.length) * 100) : 0;
+  // Denominator: only SENT + ACCEPTED + DECLINED — offers that reached the recipient.
+  // EXPIRED and REVOKED are excluded: they never had a chance to be accepted and
+  // including them artificially deflates the acceptance rate.
+  const eligible   = offers.filter((o) => ['SENT', 'ACCEPTED', 'DECLINED'].includes(o.status));
+  const conversionPct = eligible.length > 0 ? Math.round((accepted.length / eligible.length) * 100) : 0;
   return { total: offers.length, accepted: accepted.length, pending: pending.length, conversionPct };
 }
 
@@ -74,7 +77,9 @@ export default function DashboardPage() {
     // Check if tour has been seen already (avoids flash)
     setTourDone(localStorage.getItem('oa_tour_v1') === 'done');
 
-    listOffers(1, 100)
+    // Page size 250 keeps dashboard stats accurate for typical orgs.
+    // Orgs with more than 250 offers will see a "showing recent 250" note below stats.
+    listOffers(1, 250)
       .then(({ data }) => setOffers(data))
       .catch(() => {/* offers failed — show empty state gracefully */})
       .finally(() => setLoading(false));
@@ -82,6 +87,8 @@ export default function DashboardPage() {
 
   const stats = deriveStats(offers);
   const isFirstSession = !loading && offers.length === 0;
+  // Warn when stats may be incomplete (page size cap reached)
+  const statsTruncated = !loading && offers.length === 250;
 
   return (
     <>
@@ -118,6 +125,12 @@ export default function DashboardPage() {
         <ActionPanel offers={offers} loading={loading} />
 
         {/* ── Stats row ────────────────────────────────────────────────────── */}
+        {statsTruncated && (
+          <p className="text-xs text-[--color-text-muted]">
+            Showing statistics for the most recent 250 deals.{' '}
+            <a href="/dashboard/offers" className="underline">View all deals →</a>
+          </p>
+        )}
         <div
           className="grid grid-cols-2 gap-3 sm:grid-cols-4"
           aria-label="Deal statistics"

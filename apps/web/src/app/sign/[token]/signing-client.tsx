@@ -36,7 +36,7 @@ type Phase =
   | { name: 'invalid_link' }
   | { name: 'offer_expired'; expiresAt: string | null }
   | { name: 'already_terminal'; reason: string }
-  | { name: 'offer_view'; ctx: OfferContext }
+  | { name: 'offer_view'; ctx: OfferContext; declineError?: string }
   | { name: 'otp_requesting'; ctx: OfferContext }
   | { name: 'otp_entry'; ctx: OfferContext; otp: OtpResult; error?: string }
   | { name: 'otp_verifying'; ctx: OfferContext; otp: OtpResult }
@@ -59,7 +59,8 @@ type Action =
   | { type: 'ACCEPTED'; acceptedAt: string }
   | { type: 'ACCEPT_FAILED'; message: string }
   | { type: 'DECLINE' }
-  | { type: 'DECLINED' };
+  | { type: 'DECLINED' }
+  | { type: 'DECLINE_FAILED'; message: string };
 
 function reducer(state: Phase, action: Action): Phase {
   switch (action.type) {
@@ -115,6 +116,17 @@ function reducer(state: Phase, action: Action): Phase {
 
     case 'DECLINED':
       return { name: 'declined' };
+
+    case 'DECLINE_FAILED':
+      // API call failed — return to offer_view with an error message so the
+      // recipient knows the decline was NOT recorded and can try again.
+      // Never show the "declined" success screen when the server call failed.
+      if (state.name !== 'accepting' && state.name !== 'offer_view') return state;
+      return {
+        name: 'offer_view',
+        ctx: (state as { ctx: OfferContext }).ctx,
+        declineError: action.message,
+      };
 
     default:
       return state;
@@ -192,11 +204,28 @@ export function SigningClient({ token }: { token: string }) {
   }
 
   async function handleDecline() {
+    // Capture challengeId before dispatching DECLINE (which transitions phase to 'accepting').
+    // otp_entry: challengeId is in phase.otp; acceptance: challengeId is on the phase directly.
+    // offer_view: no OTP has been issued yet — decline proceeds without a challengeId (server fallback).
+    let challengeId: string | undefined;
+    if (phase.name === 'otp_entry') challengeId = phase.otp.challengeId;
+    else if (phase.name === 'acceptance') challengeId = phase.challengeId;
+
+    dispatch({ type: 'DECLINE' }); // show spinner immediately
     try {
-      await signingApi.decline(token);
+      await signingApi.decline(token, challengeId);
       dispatch({ type: 'DECLINED' });
-    } catch {
-      dispatch({ type: 'DECLINED' });
+    } catch (err) {
+      // Server call failed — tell the recipient so they can retry.
+      // NEVER dispatch DECLINED here: that would show a false success screen
+      // while the offer remains SENT in the database.
+      // ApiError in signing-api.ts is a plain object (interface), not a class —
+      // check for the shape rather than using instanceof.
+      const message =
+        err != null && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Could not process your decline. Please try again.';
+      dispatch({ type: 'DECLINE_FAILED', message });
     }
   }
 
@@ -248,7 +277,14 @@ export function SigningClient({ token }: { token: string }) {
         )}
 
         {phase.name === 'offer_view' && (
-          <OfferView ctx={phase.ctx} onContinue={handleContinue} onDecline={handleDecline} />
+          <>
+            {phase.declineError && (
+              <Alert variant="error" className="mb-4">
+                {phase.declineError}
+              </Alert>
+            )}
+            <OfferView ctx={phase.ctx} onContinue={handleContinue} onDecline={handleDecline} />
+          </>
         )}
 
         {phase.name === 'otp_requesting' && (
@@ -281,7 +317,7 @@ export function SigningClient({ token }: { token: string }) {
         )}
 
         {phase.name === 'accepting' && (
-          <SpinnerPage label="Submitting acceptance…" />
+          <SpinnerPage label="Processing…" />
         )}
 
         {phase.name === 'completed' && (

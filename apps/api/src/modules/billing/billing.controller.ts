@@ -55,6 +55,29 @@ export class BillingController {
     @CurrentUser() user: JwtPayload,
   ): Promise<{ url: string }> {
     const webBase = this.config.get('WEB_BASE_URL', { infer: true });
+
+    // Resolve plan → Stripe price ID on the server. The client supplies only a
+    // symbolic plan name; it never controls which Stripe price is charged.
+    const priceEnvKey = `STRIPE_PRICE_${dto.plan}` as
+      | 'STRIPE_PRICE_STARTER'
+      | 'STRIPE_PRICE_PROFESSIONAL'
+      | 'STRIPE_PRICE_ENTERPRISE';
+    const priceId = this.config.get(priceEnvKey, { infer: true });
+
+    if (!priceId) {
+      // Should not happen — env.ts enforces all STRIPE_PRICE_* when BILLING_PROVIDER=stripe.
+      throw new BadRequestException(`No Stripe price configured for plan: ${dto.plan}`);
+    }
+
+    // Validate that client-supplied redirect URLs, if provided, start with WEB_BASE_URL.
+    // Prevents open redirect via a forged Stripe checkout completion URL.
+    if (dto.successUrl && !dto.successUrl.startsWith(webBase)) {
+      throw new BadRequestException('successUrl must begin with the application base URL.');
+    }
+    if (dto.cancelUrl && !dto.cancelUrl.startsWith(webBase)) {
+      throw new BadRequestException('cancelUrl must begin with the application base URL.');
+    }
+
     const successUrl =
       dto.successUrl ?? `${webBase}/dashboard/settings/billing?success=1`;
     const cancelUrl =
@@ -63,7 +86,7 @@ export class BillingController {
     const url = await this.billingService.createCheckoutSession(
       user.orgId,
       user.sub,
-      dto.priceId,
+      priceId,
       successUrl,
       cancelUrl,
     );

@@ -119,7 +119,7 @@ describe('Offer link delivery tracking', () => {
     db.offerSnapshot.create.mockResolvedValue(makeSnapshot() as never);
     db.offerSnapshotDocument.create.mockResolvedValue({} as never);
     db.offerRecipient.update.mockResolvedValue(recipient as never);
-    db.offer.update.mockResolvedValue({ ...offer, status: 'SENT' } as never);
+    db.offer.updateMany.mockResolvedValue({ count: 1 } as never);
 
     // Delivery attempt lifecycle
     const attemptId = 'attempt-1';

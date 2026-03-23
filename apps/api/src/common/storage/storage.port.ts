@@ -32,6 +32,13 @@ export interface StoragePort {
   /** Returns the SHA-256 hex digest of the stored object, or null if it doesn't exist. */
   getObjectSha256(key: string): Promise<string | null>;
 
+  /**
+   * Returns the Content-Type of the stored object as reported by the storage backend,
+   * or null if the metadata is unavailable. Used to verify the actual uploaded MIME type
+   * matches the declared type from the presign request.
+   */
+  getObjectMimeType(key: string): Promise<string | null>;
+
   delete(key: string): Promise<void>;
 }
 

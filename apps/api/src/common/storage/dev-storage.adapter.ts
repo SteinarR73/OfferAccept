@@ -18,7 +18,7 @@ import { StoragePort, PresignedUploadResult } from './storage.port';
 
 @Injectable()
 export class DevStorageAdapter implements StoragePort {
-  private readonly store = new Map<string, { buffer: Buffer; sha256: string }>();
+  private readonly store = new Map<string, { buffer: Buffer; sha256: string; mimeType: string }>();
   private readonly logger = new Logger(DevStorageAdapter.name);
 
   async getPresignedUploadUrl(
@@ -43,6 +43,10 @@ export class DevStorageAdapter implements StoragePort {
     return this.store.get(key)?.sha256 ?? null;
   }
 
+  async getObjectMimeType(key: string): Promise<string | null> {
+    return this.store.get(key)?.mimeType ?? null;
+  }
+
   async delete(key: string): Promise<void> {
     this.store.delete(key);
     this.logger.debug(`[DEV] Deleted key: ${key}`);
@@ -51,9 +55,9 @@ export class DevStorageAdapter implements StoragePort {
   // ── Test helpers ─────────────────────────────────────────────────────────────
 
   /** Simulate a completed S3 upload. Computes and stores the SHA-256 of the buffer. */
-  storeBuffer(key: string, buffer: Buffer): string {
+  storeBuffer(key: string, buffer: Buffer, mimeType = 'application/octet-stream'): string {
     const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
-    this.store.set(key, { buffer, sha256 });
+    this.store.set(key, { buffer, sha256, mimeType });
     return sha256;
   }
 

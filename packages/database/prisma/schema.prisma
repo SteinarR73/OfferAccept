@@ -30,6 +30,13 @@ enum OrgRole {
   VIEWER
 }
 
+// Soft-delete cascade policy:
+//   When deletedAt is set on an Organization the application layer is responsible
+//   for propagating the soft-delete to all dependent records before or within the
+//   same transaction. There are NO database-level cascades on deletedAt.
+//   Dependent models affected: Offer, Membership, Invite, Subscription, File,
+//   ApiKey, WebhookEndpoint. Until a formal deletion workflow is implemented,
+//   the org deletion flow must set deletedAt on all related records explicitly.
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -265,6 +272,8 @@ model Offer {
 
   @@index([organizationId, status])
   @@index([createdById])
+  // Used by the expiry background job: SELECT … WHERE status = 'SENT' AND expiresAt < NOW()
+  @@index([status, expiresAt])
   @@map("offers")
 }
 

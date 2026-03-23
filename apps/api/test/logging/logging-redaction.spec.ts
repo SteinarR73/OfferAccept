@@ -187,6 +187,7 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         STRIPE_PRICE_PROFESSIONAL: 'price_professional',
         STRIPE_PRICE_ENTERPRISE: 'price_enterprise',
         COOKIE_SECURE: 'true',
+        TRUST_PROXY: 'true',
       }),
     ).not.toThrow();
   });

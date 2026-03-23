@@ -141,6 +141,16 @@ export class FileService {
       throw new FileHashMismatchError();
     }
 
+    // Verify that the actual Content-Type stored by S3 matches the declared MIME type.
+    // A client could bypass the presign MIME check by uploading different content;
+    // this prevents polyglot files and MIME-sniffing attacks.
+    const actualMime = await this.storage.getObjectMimeType(file.s3Key);
+    if (actualMime !== null && actualMime !== file.mime) {
+      this.logger.warn(`MIME mismatch: fileId=${fileId} declared=${file.mime} actual=${actualMime}`);
+      await this.repo.deletePendingFile(fileId);
+      throw new InvalidMimeTypeError(actualMime);
+    }
+
     // markReady only touches rows WHERE status = PENDING.
     // A second call (replay) finds 0 rows → returns null → FileNotFoundError.
     const ready = await this.repo.markReady(fileId, organizationId, clientSha256);

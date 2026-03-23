@@ -58,6 +58,19 @@ const envSchema = z
     S3_BUCKET_NAME: z.string().optional(),
     // Stripe billing — required when BILLING_PROVIDER=stripe.
     // STRIPE_PUBLISHABLE_KEY is not validated here; it is consumed by the frontend.
+    // Whether to trust the first X-Forwarded-* hop from a load balancer / reverse proxy.
+    // Set to 'true' in production when the API runs behind nginx, ALB, or a similar proxy.
+    // Leaving this as 'false' when behind a proxy means req.ip always returns the proxy IP,
+    // which breaks IP-based rate limiting (all requests share one bucket).
+    TRUST_PROXY: z
+      .string()
+      .transform((v) => v === 'true')
+      .default('false'),
+    // CIDR range(s) of trusted upstream proxies, comma-separated (e.g. "10.0.0.0/8").
+    // When set, extractClientIp() rejects X-Forwarded-For values that don't originate from
+    // these ranges, preventing IP spoofing by end clients.
+    // Leave unset to skip CIDR validation (trust all X-Forwarded-For values from the proxy hop).
+    TRUSTED_PROXY_CIDR: z.string().optional(),
     BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -147,6 +160,15 @@ const envSchema = z
     {
       message: 'BILLING_PROVIDER=none must not be used in production. Set BILLING_PROVIDER=stripe.',
       path: ['BILLING_PROVIDER'],
+    },
+  )
+  .refine(
+    (data) => data.NODE_ENV !== 'production' || data.TRUST_PROXY === true,
+    {
+      message:
+        'TRUST_PROXY must be true in production. ' +
+        'Without it, IP-based rate limiting applies to the load balancer IP, not individual clients.',
+      path: ['TRUST_PROXY'],
     },
   );
 

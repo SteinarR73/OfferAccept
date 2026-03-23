@@ -25,7 +25,7 @@ interface DealEvent {
 
 const ICON_SIZE = 'w-3.5 h-3.5';
 
-function deriveEvents(offer: OfferItem): DealEvent[] {
+export function deriveEvents(offer: OfferItem): DealEvent[] {
   const events: DealEvent[] = [
     {
       id: 'created',

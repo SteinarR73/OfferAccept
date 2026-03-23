@@ -1,9 +1,14 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import * as cookieParser from 'cookie-parser';
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
+import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
+import type { Env } from './config/env';
+
+const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -15,10 +20,12 @@ async function bootstrap() {
   });
 
   // ── Reverse-proxy trust ──────────────────────────────────────────────────────
-  // If behind a load balancer / nginx, trust the first hop so req.secure and
-  // X-Forwarded-Proto work correctly for cookie Secure flag detection.
-  // trusted-proxy.util.ts controls X-Forwarded-For trust for IP extraction.
-  if (process.env.TRUST_PROXY === 'true') {
+  // Read TRUST_PROXY from the validated ConfigService so it is covered by the
+  // Zod env schema (startup fails in production if the variable is absent/false).
+  const config = app.get(ConfigService<Env, true>);
+  if (config.get('TRUST_PROXY', { infer: true })) {
+    // Trust exactly one proxy hop. Increase to 2+ if the stack is
+    // API-gateway → LB → app (each hop forwards X-Forwarded-For).
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
   }
 
@@ -32,6 +39,8 @@ async function bootstrap() {
       hsts: {
         maxAge: 31536000,       // 1 year
         includeSubDomains: true,
+        // preload: true signals intent to be on the HSTS preload list.
+        // ACTION REQUIRED before production: register the domain at https://hstspreload.org/
         preload: true,
       },
     }),
@@ -45,6 +54,11 @@ async function bootstrap() {
 
   app.useGlobalFilters(new DomainExceptionFilter());
 
+  // ── X-Request-ID ─────────────────────────────────────────────────────────────
+  // Echo or generate a unique request ID on every response. Downstream services,
+  // logs, and clients can correlate requests using this header.
+  app.useGlobalInterceptors(new RequestIdInterceptor());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -54,13 +68,13 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: process.env.WEB_BASE_URL ?? 'http://localhost:3000',
+    origin: config.get('WEB_BASE_URL', { infer: true }),
     credentials: true,
   });
 
-  const port = process.env.API_PORT ?? 3001;
+  const port = config.get('API_PORT', { infer: true });
   await app.listen(port);
-  console.log(`API running on http://localhost:${port}/api/v1`);
+  logger.log(`API running on http://localhost:${port}/api/v1`);
 }
 
 bootstrap();

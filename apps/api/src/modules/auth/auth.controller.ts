@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty } from 'class-validator';
@@ -96,7 +97,12 @@ class ResendVerificationDto {
 //     (Path-restricted so the refresh token is only sent to the refresh endpoint)
 //
 // CSRF mitigation:
-//   - SameSite=Strict: cross-site requests cannot carry these cookies
+//   - SameSite=Strict: cross-site requests cannot carry these cookies.
+//     This is the primary CSRF defence. No CSRF tokens are in use — an accepted
+//     tradeoff documented in docs/security.md.
+//   - IMPORTANT: SameSite=Lax or SameSite=None must never be set on these cookies.
+//     Doing so would remove the CSRF protection entirely and require adding
+//     double-submit CSRF tokens before any state-changing endpoint.
 //   - The guard additionally requires Authorization: Bearer OR a valid cookie,
 //     so browser-based API calls from the correct origin work via cookie.
 //
@@ -160,7 +166,13 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
     const user = (req as Request & { user: JwtPayload }).user;
-    await this.authService.logout(user.sessionId!);
+
+    // sessionId is absent on tokens issued before the session-tracking migration.
+    // Clear the cookies unconditionally — the client is effectively logged out.
+    // Best-effort server-side revocation: skip if sessionId unavailable.
+    if (user.sessionId) {
+      await this.authService.logout(user.sessionId);
+    }
 
     clearCookies(res);
 
@@ -201,7 +213,11 @@ export class AuthController {
   // POST /auth/resend-verification
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
-  async resendVerification(@Body() body: ResendVerificationDto): Promise<{ message: string }> {
+  async resendVerification(
+    @Body() body: ResendVerificationDto,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    await this.rateLimiter.check('resend_verification', extractClientIp(req));
     await this.authService.resendVerificationEmail(body.email);
     // Always return 200 regardless of whether the email exists
     return { message: 'If your email is registered and not yet verified, a new link has been sent.' };
@@ -250,11 +266,19 @@ export class AuthController {
   ): Promise<{ message: string }> {
     const user = (req as Request & { user: JwtPayload }).user;
 
+    // sessionId is absent on tokens issued before the session-tracking migration.
+    // changePassword revokes all sessions — it requires the sessionId to correctly
+    // exclude the new session from revocation. Reject if unavailable; the user
+    // must re-login to obtain a current token before changing their password.
+    if (!user.sessionId) {
+      throw new UnauthorizedException('Your session is too old. Please log in again before changing your password.');
+    }
+
     await this.authService.changePassword(
       user.sub,
       body.currentPassword,
       body.newPassword,
-      user.sessionId!,
+      user.sessionId,
       { ipAddress: extractClientIp(req) },
     );
 

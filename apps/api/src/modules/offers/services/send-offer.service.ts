@@ -208,11 +208,14 @@ export class SendOfferService {
         },
       });
 
-      // 4. Transition offer to SENT
-      await tx.offer.update({
-        where: { id: offer.id },
+      // 4. Transition offer to SENT — compare-and-swap: only succeeds if still DRAFT.
+      // If two concurrent send() calls race, exactly one transaction wins here;
+      // the other sees count=0 and rolls back cleanly (idempotency guard).
+      const { count } = await tx.offer.updateMany({
+        where: { id: offer.id, status: 'DRAFT' },
         data: { status: 'SENT' },
       });
+      if (count === 0) throw new OfferNotEditableError('SENT');
 
       return snap;
     });

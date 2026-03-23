@@ -1,4 +1,5 @@
 import { IsString, IsOptional, MaxLength, IsISO8601 } from 'class-validator';
+import { IsFutureDate } from '../../../common/validators/is-future-date.validator';
 
 export class UpdateOfferDto {
   @IsOptional()
@@ -13,5 +14,6 @@ export class UpdateOfferDto {
 
   @IsOptional()
   @IsISO8601()
+  @IsFutureDate()
   expiresAt?: string;
 }

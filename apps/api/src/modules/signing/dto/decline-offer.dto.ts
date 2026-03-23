@@ -1,15 +1,16 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 // ─── DeclineOfferDto ────────────────────────────────────────────────────────
-// Decline requires a challengeId so the session is resolved from the challenge's
-// bound sessionId — not from a "latest resumable" lookup.
+// challengeId is optional. When provided the session is resolved via the
+// challenge's bound sessionId (preferred — eliminates multi-tab ambiguity).
+// When absent the session is resolved via findResumable() (fallback — used when
+// the recipient declines before requesting an OTP and therefore has no challengeId).
 //
 // The challenge does NOT need to be VERIFIED to decline.
-// The challenge must exist and belong to the token's recipient so the flow can
-// identify the correct session. This prevents multi-tab ambiguity.
 
 export class DeclineOfferDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  challengeId!: string;
+  challengeId?: string;
 }

@@ -23,6 +23,7 @@ import {
   OfferIncompleteError,
   OfferNotRevocableError,
   OfferNotResendableError,
+  OfferNotSentError,
   InvalidStateTransitionError,
   TerminalStateError,
   RateLimitExceededError,
@@ -159,6 +160,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     // ── 409 Conflict — sender-side offer state violations ─────────────────────
     if (err instanceof OfferNotEditableError) {
       return this.make(HttpStatus.CONFLICT, err.message, 'OFFER_NOT_EDITABLE');
+    }
+    if (err instanceof OfferNotSentError) {
+      return this.make(HttpStatus.CONFLICT, err.message, 'OFFER_NOT_SENT');
     }
     if (err instanceof OfferNotRevocableError) {
       return this.make(HttpStatus.CONFLICT, err.message, 'OFFER_NOT_REVOCABLE');

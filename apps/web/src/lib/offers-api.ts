@@ -24,6 +24,10 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
+// Default timeout for all API requests. Mutations (sendOffer, revokeOffer, etc.)
+// must not hang indefinitely — 30 s is generous while still providing a hard bound.
+const FETCH_TIMEOUT_MS = 30_000;
+
 export class ApiError extends Error {
   constructor(
     public readonly statusCode: number,
@@ -39,6 +43,7 @@ export class ApiError extends Error {
 async function fetchOnce<T>(path: string, init: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     credentials: 'include', // sends HttpOnly cookies on every request
     headers: {
       'Content-Type': 'application/json',
@@ -99,8 +104,12 @@ export interface OrgInfo {
   slug: string;
 }
 
+// Returns the first org the current user belongs to.
+// Backend: GET /org  (lists caller's orgs — returns array; take the first entry).
 export async function getOrg(): Promise<OrgInfo> {
-  return request<OrgInfo>('/organizations/me');
+  const orgs = await request<OrgInfo[]>('/org');
+  if (!orgs.length) throw new ApiError(404, 'NO_ORG', 'No organisation found for this user.');
+  return orgs[0];
 }
 
 // ─── Billing ───────────────────────────────────────────────────────────────────
@@ -259,19 +268,19 @@ export interface OrgMember {
 }
 
 export async function getOrgMembers(orgId: string): Promise<OrgMember[]> {
-  const res = await request<OrgMember[] | { data: OrgMember[] }>(`/organizations/${orgId}/members`);
+  const res = await request<OrgMember[] | { data: OrgMember[] }>(`/org/${orgId}/members`);
   return Array.isArray(res) ? res : (res as { data: OrgMember[] }).data ?? [];
 }
 
 export async function inviteMember(orgId: string, email: string, role: string): Promise<void> {
-  return request<void>(`/organizations/${orgId}/invite`, {
+  return request<void>(`/org/${orgId}/invite`, {
     method: 'POST',
     body: JSON.stringify({ email, role }),
   });
 }
 
 export async function removeMember(orgId: string, userId: string): Promise<void> {
-  return request<void>(`/organizations/${orgId}/member/${userId}`, { method: 'DELETE' });
+  return request<void>(`/org/${orgId}/member/${userId}`, { method: 'DELETE' });
 }
 
 // ─── API Keys ─────────────────────────────────────────────────────────────────

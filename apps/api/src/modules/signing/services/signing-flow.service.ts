@@ -277,16 +277,20 @@ export class SigningFlowService {
   // Step 4b: Decline offer.
   // Decline notification to the sender is sent best-effort after the decline commits.
   //
-  // Session is derived from the challenge's bound sessionId, not from findResumable().
-  // This eliminates multi-tab ambiguity: the recipient's explicit challengeId tells us
-  // exactly which session they are declining from.
+  // Session resolution (in priority order):
+  //   1. challengeId provided → getSessionFromChallenge() — preferred; eliminates
+  //      multi-tab ambiguity by resolving the exact session the OTP was issued for.
+  //   2. challengeId absent → findResumable() — fallback; used when the recipient
+  //      declines before requesting an OTP (so no challengeId exists yet).
   //
   // The challenge does NOT need to be VERIFIED to decline — the recipient may
-  // want to decline before completing OTP verification. It must exist and belong
-  // to this recipient (binding check) so we can identify the correct session.
-  async decline(rawToken: string, challengeId: string, ctx: SessionContext): Promise<void> {
+  // want to decline before completing OTP verification.
+  async decline(rawToken: string, challengeId: string | undefined, ctx: SessionContext): Promise<void> {
     const recipient = await this.tokenService.verifyToken(rawToken);
-    const session = await this.getSessionFromChallenge(challengeId, recipient.id);
+    const session = challengeId
+      ? await this.getSessionFromChallenge(challengeId, recipient.id)
+      : await this.sessionService.findResumable(recipient.id);
+    if (!session) throw new SessionExpiredError();
     await this.acceptanceService.decline(session, ctx);
 
     // Load snapshot for sender contact details — best-effort only.

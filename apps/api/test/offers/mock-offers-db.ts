@@ -15,6 +15,7 @@ export function createMockOffersDb() {
       findMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       count: jest.fn(),
     },
     offerDocument: {

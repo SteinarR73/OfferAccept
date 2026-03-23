@@ -22,11 +22,12 @@ import { UpdateWebhookDto } from './dtos/update-webhook.dto';
 //
 // All routes require JWT + ADMIN or OWNER role.
 //
-// POST   /webhooks          — create endpoint. Secret returned ONCE in response.
-// GET    /webhooks          — list endpoints (no secret in response)
-// PUT    /webhooks/:id      — update url, events, or enabled flag
-// DELETE /webhooks/:id      — delete endpoint + delivery history
-// POST   /webhooks/:id/test — send a test.ping delivery to verify the endpoint
+// POST   /webhooks                    — create endpoint. Secret returned ONCE in response.
+// GET    /webhooks                    — list endpoints (no secret in response)
+// PUT    /webhooks/:id                — update url, events, or enabled flag
+// DELETE /webhooks/:id                — delete endpoint + delivery history
+// POST   /webhooks/:id/test           — send a test.ping delivery to verify the endpoint
+// POST   /webhooks/:id/rotate-secret  — invalidate old secret and issue a new one (returned ONCE)
 //
 // Events:
 //   offer.accepted     — emitted when a recipient accepts an offer
@@ -85,5 +86,16 @@ export class WebhooksController {
   ): Promise<{ queued: boolean }> {
     await this.webhookService.testEndpoint(endpointId, user.orgId);
     return { queued: true };
+  }
+
+  @Post(':id/rotate-secret')
+  @HttpCode(HttpStatus.OK)
+  async rotateSecret(
+    @Param('id') endpointId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ id: string; secret: string }> {
+    // New secret returned ONCE — old secret is immediately invalidated.
+    // The customer must update their webhook handler with the new secret.
+    return this.webhookService.rotateSecret(endpointId, user.orgId);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaClient, SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
@@ -31,7 +31,10 @@ import type { Env } from '../../config/env';
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
-  private readonly stripe: Stripe;
+
+  // Only initialized when BILLING_PROVIDER=stripe. All methods that call Stripe
+  // must go through requireStripe() which throws a 400 when billing is disabled.
+  private readonly stripe?: Stripe;
 
   // Maps Stripe price IDs to our SubscriptionPlan enum.
   // Built once at construction from env vars.
@@ -42,14 +45,17 @@ export class BillingService {
     private readonly subscriptionService: SubscriptionService,
     @Inject('PRISMA') private readonly db: PrismaClient,
   ) {
-    const secretKey = this.config.get('STRIPE_SECRET_KEY', { infer: true }) ?? '';
+    const billingEnabled = this.config.get('BILLING_PROVIDER', { infer: true }) === 'stripe';
 
-    this.stripe = new Stripe(secretKey, {
-      // Pin the API version to the one we tested against.
-      // Upgrade deliberately with a changelog review.
-      apiVersion: '2026-02-25.clover',
-      typescript: true,
-    });
+    if (billingEnabled) {
+      const secretKey = this.config.get('STRIPE_SECRET_KEY', { infer: true })!;
+      this.stripe = new Stripe(secretKey, {
+        // Pin the API version to the one we tested against.
+        // Upgrade deliberately with a changelog review.
+        apiVersion: '2026-02-25.clover',
+        typescript: true,
+      });
+    }
 
     const starter = this.config.get('STRIPE_PRICE_STARTER', { infer: true });
     const professional = this.config.get('STRIPE_PRICE_PROFESSIONAL', { infer: true });
@@ -59,6 +65,14 @@ export class BillingService {
     if (starter) this.priceToplan.set(starter, SubscriptionPlan.STARTER);
     if (professional) this.priceToplan.set(professional, SubscriptionPlan.PROFESSIONAL);
     if (enterprise) this.priceToplan.set(enterprise, SubscriptionPlan.ENTERPRISE);
+  }
+
+  // Returns the initialized Stripe client or throws 400 when billing is disabled.
+  private requireStripe(): Stripe {
+    if (!this.stripe) {
+      throw new BadRequestException('Billing is not enabled on this instance.');
+    }
+    return this.stripe;
   }
 
   // ── Customer ──────────────────────────────────────────────────────────────
@@ -85,7 +99,7 @@ export class BillingService {
     const email = org?.users[0]?.email ?? '';
     const name = org?.name ?? '';
 
-    const customer = await this.stripe.customers.create({
+    const customer = await this.requireStripe().customers.create({
       email,
       name,
       metadata: { organizationId },
@@ -116,7 +130,7 @@ export class BillingService {
     // Resolve plan name for metadata — helps webhook handlers and support staff.
     const planName = this.priceToplan.get(priceId)?.toString() ?? 'UNKNOWN';
 
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.requireStripe().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
@@ -150,7 +164,7 @@ export class BillingService {
   async createPortalSession(organizationId: string, returnUrl: string): Promise<string> {
     const customerId = await this.getOrCreateCustomer(organizationId);
 
-    const session = await this.stripe.billingPortal.sessions.create({
+    const session = await this.requireStripe().billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     });
@@ -173,7 +187,7 @@ export class BillingService {
 
     let event: Stripe.Event;
     try {
-      event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      event = this.requireStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err) {
       this.logger.warn(
         `Stripe webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -219,7 +233,7 @@ export class BillingService {
       throw new (await import('../../common/errors/domain.errors')).BillingCustomerNotFoundError();
     }
 
-    const subs = await this.stripe.subscriptions.list({
+    const subs = await this.requireStripe().subscriptions.list({
       customer: customerId,
       status: 'all',
       limit: 1,
@@ -281,7 +295,7 @@ export class BillingService {
       : null;
     if (!subId) return;
 
-    const stripeSub = await this.stripe.subscriptions.retrieve(subId);
+    const stripeSub = await this.requireStripe().subscriptions.retrieve(subId);
     await this.handleSubscriptionUpsert(stripeSub);
     this.logger.log(`Payment succeeded, subscription re-synced: subId=${subId}`);
   }
@@ -294,7 +308,7 @@ export class BillingService {
 
     // Fetch latest subscription state and sync it — Stripe will have set
     // status to 'past_due' by this point.
-    const subs = await this.stripe.subscriptions.list({ customer: customerId, limit: 1 });
+    const subs = await this.requireStripe().subscriptions.list({ customer: customerId, limit: 1 });
     if (subs.data.length > 0) {
       await this.handleSubscriptionUpsert(subs.data[0]);
     }

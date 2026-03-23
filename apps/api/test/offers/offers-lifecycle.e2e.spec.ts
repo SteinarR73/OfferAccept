@@ -243,7 +243,7 @@ describe('Offers Lifecycle (e2e)', () => {
         contentHash: 'c'.repeat(64),
       } as never);
       db.offerRecipient.update.mockResolvedValue(recipient as never);
-      db.offer.update.mockResolvedValue({ ...offerWithRecipient, status: 'SENT' } as never);
+      db.offer.updateMany.mockResolvedValue({ count: 1 } as never);
       db.offerDeliveryAttempt.create.mockResolvedValue({ id: 'delivery-1' } as never);
       db.offerDeliveryAttempt.update.mockResolvedValue({ id: 'delivery-1' } as never);
     }

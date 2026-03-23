@@ -75,8 +75,11 @@ export const signingApi = {
       body: JSON.stringify({ challengeId, locale, timezone }),
     }),
 
-  decline: (token: string) =>
-    request<{ declined: boolean }>(`${BASE}/${token}/decline`, { method: 'POST' }),
+  decline: (token: string, challengeId?: string) =>
+    request<{ declined: boolean }>(`${BASE}/${token}/decline`, {
+      method: 'POST',
+      body: challengeId ? JSON.stringify({ challengeId }) : undefined,
+    }),
 
   recordDocumentView: (token: string, documentId: string) =>
     request<{ recorded: boolean }>(`${BASE}/${token}/documents/${documentId}/view`, {
