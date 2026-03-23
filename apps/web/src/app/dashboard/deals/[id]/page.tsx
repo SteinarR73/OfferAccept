@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Send, RotateCcw, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   getOffer,
   sendOffer,
@@ -10,96 +9,25 @@ import {
   resendOffer,
 } from '../../../../lib/offers-api';
 import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
-import { OfferEditor } from '../../offers/[id]/offer-editor';
-import { DeliveryTimeline } from '../../../../components/dashboard/DeliveryTimeline';
-import { CertificateShowcase } from '../../../../components/dashboard/CertificateShowcase';
-import { ProposalContextCard } from '../../../../components/deals/ProposalContextCard';
 import { PageHeader } from '../../../../components/ui/PageHeader';
-import { Card, CardSection } from '../../../../components/ui/Card';
-import { Button } from '../../../../components/ui/Button';
 import { Alert } from '../../../../components/ui/Alert';
 import { OfferStatusBadge } from '../../../../components/ui/Badge';
 import { SpinnerPage } from '../../../../components/ui/Spinner';
+import { DealSummaryCard } from '../../../../components/deals/DealSummaryCard';
+import { CustomerCard } from '../../../../components/deals/CustomerCard';
+import { ProposalContextCard } from '../../../../components/deals/ProposalContextCard';
+import { DocumentsCard } from '../../../../components/deals/DocumentsCard';
+import { AcceptanceStatusCard } from '../../../../components/deals/AcceptanceStatusCard';
+import { DealActivityLog } from '../../../../components/deals/DealActivityLog';
+import { DeliveryTimeline } from '../../../../components/dashboard/DeliveryTimeline';
+import { CertificateShowcase } from '../../../../components/dashboard/CertificateShowcase';
 
 export const dynamic = 'force-dynamic';
 
+// ─── Extended type (API may return certificateId) ─────────────────────────────
+
 interface OfferItemExtended extends OfferItem {
   certificateId?: string;
-}
-
-// ─── StatusActionBar (same as offers/[id]) ─────────────────────────────────────
-
-interface StatusActionBarProps {
-  offer: OfferItemExtended;
-  onSend: () => Promise<void>;
-  onRevoke: () => Promise<void>;
-  onResend: () => Promise<void>;
-}
-
-function StatusActionBar({ offer, onSend, onRevoke, onResend }: StatusActionBarProps) {
-  const [loading, setLoading] = useState<'send' | 'revoke' | 'resend' | null>(null);
-  const [confirmRevoke, setConfirmRevoke] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handle(action: 'send' | 'revoke' | 'resend', fn: () => Promise<void>) {
-    setLoading(action);
-    setError(null);
-    try { await fn(); }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Action failed.'); }
-    finally { setLoading(null); setConfirmRevoke(false); }
-  }
-
-  if (offer.status === 'DRAFT') {
-    const canSend = !!offer.recipient?.email;
-    return (
-      <div className="space-y-2">
-        {error && <Alert variant="error" dismissible>{error}</Alert>}
-        {!canSend && <Alert variant="warning">Add a customer before sending this deal.</Alert>}
-        <Button variant="primary" size="sm" loading={loading === 'send'} disabled={!canSend}
-          onClick={() => handle('send', onSend)}
-          leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}
-        >
-          Send deal
-        </Button>
-      </div>
-    );
-  }
-
-  if (offer.status === 'SENT') {
-    return (
-      <div className="space-y-2">
-        {error && <Alert variant="error" dismissible>{error}</Alert>}
-        {confirmRevoke ? (
-          <Alert variant="warning">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold">Revoke this deal?</p>
-              <p className="text-xs">The signing link will be invalidated immediately.</p>
-              <div className="flex gap-2 mt-2">
-                <Button variant="danger" size="sm" loading={loading === 'revoke'}
-                  onClick={() => handle('revoke', onRevoke)}
-                  leftIcon={<XCircle className="w-3.5 h-3.5" aria-hidden="true" />}
-                >Yes, revoke</Button>
-                <Button variant="secondary" size="sm" onClick={() => setConfirmRevoke(false)}>Cancel</Button>
-              </div>
-            </div>
-          </Alert>
-        ) : (
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="secondary" size="sm" loading={loading === 'resend'}
-              onClick={() => handle('resend', onResend)}
-              leftIcon={<RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />}
-            >Resend</Button>
-            <Button variant="ghost" size="sm" onClick={() => setConfirmRevoke(true)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              leftIcon={<XCircle className="w-3.5 h-3.5" aria-hidden="true" />}
-            >Revoke</Button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return null;
 }
 
 // ─── DealDetailPage ────────────────────────────────────────────────────────────
@@ -116,6 +44,8 @@ export default function DealDetailPage() {
   }, [id]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // ── Optimistic status updates ───────────────────────────────────────────────
 
   async function handleSend() {
     const prev = offer!.status;
@@ -134,9 +64,33 @@ export default function DealDetailPage() {
 
   async function handleResend() { await resendOffer(id); }
 
+  // ── Document updates ────────────────────────────────────────────────────────
+
+  function handleDocumentAdded(docId: string, filename: string) {
+    setOffer((o) => {
+      if (!o) return o;
+      const placeholder = {
+        id: docId,
+        filename,
+        mimeType: filename.endsWith('.pdf')
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        sizeBytes: 0,
+        sha256Hash: '',
+      };
+      return { ...o, documents: [...o.documents, placeholder] };
+    });
+  }
+
+  function handleDocumentRemoved(docId: string) {
+    setOffer((o) => o ? { ...o, documents: o.documents.filter((d) => d.id !== docId) } : o);
+  }
+
+  // ── Error / loading ─────────────────────────────────────────────────────────
+
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <PageHeader title="Deal" backHref="/dashboard/deals" backLabel="All deals" />
         <Alert variant="error">{error}</Alert>
       </div>
@@ -145,98 +99,74 @@ export default function DealDetailPage() {
 
   if (!offer) return <SpinnerPage label="Loading deal…" />;
 
-  const showActions  = offer.status === 'DRAFT' || offer.status === 'SENT';
-  const terminalStatus = ['ACCEPTED', 'DECLINED', 'EXPIRED', 'REVOKED'].includes(offer.status);
+  const isAccepted = offer.status === 'ACCEPTED';
+  const isDeclined = offer.status === 'DECLINED';
+  const isRevoked  = offer.status === 'REVOKED';
+  const isExpired  = offer.status === 'EXPIRED';
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto space-y-5">
+
+      {/* ── Page header ────────────────────────────────────────────────────── */}
       <PageHeader
         title={offer.title}
         backHref="/dashboard/deals"
         backLabel="All deals"
-        action={
-          <div className="flex items-center gap-2">
-            <OfferStatusBadge status={offer.status} />
-          </div>
-        }
+        action={<OfferStatusBadge status={offer.status} />}
       />
 
-      {/* ── Terminal status alerts ─────────────────────────────────────────── */}
-      {offer.status === 'REVOKED' && (
-        <Alert variant="warning" className="mb-4">
+      {/* ── Terminal status alerts ──────────────────────────────────────────── */}
+      {isRevoked && (
+        <Alert variant="warning">
           This deal has been revoked. The signing link is no longer valid.
         </Alert>
       )}
-      {offer.status === 'EXPIRED' && (
-        <Alert variant="warning" className="mb-4">
+      {isExpired && (
+        <Alert variant="warning">
           This deal has expired. Create a new deal to re-engage the customer.
         </Alert>
       )}
-      {offer.status === 'DECLINED' && (
-        <Alert variant="error" className="mb-4">
-          The customer declined this deal.
-        </Alert>
+      {isDeclined && (
+        <Alert variant="error">The customer declined this deal.</Alert>
       )}
 
-      {/* ── Certificate card ─────────────────────────────────────────────── */}
-      {offer.status === 'ACCEPTED' && offer.certificateId && (
+      {/* ── Certificate (ACCEPTED + certificateId) ─────────────────────────── */}
+      {isAccepted && offer.certificateId && (
         <CertificateShowcase certificateId={offer.certificateId} />
       )}
-      {offer.status === 'ACCEPTED' && !offer.certificateId && (
-        <Alert variant="success" className="mb-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
-            <span>Deal accepted. Certificate generation may still be in progress.</span>
-          </div>
+      {isAccepted && !offer.certificateId && (
+        <Alert variant="success">
+          Deal accepted. Certificate generation may still be in progress.
         </Alert>
       )}
 
-      {/* ── Proposal context (sales context above editor) ─────────────────── */}
+      {/* ── Row 1: Deal summary (2/3) + Customer (1/3) ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2">
+          <DealSummaryCard
+            offer={offer}
+            onSend={handleSend}
+            onRevoke={handleRevoke}
+            onResend={handleResend}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <CustomerCard offer={offer} />
+        </div>
+      </div>
+
+      {/* ── Deal description / context ──────────────────────────────────────── */}
       <ProposalContextCard offer={offer} />
 
-      {/* ── Main grid ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          {/* Action bar */}
-          {showActions && (
-            <Card>
-              <CardSection className="py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-medium text-gray-700">
-                      {offer.status === 'DRAFT' ? 'Draft — not yet sent to customer' : 'Awaiting customer acceptance'}
-                    </p>
-                    {offer.status === 'SENT' && offer.recipient?.email && (
-                      <p className="text-[11px] text-[--color-text-muted] mt-0.5">
-                        Sent to {offer.recipient.email}
-                      </p>
-                    )}
-                  </div>
-                  <StatusActionBar
-                    offer={offer}
-                    onSend={handleSend}
-                    onRevoke={handleRevoke}
-                    onResend={handleResend}
-                  />
-                </div>
-              </CardSection>
-            </Card>
-          )}
-
-          {terminalStatus && (
-            <Card>
-              <CardSection className="py-3">
-                <div className="flex items-center gap-2 text-xs text-[--color-text-muted]">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-                  <span>This deal is {offer.status.toLowerCase()} and can no longer be edited.</span>
-                </div>
-              </CardSection>
-            </Card>
-          )}
-
-          <OfferEditor initial={offer} />
+      {/* ── Row 2: Documents (2/3) + Delivery timeline (1/3) ───────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2">
+          <DocumentsCard
+            offer={offer}
+            onDocumentAdded={handleDocumentAdded}
+            onDocumentRemoved={handleDocumentRemoved}
+          />
         </div>
-
         <div className="lg:col-span-1">
           <DeliveryTimeline
             offerId={id}
@@ -244,6 +174,17 @@ export default function DealDetailPage() {
           />
         </div>
       </div>
+
+      {/* ── Row 3: Acceptance status (1/3) + Activity log (2/3) ────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-1">
+          <AcceptanceStatusCard status={offer.status} />
+        </div>
+        <div className="lg:col-span-2">
+          <DealActivityLog offer={offer} />
+        </div>
+      </div>
+
     </div>
   );
 }
