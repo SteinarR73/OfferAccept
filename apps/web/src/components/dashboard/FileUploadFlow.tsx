@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { getDocumentUploadUrl, uploadFileToS3, addDocument } from '@/lib/offers-api';
+import { getDocumentUploadUrl, addDocument } from '@/lib/offers-api';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +20,8 @@ interface UploadedFile {
 interface Props {
   offerId: string;
   onUploaded?: (docId: string, filename: string) => void;
+  /** Called whenever any upload transitions between in-progress and settled. */
+  onUploadingChange?: (uploading: boolean) => void;
   /** Accepted MIME types. Default: PDF + DOCX */
   accept?: string;
   /** Max file size in bytes. Default: 25 MB */
@@ -45,6 +47,7 @@ async function sha256Hex(file: File): Promise<string> {
 export function FileUploadFlow({
   offerId,
   onUploaded,
+  onUploadingChange,
   accept = DEFAULT_ACCEPT,
   maxBytes = DEFAULT_MAX_BYTES,
   disabled = false,
@@ -52,6 +55,14 @@ export function FileUploadFlow({
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Notify parent whenever the in-progress count changes.
+  useEffect(() => {
+    const active = files.some(
+      (f) => f.status === 'hashing' || f.status === 'uploading' || f.status === 'confirming',
+    );
+    onUploadingChange?.(active);
+  }, [files, onUploadingChange]);
 
   const setFileState = useCallback((name: string, patch: Partial<UploadedFile>) => {
     setFiles((prev) => prev.map((f) => (f.name === name ? { ...f, ...patch } : f)));

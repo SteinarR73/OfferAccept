@@ -6,6 +6,9 @@ import {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  ExpiryNotificationParams,
+  RecipientReminderParams,
+  ExpiryWarningParams,
   EmailVerificationParams,
   PasswordResetParams,
   PasswordChangedParams,
@@ -17,6 +20,9 @@ import {
   acceptanceConfirmationSenderEmail,
   acceptanceConfirmationRecipientEmail,
   declineNotificationEmail,
+  expiryNotificationEmail,
+  recipientReminderEmail,
+  expiryWarningEmail,
   emailVerificationEmail,
   passwordResetEmail,
   passwordChangedEmail,
@@ -94,6 +100,25 @@ export class ResendEmailAdapter implements EmailPort {
   async sendDeclineNotification(params: DeclineNotificationParams): Promise<void> {
     const template = declineNotificationEmail(params);
     this.logger.log(`Sending decline notification to sender ${params.to} for offer "${params.offerTitle}"`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendExpiryNotification(params: ExpiryNotificationParams): Promise<void> {
+    const template = expiryNotificationEmail(params);
+    this.logger.log(`Sending expiry notification to sender ${params.to} for offer "${params.offerTitle}"`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendRecipientReminder(params: RecipientReminderParams): Promise<void> {
+    const template = recipientReminderEmail(params);
+    // Do not log signingUrl — contains the raw token
+    this.logger.log(`Sending reminder #${params.reminderNumber} (${params.variant}) to ${params.to} for offer "${params.offerTitle}"`);
+    await this.send(params.to, template.subject, template.html, template.text);
+  }
+
+  async sendExpiryWarning(params: ExpiryWarningParams): Promise<void> {
+    const template = expiryWarningEmail(params);
+    this.logger.log(`Sending ${params.warningLevel} expiry warning to sender ${params.to} for offer "${params.offerTitle}"`);
     await this.send(params.to, template.subject, template.html, template.text);
   }
 

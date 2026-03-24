@@ -51,6 +51,10 @@ export interface ResetMonthlyBillingPayload {
   // Cron-triggered sweep — resets per-org monthly offer counts.
 }
 
+export interface SendRemindersPayload {
+  // Cron-triggered sweep — no per-job parameters needed.
+}
+
 // ── Discriminated union of all registered jobs ───────────────────────────────
 
 export type JobName = keyof JobPayloadMap;
@@ -62,6 +66,7 @@ export interface JobPayloadMap {
   'send-email': SendEmailPayload;
   'send-webhook': SendWebhookPayload;
   'reset-monthly-billing': ResetMonthlyBillingPayload;
+  'send-reminders': SendRemindersPayload;
 }
 
 // ── Queue-level retry + TTL defaults ─────────────────────────────────────────
@@ -74,6 +79,12 @@ export interface JobPayloadMap {
 //   attempt 3: +retryDelay * 2^2 s
 
 export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
+  'send-reminders': {
+    retryLimit: 3,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInSeconds: 300, // 5 min — each sweep is fast
+  },
   'expire-sessions': {
     retryLimit: 3,
     retryDelay: 30,       // 30 s, 60 s, 120 s

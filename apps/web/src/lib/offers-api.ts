@@ -359,3 +359,53 @@ export async function getCertificate(id: string): Promise<CertificateDetail> {
 export async function exportCertificate(id: string): Promise<{ certificateId: string; canonicalJson: string; certificateHash: string }> {
   return request(`/certificates/${id}/export`);
 }
+
+export interface CertificateVerification {
+  certificateId: string;
+  valid: boolean;
+  certificateHashMatch: boolean;
+  reconstructedHash: string;
+  storedHash: string;
+  snapshotIntegrity: boolean;
+  eventChainIntegrity: boolean;
+  anomaliesDetected: boolean;
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export interface AnalyticsOverview {
+  dealsSent: number;
+  dealsAccepted: number;
+  dealsPending: number;
+  dealsDeclined: number;
+  dealsExpired: number;
+  dealsRevoked: number;
+  avgAcceptanceHours: number | null;
+  medianAcceptanceHours: number | null;
+  acceptedAfterReminderCount: number;
+  acceptedWithReminderPct: number | null;
+}
+
+export async function getAnalytics(): Promise<AnalyticsOverview> {
+  return request<AnalyticsOverview>('/analytics/overview');
+}
+
+export interface DealTimelineEvent {
+  event: string;
+  label: string;
+  timestamp: string | null;
+  pending: boolean;
+}
+
+export async function getDealTimeline(offerId: string): Promise<DealTimelineEvent[]> {
+  return request<DealTimelineEvent[]>(`/offers/${offerId}/timeline`);
+}
+
+// Public endpoint — no auth required
+export async function verifyCertificate(id: string): Promise<CertificateVerification> {
+  const url = `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/certificates/${id}/verify`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (res.status === 404) throw Object.assign(new Error('Not found'), { status: 404 });
+  if (!res.ok) throw new Error(`Verification failed: HTTP ${res.status}`);
+  return res.json() as Promise<CertificateVerification>;
+}

@@ -160,6 +160,16 @@ export class OffersController {
     return this.sendOfferService.getDeliveryHistory(id, user.orgId);
   }
 
+  // GET /offers/:id/timeline — lifecycle event timeline for a single deal
+  //
+  // Returns an ordered list of events (created → sent → opened → accepted/…).
+  // Pending steps are included with timestamp: null and pending: true so the
+  // UI can render the full lifecycle progression including future steps.
+  @Get(':id/timeline')
+  async getTimeline(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.offersService.getTimeline(id, user.orgId);
+  }
+
   // POST /offers/:id/revoke
   @Post(':id/revoke')
   @HttpCode(HttpStatus.OK)

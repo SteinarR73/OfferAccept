@@ -11,7 +11,7 @@ import { SigningOtpService } from '../../src/modules/signing/services/signing-ot
 import { AcceptanceService } from '../../src/modules/signing/services/acceptance.service';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
-import { EMAIL_PORT } from '../../src/common/email/email.port';
+import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 
 // ─── Session binding tests ────────────────────────────────────────────────────
@@ -83,6 +83,7 @@ function createMockDb() {
     offerRecipient: { findFirst: jest.fn(), update: jest.fn() },
     offer: { findUniqueOrThrow: jest.fn() },
     offerSnapshot: { findUniqueOrThrow: jest.fn() },
+    reminderSchedule: { deleteMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }) },
     $transaction: jest.fn(),
   };
 }
@@ -152,11 +153,11 @@ async function buildService(
         },
       },
       {
-        provide: EMAIL_PORT,
+        provide: NotificationsService,
         useValue: {
-          sendAcceptanceConfirmationToSender: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-          sendAcceptanceConfirmationToRecipient: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-          sendDeclineNotification: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+          onDealAccepted: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+          onDealDeclined: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+          onDealExpired: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
         },
       },
       {

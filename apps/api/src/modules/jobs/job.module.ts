@@ -11,9 +11,11 @@ import { IssueCertificateHandler } from './handlers/issue-certificate.handler';
 // Add it back here when the handler is implemented and ready for activation.
 import { SendWebhookHandler } from './handlers/send-webhook.handler';
 import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.handler';
+import { SendRemindersHandler } from './handlers/send-reminders.handler';
 import { CertificatesModule } from '../certificates/certificates.module';
 import { BillingModule } from '../billing/billing.module';
 import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 // ─── JobsModule ────────────────────────────────────────────────────────────────
 // Global module providing:
@@ -39,7 +41,7 @@ import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
 
 @Global()
 @Module({
-  imports: [CertificatesModule, BillingModule, EnterpriseCoreModule],
+  imports: [CertificatesModule, BillingModule, EnterpriseCoreModule, NotificationsModule],
   providers: [
     // ── pg-boss instance ───────────────────────────────────────────────────────
     {
@@ -74,6 +76,7 @@ import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
     // When implementing: add it here, add it back to JobWorker constructor + work() call.
     SendWebhookHandler,
     ResetMonthlyBillingHandler,
+    SendRemindersHandler,
   ],
   exports: [JobService],
 })

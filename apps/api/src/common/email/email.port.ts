@@ -83,12 +83,52 @@ export interface OrgInviteParams {
   expiresAt: Date;
 }
 
+export interface ExpiryNotificationParams {
+  to: string;           // sender's email
+  senderName: string;
+  offerTitle: string;
+  expiredAt: Date;      // the time the expiry sweep ran (approximate wall-clock time)
+}
+
+// ── Recipient reminder (sent to the deal recipient when they haven't responded) ─
+
+export type ReminderVariant =
+  | 'not_opened'   // offer sent but recipient never opened the link
+  | 'opened'       // recipient opened the link but has not yet confirmed
+  | 'otp_started'; // recipient started OTP verification but did not complete it
+
+export interface RecipientReminderParams {
+  to: string;
+  recipientName: string;
+  offerTitle: string;
+  senderName: string;
+  signingUrl: string;       // fresh signing URL — never log outside DEBUG
+  expiresAt: Date | null;
+  variant: ReminderVariant;
+  reminderNumber: 1 | 2 | 3; // which reminder in the cadence (for subject line tuning)
+}
+
+// ── Sender expiry warning (sent to the deal sender before the deal expires) ────
+
+export type ExpiryWarningLevel = '24h' | '2h';
+
+export interface ExpiryWarningParams {
+  to: string;           // sender's email
+  senderName: string;
+  offerTitle: string;
+  expiresAt: Date;
+  warningLevel: ExpiryWarningLevel;
+}
+
 export interface EmailPort {
   sendOtp(params: OtpEmailParams): Promise<void>;
   sendOfferLink(params: OfferLinkEmailParams): Promise<void>;
   sendAcceptanceConfirmationToSender(params: AcceptanceConfirmationSenderParams): Promise<void>;
   sendAcceptanceConfirmationToRecipient(params: AcceptanceConfirmationRecipientParams): Promise<void>;
   sendDeclineNotification(params: DeclineNotificationParams): Promise<void>;
+  sendExpiryNotification(params: ExpiryNotificationParams): Promise<void>;
+  sendRecipientReminder(params: RecipientReminderParams): Promise<void>;
+  sendExpiryWarning(params: ExpiryWarningParams): Promise<void>;
   sendEmailVerification(params: EmailVerificationParams): Promise<void>;
   sendPasswordReset(params: PasswordResetParams): Promise<void>;
   sendPasswordChanged(params: PasswordChangedParams): Promise<void>;

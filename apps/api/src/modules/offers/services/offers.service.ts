@@ -6,6 +6,15 @@ import { UpdateOfferDto } from '../dto/update-offer.dto';
 import { SetRecipientDto } from '../dto/set-recipient.dto';
 import { AddDocumentDto } from '../dto/add-document.dto';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface TimelineEvent {
+  event: string;       // machine-readable event identifier
+  label: string;       // human-readable label for the UI
+  timestamp: string | null;  // ISO 8601 — null if not yet reached
+  pending: boolean;    // true = step has not occurred yet
+}
+
 // ─── OffersService ─────────────────────────────────────────────────────────────
 // CRUD + lifecycle for the sender-side offer flow.
 //
@@ -144,6 +153,106 @@ export class OffersService {
     });
     if (!doc) throw new NotFoundException('Document not found.');
     await this.db.offerDocument.delete({ where: { id: documentId } });
+  }
+
+  // ── Timeline ──────────────────────────────────────────────────────────────
+  // Returns an ordered list of lifecycle events for a single deal.
+  // Pending steps (not yet reached) are included with timestamp: null and pending: true.
+
+  async getTimeline(offerId: string, orgId: string): Promise<TimelineEvent[]> {
+    const offer = await this.db.offer.findFirst({
+      where: { id: offerId, organizationId: orgId, deletedAt: null },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        recipient: { select: { viewedAt: true } },
+        snapshot: { select: { id: true, frozenAt: true } },
+      },
+    });
+    if (!offer) throw new NotFoundException('Offer not found.');
+
+    const events: TimelineEvent[] = [];
+    const isDraft = !offer.snapshot;
+
+    // 1. Created — always present
+    events.push({ event: 'deal_created', label: 'Deal created', timestamp: offer.createdAt.toISOString(), pending: false });
+
+    if (isDraft) {
+      // Show pending future steps for drafts
+      events.push({ event: 'deal_sent',     label: 'Deal sent',            timestamp: null, pending: true });
+      events.push({ event: 'deal_opened',   label: 'Opened by recipient',  timestamp: null, pending: true });
+      events.push({ event: 'otp_verified',  label: 'Identity verified',    timestamp: null, pending: true });
+      events.push({ event: 'deal_accepted', label: 'Deal accepted',        timestamp: null, pending: true });
+      return events;
+    }
+
+    // 2. Sent — snapshot.frozenAt is the authoritative sent timestamp
+    events.push({ event: 'deal_sent', label: 'Deal sent', timestamp: offer.snapshot!.frozenAt.toISOString(), pending: false });
+
+    // Fetch additional data in parallel
+    const [acceptanceRecord, session, cert] = await Promise.all([
+      this.db.acceptanceRecord.findFirst({
+        where: { snapshotId: offer.snapshot!.id },
+        select: { acceptedAt: true },
+      }),
+      this.db.signingSession.findFirst({
+        where: { offerId, status: { in: ['OTP_VERIFIED', 'ACCEPTED'] } },
+        orderBy: { otpVerifiedAt: 'desc' },
+        select: { otpVerifiedAt: true },
+      }),
+      this.db.acceptanceCertificate.findUnique({
+        where: { offerId },
+        select: { issuedAt: true },
+      }),
+    ]);
+
+    const viewedAt = offer.recipient?.viewedAt;
+    const status = offer.status;
+
+    // 3. Opened
+    if (viewedAt) {
+      events.push({ event: 'deal_opened', label: 'Opened by recipient', timestamp: viewedAt.toISOString(), pending: false });
+    } else if (status === 'SENT') {
+      events.push({ event: 'deal_opened', label: 'Opened by recipient', timestamp: null, pending: true });
+    }
+
+    if (status === 'ACCEPTED') {
+      // 4. OTP verified
+      events.push({
+        event: 'otp_verified',
+        label: 'Identity verified',
+        timestamp: session?.otpVerifiedAt?.toISOString() ?? null,
+        pending: !session?.otpVerifiedAt,
+      });
+      // 5. Accepted
+      events.push({
+        event: 'deal_accepted',
+        label: 'Deal accepted',
+        timestamp: acceptanceRecord?.acceptedAt.toISOString() ?? null,
+        pending: !acceptanceRecord,
+      });
+      // 6. Certificate
+      events.push({
+        event: 'certificate_generated',
+        label: 'Certificate generated',
+        timestamp: cert?.issuedAt.toISOString() ?? null,
+        pending: !cert,
+      });
+    } else if (status === 'DECLINED') {
+      events.push({ event: 'deal_declined', label: 'Deal declined', timestamp: offer.updatedAt.toISOString(), pending: false });
+    } else if (status === 'EXPIRED') {
+      events.push({ event: 'deal_expired', label: 'Deal expired', timestamp: offer.updatedAt.toISOString(), pending: false });
+    } else if (status === 'REVOKED') {
+      events.push({ event: 'deal_revoked', label: 'Deal revoked', timestamp: offer.updatedAt.toISOString(), pending: false });
+    } else if (status === 'SENT') {
+      // Still waiting — show pending steps
+      events.push({ event: 'otp_verified',  label: 'Identity verified', timestamp: null, pending: true });
+      events.push({ event: 'deal_accepted', label: 'Deal accepted',     timestamp: null, pending: true });
+    }
+
+    return events;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

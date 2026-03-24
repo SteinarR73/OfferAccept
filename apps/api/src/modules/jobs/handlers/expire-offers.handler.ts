@@ -2,6 +2,8 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import type { Job } from 'pg-boss';
 import type { ExpireOffersPayload } from '../job.types';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { DealExpiredEvent } from '../../notifications/events/deal-expired.event';
 
 // ─── ExpireOffersHandler ───────────────────────────────────────────────────────
 // Batch sweep: marks SENT offers whose expiresAt has passed as EXPIRED, and
@@ -25,18 +27,30 @@ import type { ExpireOffersPayload } from '../job.types';
 export class ExpireOffersHandler {
   private readonly logger = new Logger(ExpireOffersHandler.name);
 
-  constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
+  constructor(
+    @Inject('PRISMA') private readonly db: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async handle(jobs: Job<ExpireOffersPayload>[]): Promise<void> {
     const now = new Date();
 
-    // Step 1: collect expired offer IDs.
+    // Step 1: collect expired offers with sender info for notifications.
     const expiredOffers = await this.db.offer.findMany({
       where: {
         status: 'SENT',
         expiresAt: { lt: now },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        snapshot: {
+          select: {
+            title: true,
+            senderEmail: true,
+            senderName: true,
+          },
+        },
+      },
     });
 
     if (expiredOffers.length === 0) {
@@ -46,7 +60,7 @@ export class ExpireOffersHandler {
 
     const offerIds = expiredOffers.map((o) => o.id);
 
-    // Steps 2 + 3: atomic — both updates commit or both roll back.
+    // Step 2 + 3: atomic — both updates commit or both roll back.
     const [offerResult, recipientResult] = await this.db.$transaction([
       // Step 2: expire offers.
       this.db.offer.updateMany({
@@ -66,6 +80,26 @@ export class ExpireOffersHandler {
     this.logger.log(
       `Expired ${offerResult.count} offer(s) and ${recipientResult.count} recipient(s)`,
     );
+
+    // Step 4: cancel reminder schedules for all expired offers — batch delete.
+    await this.db.reminderSchedule.deleteMany({
+      where: { offerId: { in: offerIds } },
+    }).catch((e: unknown) =>
+      this.logger.warn(`Failed to delete reminder schedules after expiry: ${e}`),
+    );
+
+    // Step 5: notify senders — best-effort, fired after the transaction commits.
+    // Each notification is independent; a failure on one does not prevent others.
+    for (const offer of expiredOffers) {
+      if (!offer.snapshot) continue; // no snapshot = offer was never sent; skip
+      await this.notificationsService.onDealExpired(new DealExpiredEvent(
+        offer.id,
+        offer.snapshot.title,
+        offer.snapshot.senderEmail,
+        offer.snapshot.senderName,
+        now,
+      ));
+    }
 
     void jobs;
   }

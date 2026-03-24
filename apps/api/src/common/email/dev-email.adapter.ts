@@ -6,6 +6,9 @@ import {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  ExpiryNotificationParams,
+  RecipientReminderParams,
+  ExpiryWarningParams,
   EmailVerificationParams,
   PasswordResetParams,
   PasswordChangedParams,
@@ -71,6 +74,32 @@ export interface SentDeclineNotification {
   sentAt: Date;
 }
 
+export interface SentExpiryNotification {
+  to: string;
+  senderName: string;
+  offerTitle: string;
+  expiredAt: Date;
+  sentAt: Date;
+}
+
+export interface SentRecipientReminder {
+  to: string;
+  offerTitle: string;
+  signingUrl: string; // acceptable in dev/test only
+  variant: string;
+  reminderNumber: number;
+  sentAt: Date;
+}
+
+export interface SentExpiryWarning {
+  to: string;
+  senderName: string;
+  offerTitle: string;
+  expiresAt: Date;
+  warningLevel: string;
+  sentAt: Date;
+}
+
 @Injectable()
 export class DevEmailAdapter implements EmailPort {
   private readonly logger = new Logger(DevEmailAdapter.name);
@@ -79,6 +108,9 @@ export class DevEmailAdapter implements EmailPort {
   private readonly sentAcceptanceSender: SentAcceptanceConfirmationSender[] = [];
   private readonly sentAcceptanceRecipient: SentAcceptanceConfirmationRecipient[] = [];
   private readonly sentDeclines: SentDeclineNotification[] = [];
+  private readonly sentExpiries: SentExpiryNotification[] = [];
+  private readonly sentReminders: SentRecipientReminder[] = [];
+  private readonly sentExpiryWarnings: SentExpiryWarning[] = [];
   private readonly sentVerifications: Array<{ to: string; url: string; sentAt: Date }> = [];
   private readonly sentPasswordResets: Array<{ to: string; url: string; sentAt: Date }> = [];
   private readonly sentOrgInvites: Array<{ to: string; url: string; orgName: string; sentAt: Date }> = [];
@@ -159,6 +191,48 @@ export class DevEmailAdapter implements EmailPort {
     );
   }
 
+  async sendExpiryNotification(params: ExpiryNotificationParams): Promise<void> {
+    this.sentExpiries.push({
+      to: params.to,
+      senderName: params.senderName,
+      offerTitle: params.offerTitle,
+      expiredAt: params.expiredAt,
+      sentAt: new Date(),
+    });
+    this.logger.log(
+      `[DEV EMAIL] Expiry → sender ${params.to}: "${params.offerTitle}" expired at ${params.expiredAt.toISOString()}`,
+    );
+  }
+
+  async sendRecipientReminder(params: RecipientReminderParams): Promise<void> {
+    this.sentReminders.push({
+      to: params.to,
+      offerTitle: params.offerTitle,
+      signingUrl: params.signingUrl,
+      variant: params.variant,
+      reminderNumber: params.reminderNumber,
+      sentAt: new Date(),
+    });
+    // Do not log signingUrl — contains the raw token
+    this.logger.log(
+      `[DEV EMAIL] Reminder #${params.reminderNumber} (${params.variant}) → ${params.to}: "${params.offerTitle}"`,
+    );
+  }
+
+  async sendExpiryWarning(params: ExpiryWarningParams): Promise<void> {
+    this.sentExpiryWarnings.push({
+      to: params.to,
+      senderName: params.senderName,
+      offerTitle: params.offerTitle,
+      expiresAt: params.expiresAt,
+      warningLevel: params.warningLevel,
+      sentAt: new Date(),
+    });
+    this.logger.log(
+      `[DEV EMAIL] Expiry warning (${params.warningLevel}) → sender ${params.to}: "${params.offerTitle}" expires ${params.expiresAt.toISOString()}`,
+    );
+  }
+
   async sendEmailVerification(params: EmailVerificationParams): Promise<void> {
     this.sentVerifications.push({ to: params.to, url: params.verificationUrl, sentAt: new Date() });
     // Do not log verificationUrl — it contains the raw token
@@ -226,6 +300,39 @@ export class DevEmailAdapter implements EmailPort {
     return records[0] ?? null;
   }
 
+  getLastExpiryNotification(email: string): SentExpiryNotification | null {
+    const records = this.sentExpiries
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0] ?? null;
+  }
+
+  getAllExpiryNotifications(): ReadonlyArray<SentExpiryNotification> {
+    return this.sentExpiries;
+  }
+
+  getLastRecipientReminder(email: string): SentRecipientReminder | null {
+    const records = this.sentReminders
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0] ?? null;
+  }
+
+  getAllRecipientReminders(email?: string): ReadonlyArray<SentRecipientReminder> {
+    return email ? this.sentReminders.filter((r) => r.to === email) : this.sentReminders;
+  }
+
+  getLastExpiryWarning(email: string): SentExpiryWarning | null {
+    const records = this.sentExpiryWarnings
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0] ?? null;
+  }
+
+  getAllExpiryWarnings(): ReadonlyArray<SentExpiryWarning> {
+    return this.sentExpiryWarnings;
+  }
+
   getAllSent(): ReadonlyArray<SentOtp> {
     return this.sentOtps;
   }
@@ -254,6 +361,9 @@ export class DevEmailAdapter implements EmailPort {
     this.sentAcceptanceSender.length = 0;
     this.sentAcceptanceRecipient.length = 0;
     this.sentDeclines.length = 0;
+    this.sentExpiries.length = 0;
+    this.sentReminders.length = 0;
+    this.sentExpiryWarnings.length = 0;
     this.sentVerifications.length = 0;
     this.sentPasswordResets.length = 0;
     this.sentOrgInvites.length = 0;

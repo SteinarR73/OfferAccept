@@ -66,6 +66,11 @@ export function createMockDb() {
       findUnique: jest.fn(),
       create: jest.fn(),
     },
+    reminderSchedule: {
+      create: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+      deleteMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
+      delete: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+    },
   };
   // Configure $transaction after `mock` is fully initialized to avoid circular
   // type inference (TS7022). The callback receives the same mock as the tx argument.

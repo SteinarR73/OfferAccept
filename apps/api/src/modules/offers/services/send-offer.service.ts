@@ -251,6 +251,21 @@ export class SendOfferService {
         data: { outcome: 'DELIVERED_TO_PROVIDER' },
       });
 
+      // Create reminder schedule — first reminder fires 24 h from now.
+      // Created after the email succeeds so we only schedule reminders for
+      // deals that were actually delivered. Best-effort: failure here does
+      // not affect the send result.
+      await this.db.reminderSchedule.create({
+        data: {
+          offerId: offer.id,
+          dealSentAt: snapshot.frozenAt,
+          nextReminderAt: new Date(snapshot.frozenAt.getTime() + 24 * 60 * 60 * 1000),
+          reminderCount: 0,
+        },
+      }).catch((e: unknown) =>
+        this.logger.warn(`Failed to create reminder schedule for offer ${offer.id}: ${e}`),
+      );
+
       return {
         snapshotId: snapshot.id,
         sentAt: snapshot.frozenAt,
@@ -267,6 +282,20 @@ export class SendOfferService {
 
       this.logger.error(
         `Offer link delivery failed for offer ${offer.id} to ${recipient.email}: ${failureReason}`,
+      );
+
+      // Still create a reminder schedule even when delivery failed — the
+      // resend flow will regenerate a fresh token, and reminders may still
+      // reach the recipient if the delivery issue is transient.
+      await this.db.reminderSchedule.create({
+        data: {
+          offerId: offer.id,
+          dealSentAt: snapshot.frozenAt,
+          nextReminderAt: new Date(snapshot.frozenAt.getTime() + 24 * 60 * 60 * 1000),
+          reminderCount: 0,
+        },
+      }).catch((e: unknown) =>
+        this.logger.warn(`Failed to create reminder schedule for offer ${offer.id}: ${e}`),
       );
 
       return {
@@ -441,5 +470,10 @@ export class SendOfferService {
         data: { status: 'REVOKED' },
       });
     });
+
+    // Cancel reminder schedule — best-effort, non-blocking.
+    await this.db.reminderSchedule.deleteMany({ where: { offerId: offer.id } }).catch((e: unknown) =>
+      this.logger.warn(`Failed to delete reminder schedule on revoke for offer ${offer.id}: ${e}`),
+    );
   }
 }

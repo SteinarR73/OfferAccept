@@ -18,6 +18,7 @@ import { IssueCertificateHandler } from './handlers/issue-certificate.handler';
 // See: handlers/send-email.handler.ts for the activation checklist.
 import { SendWebhookHandler } from './handlers/send-webhook.handler';
 import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.handler';
+import { SendRemindersHandler } from './handlers/send-reminders.handler';
 
 // ─── JobWorker ─────────────────────────────────────────────────────────────────
 // Lifecycle service that owns the pg-boss start/stop sequence and registers all
@@ -49,6 +50,7 @@ const WORKER_OPTIONS: Record<Exclude<JobName, 'send-email'>, WorkOptions> = {
   // Restore this entry when the handler is implemented.
   'send-webhook':          { batchSize: 5, localConcurrency: 5 },
   'reset-monthly-billing': { batchSize: 1, localConcurrency: 1 },
+  'send-reminders':        { batchSize: 1, localConcurrency: 1 },
 };
 
 @Injectable()
@@ -64,6 +66,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     // See comment above WORKER_OPTIONS for re-activation steps.
     private readonly sendWebhook: SendWebhookHandler,
     private readonly resetMonthlyBilling: ResetMonthlyBillingHandler,
+    private readonly sendReminders: SendRemindersHandler,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -112,6 +115,12 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
       'reset-monthly-billing',
       WORKER_OPTIONS['reset-monthly-billing'],
       (jobs: Job<JobPayloadMap['reset-monthly-billing']>[]) => this.resetMonthlyBilling.handle(jobs),
+    );
+
+    await this.boss.work<JobPayloadMap['send-reminders']>(
+      'send-reminders',
+      WORKER_OPTIONS['send-reminders'],
+      (jobs: Job<JobPayloadMap['send-reminders']>[]) => this.sendReminders.handle(jobs),
     );
 
     this.logger.log('All job workers registered');

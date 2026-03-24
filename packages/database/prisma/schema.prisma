@@ -270,6 +270,8 @@ model Offer {
   certificate       AcceptanceCertificate?
   deliveryAttempts  OfferDeliveryAttempt[]
 
+  reminderSchedule  ReminderSchedule?
+
   @@index([organizationId, status])
   @@index([createdById])
   // Used by the expiry background job: SELECT … WHERE status = 'SENT' AND expiresAt < NOW()
@@ -745,6 +747,44 @@ model SupportAuditLog {
   @@index([resourceType, resourceId])
   @@index([timestamp])
   @@map("support_audit_logs")
+}
+
+// ─── ReminderSchedule ─────────────────────────────────────────────────────────
+// Tracks the automated reminder cadence for a single SENT offer.
+// One row per offer, created when the offer is sent and deleted when it reaches
+// a terminal state (ACCEPTED, DECLINED, EXPIRED, REVOKED).
+//
+// Reminder cadence (from dealSentAt):
+//   Reminder 1: +24 h
+//   Reminder 2: +72 h
+//   Reminder 3: +120 h (5 days)
+//
+// nextReminderAt is null when all 3 reminders have been sent.
+// The row is kept alive after all reminders are sent so that expiry warnings
+// (warning24hSentAt, warning2hSentAt) can still be tracked and fired.
+//
+// The send-reminders background job sweeps this table every 5 minutes.
+
+model ReminderSchedule {
+  id             String    @id @default(cuid())
+  offerId        String    @unique
+  // Timestamp the deal was sent — anchor for all reminder timing calculations.
+  dealSentAt     DateTime
+  // Next scheduled reminder to the recipient; null when all 3 have been sent.
+  nextReminderAt DateTime?
+  // Count of reminders sent so far: 0 = none, 1 = R1 sent, 2 = R2 sent, 3 = R3 sent.
+  reminderCount  Int       @default(0)
+  // Expiry warnings to the deal sender. Null = not yet sent.
+  warning24hSentAt DateTime?
+  warning2hSentAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  offer Offer @relation(fields: [offerId], references: [id])
+
+  // Used by the reminder sweep: WHERE nextReminderAt <= NOW()
+  @@index([nextReminderAt])
+  @@map("reminder_schedules")
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

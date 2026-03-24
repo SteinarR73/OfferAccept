@@ -49,6 +49,11 @@ export class JobScheduler implements OnApplicationBootstrap {
       tz: 'UTC',
     });
 
+    // send-reminders: every 5 minutes (same cadence as expire-sessions)
+    await this.boss.schedule('send-reminders', '*/5 * * * *', {}, {
+      tz: 'UTC',
+    });
+
     // reset-monthly-billing: midnight UTC on the 1st of every month
     // Uses a month-stamped singletonKey so re-registration after a restart
     // on the 1st doesn't fire the job again.
@@ -63,6 +68,6 @@ export class JobScheduler implements OnApplicationBootstrap {
       },
     );
 
-    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing');
+    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders');
   }
 }

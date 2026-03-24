@@ -1,4 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
+// Note: EMAIL_PORT is no longer injected here — all notification emails are
+// dispatched via NotificationsService to keep signing flow and email concerns separate.
 import { PrismaClient, SigningSession } from '@prisma/client';
 import { SigningTokenService } from './signing-token.service';
 import { SigningSessionService, SessionContext } from './signing-session.service';
@@ -6,7 +8,9 @@ import { SigningOtpService, IssuedOtpResult, VerifyOtpResult } from './signing-o
 import { AcceptanceService, AcceptanceContext, AcceptanceResult } from './acceptance.service';
 import { SigningEventService } from './signing-event.service';
 import { CertificateService } from '../../certificates/certificate.service';
-import { EMAIL_PORT, EmailPort } from '../../../common/email/email.port';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { DealAcceptedEvent } from '../../notifications/events/deal-accepted.event';
+import { DealDeclinedEvent } from '../../notifications/events/deal-declined.event';
 import {
   InvalidStateTransitionError,
   OfferExpiredError,
@@ -77,7 +81,7 @@ export class SigningFlowService {
     private readonly acceptanceService: AcceptanceService,
     private readonly eventService: SigningEventService,
     private readonly certificateService: CertificateService,
-    @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
+    private readonly notificationsService: NotificationsService,
     private readonly webhookService: WebhookService,
   ) {}
 
@@ -213,29 +217,23 @@ export class SigningFlowService {
       result.acceptanceRecord.id,
     );
 
-    // Send acceptance notifications — best-effort. AcceptanceResult already has
-    // all needed data (snapshot + recipient were loaded in acceptanceService.accept).
-    try {
-      await this.emailPort.sendAcceptanceConfirmationToSender({
-        to: result.senderEmail,
-        senderName: result.senderName,
-        offerTitle: result.offerTitle,
-        recipientName: result.recipientName,
-        recipientEmail: result.recipientEmail,
-        acceptedAt: result.acceptanceRecord.acceptedAt,
-        certificateId: certificateId!,
-      });
-      await this.emailPort.sendAcceptanceConfirmationToRecipient({
-        to: result.recipientEmail,
-        recipientName: result.recipientName,
-        offerTitle: result.offerTitle,
-        senderName: result.senderName,
-        acceptedAt: result.acceptanceRecord.acceptedAt,
-        certificateId: certificateId!,
-      });
-    } catch (err) {
-      this.logger.error('Failed to send acceptance notification emails', err);
-    }
+    // Cancel reminder schedule — no more reminders needed after acceptance.
+    // Best-effort: failure here does not reverse the acceptance.
+    await this.db.reminderSchedule.deleteMany({ where: { offerId: result.offerId } }).catch((e: unknown) =>
+      this.logger.warn(`Failed to delete reminder schedule on accept for offer ${result.offerId}: ${e}`),
+    );
+
+    // Send acceptance notifications — best-effort (errors are caught inside NotificationsService).
+    await this.notificationsService.onDealAccepted(new DealAcceptedEvent(
+      result.offerId,
+      result.offerTitle,
+      result.senderEmail,
+      result.senderName,
+      result.recipientEmail,
+      result.recipientName,
+      result.acceptanceRecord.acceptedAt,
+      certificateId ?? '',
+    ));
 
     // Dispatch outgoing webhooks — best-effort, enqueued via pg-boss.
     // Failures here do not reverse the acceptance or block the response.
@@ -293,19 +291,26 @@ export class SigningFlowService {
     if (!session) throw new SessionExpiredError();
     await this.acceptanceService.decline(session, ctx);
 
-    // Load snapshot for sender contact details — best-effort only.
+    // Cancel reminder schedule — best-effort.
+    await this.db.reminderSchedule.deleteMany({ where: { offerId: session.offerId } }).catch((e: unknown) =>
+      this.logger.warn(`Failed to delete reminder schedule on decline for offer ${session.offerId}: ${e}`),
+    );
+
+    // Send decline notification — best-effort (errors are caught inside NotificationsService).
+    // Load snapshot for sender contact details.
     try {
       const snapshot = await this.db.offerSnapshot.findUniqueOrThrow({
         where: { id: session.snapshotId },
       });
-      await this.emailPort.sendDeclineNotification({
-        to: snapshot.senderEmail,
-        senderName: snapshot.senderName,
-        offerTitle: snapshot.title,
-        recipientName: recipient.name,
-        recipientEmail: recipient.email,
-        declinedAt: new Date(),
-      });
+      await this.notificationsService.onDealDeclined(new DealDeclinedEvent(
+        session.offerId,
+        snapshot.title,
+        snapshot.senderEmail,
+        snapshot.senderName,
+        recipient.email,
+        recipient.name,
+        new Date(),
+      ));
     } catch (err) {
       this.logger.error('Failed to send decline notification email', err);
     }

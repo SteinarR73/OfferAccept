@@ -12,6 +12,7 @@ import {
 import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { OfferEditor } from './offer-editor';
 import { DeliveryTimeline } from '../../../../components/dashboard/DeliveryTimeline';
+import { DealTimeline } from '../../../../components/dashboard/DealTimeline';
 import { CertificateShowcase } from '../../../../components/dashboard/CertificateShowcase';
 import { PageHeader } from '../../../../components/ui/PageHeader';
 import { Card, CardHeader, CardSection } from '../../../../components/ui/Card';
@@ -278,8 +279,9 @@ export default function OfferDetailPage() {
           <OfferEditor initial={offer} />
         </div>
 
-        {/* Delivery timeline — right 1/3 */}
-        <div className="lg:col-span-1">
+        {/* Right sidebar: lifecycle timeline + delivery timeline */}
+        <div className="lg:col-span-1 flex flex-col gap-4">
+          <DealTimeline offerId={id} />
           <DeliveryTimeline offerId={id} offerStatus={offer.status as 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'REVOKED'} />
         </div>
       </div>

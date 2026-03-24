@@ -17,6 +17,7 @@ import { StorageModule } from './common/storage/storage.module';
 import { FilesModule } from './modules/files/files.module';
 import { JobsModule } from './modules/jobs/job.module';
 import { EnterpriseHttpModule } from './modules/enterprise/enterprise-http.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { EnterpriseHttpModule } from './modules/enterprise/enterprise-http.modul
     FilesModule,
     JobsModule,
     EnterpriseHttpModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

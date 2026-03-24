@@ -9,12 +9,14 @@ import { StatsCard, StatsCardSkeleton } from '../../components/dashboard/StatsCa
 import { OfferTable } from '../../components/dashboard/OfferTable';
 import { OnboardingBanner } from '../../components/dashboard/OnboardingBanner';
 import { OnboardingTour, type TourStep } from '../../components/dashboard/OnboardingTour';
+import { FirstDealEmptyState } from '../../components/dashboard/FirstDealEmptyState';
 import { ActionPanel } from '../../components/dashboard/ActionPanel';
 import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
 import { InsightsPanel } from '../../components/dashboard/InsightsPanel';
 import { AcceptanceTrend } from '../../components/dashboard/AcceptanceTrend';
 import { UsageProgress } from '../../components/dashboard/UsageProgress';
 import { DealsPipeline } from '../../components/dashboard/DealsPipeline';
+import { AnalyticsOverview } from '../../components/dashboard/AnalyticsOverview';
 import { Button } from '../../components/ui/Button';
 
 // ─── Tour steps ────────────────────────────────────────────────────────────────
@@ -109,98 +111,109 @@ export default function DashboardPage() {
               {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <Link href="/dashboard/offers/new">
-            <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />} data-tour="create-offer">
-              New deal
-            </Button>
-          </Link>
-        </div>
-
-        {/* ── Onboarding checklist (first session) ─────────────────────── */}
-        {isFirstSession && (
-          <OnboardingBanner completedStepIds={[]} tourId="onboarding-banner" />
-        )}
-
-        {/* ── Action panel (derived from offers, no extra API call) ──────── */}
-        <ActionPanel offers={offers} loading={loading} />
-
-        {/* ── Stats row ────────────────────────────────────────────────────── */}
-        {statsTruncated && (
-          <p className="text-xs text-[--color-text-muted]">
-            Showing statistics for the most recent 250 deals.{' '}
-            <a href="/dashboard/offers" className="underline">View all deals →</a>
-          </p>
-        )}
-        <div
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-          aria-label="Deal statistics"
-        >
-          {loading ? (
-            <>
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-            </>
-          ) : (
-            <>
-              <StatsCard
-                label="Total deals"
-                value={stats.total}
-                tourId="stats-total"
-                description={`Total deals: ${stats.total}`}
-              />
-              <StatsCard
-                label="Accepted"
-                value={stats.accepted}
-                trend="positive"
-                sub={stats.accepted > 0 ? `${stats.conversionPct}% rate` : undefined}
-                description={`Accepted deals: ${stats.accepted}`}
-              />
-              <StatsCard
-                label="Awaiting response"
-                value={stats.pending}
-                trend="neutral"
-                description={`Deals awaiting response: ${stats.pending}`}
-              />
-              <StatsCard
-                label="Acceptance rate"
-                value={`${stats.conversionPct}%`}
-                trend={
-                  stats.conversionPct >= 70 ? 'positive'
-                  : stats.conversionPct >= 40 ? 'neutral'
-                  : stats.total > 0 ? 'negative'
-                  : 'neutral'
-                }
-                description={`Acceptance rate: ${stats.conversionPct}%`}
-              />
-            </>
+          {!isFirstSession && (
+            <Link href="/dashboard/deals/new">
+              <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />} data-tour="create-offer">
+                New deal
+              </Button>
+            </Link>
           )}
         </div>
 
-        {/* ── Deals pipeline ─────────────────────────────────────────────────── */}
-        <DealsPipeline offers={offers} loading={loading} />
+        {/* ── First-session: replace the full dashboard with a focused empty state ── */}
+        {isFirstSession && (
+          <FirstDealEmptyState />
+        )}
 
-        {/* ── Usage progress (billing — independent fetch inside component) ─── */}
-        <UsageProgress />
+        {/* ── Active dashboard (offers exist) ─────────────────────────────── */}
+        {!isFirstSession && (
+          <>
+            {/* Onboarding checklist for users still working through setup */}
+            <OnboardingBanner completedStepIds={[]} tourId="onboarding-banner" />
 
-        {/* ── Main grid: Offer table + right sidebar ────────────────────────── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <OfferTable
-            offers={offers}
-            loading={loading}
-            tourId="offer-table"
-            headingLabel="Recent deals"
-            columnLabels={{ title: 'Deal name', recipient: 'Customer' }}
-          />
-          </div>
-          <div className="lg:col-span-1 flex flex-col gap-5">
-            <InsightsPanel offers={offers} loading={loading} />
-            <AcceptanceTrend offers={offers} loading={loading} />
-            <ActivityFeed offers={offers} loading={loading} />
-          </div>
-        </div>
+            {/* Action panel (derived from offers, no extra API call) */}
+            <ActionPanel offers={offers} loading={loading} />
+
+            {/* Stats row */}
+            {statsTruncated && (
+              <p className="text-xs text-[--color-text-muted]">
+                Showing statistics for the most recent 250 deals.{' '}
+                <a href="/dashboard/offers" className="underline">View all deals →</a>
+              </p>
+            )}
+            <div
+              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+              aria-label="Deal statistics"
+            >
+              {loading ? (
+                <>
+                  <StatsCardSkeleton />
+                  <StatsCardSkeleton />
+                  <StatsCardSkeleton />
+                  <StatsCardSkeleton />
+                </>
+              ) : (
+                <>
+                  <StatsCard
+                    label="Total deals"
+                    value={stats.total}
+                    tourId="stats-total"
+                    description={`Total deals: ${stats.total}`}
+                  />
+                  <StatsCard
+                    label="Accepted"
+                    value={stats.accepted}
+                    trend="positive"
+                    sub={stats.accepted > 0 ? `${stats.conversionPct}% rate` : undefined}
+                    description={`Accepted deals: ${stats.accepted}`}
+                  />
+                  <StatsCard
+                    label="Awaiting response"
+                    value={stats.pending}
+                    trend="neutral"
+                    description={`Deals awaiting response: ${stats.pending}`}
+                  />
+                  <StatsCard
+                    label="Acceptance rate"
+                    value={`${stats.conversionPct}%`}
+                    trend={
+                      stats.conversionPct >= 70 ? 'positive'
+                      : stats.conversionPct >= 40 ? 'neutral'
+                      : stats.total > 0 ? 'negative'
+                      : 'neutral'
+                    }
+                    description={`Acceptance rate: ${stats.conversionPct}%`}
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Deals pipeline */}
+            <DealsPipeline offers={offers} loading={loading} />
+
+            {/* Usage progress (billing — independent fetch inside component) */}
+            <UsageProgress />
+
+            {/* Main grid: Offer table + right sidebar */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <OfferTable
+                  offers={offers}
+                  loading={loading}
+                  tourId="offer-table"
+                  headingLabel="Recent deals"
+                  columnLabels={{ title: 'Deal name', recipient: 'Customer' }}
+                />
+              </div>
+              <div className="lg:col-span-1 flex flex-col gap-5">
+                <InsightsPanel offers={offers} loading={loading} />
+                <AcceptanceTrend offers={offers} loading={loading} />
+                <AnalyticsOverview />
+                <ActivityFeed offers={offers} loading={loading} />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

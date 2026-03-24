@@ -8,9 +8,10 @@ import { SigningController } from './signing.controller';
 import { SigningEventsModule } from './signing-events.module';
 import { CertificatesModule } from '../certificates/certificates.module';
 import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [SigningEventsModule, CertificatesModule, EnterpriseCoreModule],
+  imports: [SigningEventsModule, CertificatesModule, EnterpriseCoreModule, NotificationsModule],
   controllers: [SigningController],
   providers: [
     SigningTokenService,

@@ -40,6 +40,11 @@ export function createMockOffersDb() {
       update: jest.fn(),
       findMany: jest.fn(),
     },
+    reminderSchedule: {
+      create: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+      deleteMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
+      delete: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+    },
   };
   // Configure $transaction after `mock` is fully initialized to avoid circular type inference.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

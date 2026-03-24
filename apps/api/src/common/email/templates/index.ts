@@ -16,6 +16,9 @@ import type {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  ExpiryNotificationParams,
+  RecipientReminderParams,
+  ExpiryWarningParams,
   EmailVerificationParams,
   PasswordResetParams,
   PasswordChangedParams,
@@ -393,6 +396,157 @@ export function orgInviteEmail(p: OrgInviteParams): EmailTemplate {
     <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
     <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.inviteUrl)}</p>
     <p style="margin:0;font-size:13px;color:#6b7280">This invitation expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. If you were not expecting it, you can safely ignore this message.</p>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 5b. Expiry notification to sender ────────────────────────────────────────
+
+export function expiryNotificationEmail(p: ExpiryNotificationParams): EmailTemplate {
+  const subject = `Your deal "${p.offerTitle}" has expired`;
+  const expiredAtStr = formatDate(p.expiredAt);
+
+  const text = [
+    `Hi ${p.senderName},`,
+    ``,
+    `Your deal "${p.offerTitle}" expired on ${expiredAtStr} without a response from the recipient.`,
+    ``,
+    `If you still need a response, you can create a new deal with an updated expiry date.`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
+    <div style="border-left:4px solid #d97706;padding:12px 16px;margin:0 0 24px;background:#fffbeb;border-radius:0 6px 6px 0">
+      <p style="margin:0;font-size:16px;font-weight:600;color:#92400e">Deal expired</p>
+      <p style="margin:4px 0 0;color:#78350f">Your deal expired without a response from the recipient.</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 0;color:#6b7280">Expired at</td>
+        <td style="padding:10px 0">${escapeHtml(expiredAtStr)}</td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#6b7280">If you still need a response, you can create a new deal with an updated expiry date.</p>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 10. Recipient reminder ───────────────────────────────────────────────────
+// Three copy variants depending on how far the recipient got in the signing flow.
+
+export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplate {
+  const expiryLine = p.expiresAt
+    ? `This agreement expires on ${formatDate(p.expiresAt)}.`
+    : '';
+
+  const copy = {
+    not_opened: {
+      subject: `Reminder: agreement waiting for your review`,
+      headline: 'Agreement waiting for your review',
+      body: 'You received an agreement that is waiting for your confirmation. Please review it at your earliest convenience.',
+      cta: 'Review agreement',
+    },
+    opened: {
+      subject: `Reminder: agreement awaiting your confirmation`,
+      headline: 'Agreement awaiting your confirmation',
+      body: 'You previously opened this agreement but have not yet confirmed it. Click the button below to pick up where you left off.',
+      cta: 'Continue to agreement',
+    },
+    otp_started: {
+      subject: `Complete your agreement confirmation`,
+      headline: 'Complete your confirmation',
+      body: 'You started confirming this agreement but did not complete the process. Click below to finish — it only takes a moment.',
+      cta: 'Complete confirmation',
+    },
+  }[p.variant];
+
+  const subject = copy.subject;
+
+  const text = [
+    `Hi ${p.recipientName},`,
+    ``,
+    copy.body,
+    ``,
+    `Agreement: ${p.offerTitle}`,
+    `Sent by: ${p.senderName}`,
+    ``,
+    `To review and confirm, open the link below:`,
+    ``,
+    `  ${p.signingUrl}`,
+    ``,
+    expiryLine,
+    ``,
+    `You will be asked to verify your email address before confirming.`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].filter((l) => l !== undefined).join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
+    <div style="border-left:4px solid #f59e0b;padding:12px 16px;margin:0 0 24px;background:#fffbeb;border-radius:0 6px 6px 0">
+      <p style="margin:0;font-size:15px;font-weight:600;color:#92400e">${escapeHtml(copy.headline)}</p>
+      <p style="margin:4px 0 0;color:#78350f;font-size:13px">${escapeHtml(copy.body)}</p>
+    </div>
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:0 0 24px;background:#f9fafb">
+      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Agreement</div>
+      <div style="font-size:17px;font-weight:600;color:#111827">${escapeHtml(p.offerTitle)}</div>
+      <div style="font-size:13px;color:#6b7280;margin-top:4px">Sent by ${escapeHtml(p.senderName)}</div>
+    </div>
+    <p style="margin:0 0 24px">${button(p.signingUrl, copy.cta)}</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
+    <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.signingUrl)}</p>
+    ${expiryLine ? `<p style="margin:0;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>` : ''}`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 11. Sender expiry warning ────────────────────────────────────────────────
+// Proactive alert to the deal sender: "your deal expires in X hours"
+
+export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
+  const timeLabel = p.warningLevel === '24h' ? '24 hours' : '2 hours';
+  const subject = `Your deal "${p.offerTitle}" expires in ${timeLabel}`;
+  const expiresAtStr = formatDate(p.expiresAt);
+
+  const text = [
+    `Hi ${p.senderName},`,
+    ``,
+    `Your deal "${p.offerTitle}" has not yet been accepted and expires in approximately ${timeLabel} (${expiresAtStr}).`,
+    ``,
+    `If the recipient needs more time, you can resend the deal link from your dashboard.`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
+    <div style="border-left:4px solid #f59e0b;padding:12px 16px;margin:0 0 24px;background:#fffbeb;border-radius:0 6px 6px 0">
+      <p style="margin:0;font-size:16px;font-weight:600;color:#92400e">Deal expires in ${escapeHtml(timeLabel)}</p>
+      <p style="margin:4px 0 0;color:#78350f">This deal has not yet been accepted.</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 0;color:#6b7280">Expires at</td>
+        <td style="padding:10px 0">${escapeHtml(expiresAtStr)}</td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#6b7280">If the recipient needs more time, you can resend the deal link from your dashboard to give them a fresh link before expiry.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 

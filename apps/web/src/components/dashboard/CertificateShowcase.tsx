@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Link2, CheckCircle2, Shield } from 'lucide-react';
+import { Download, Link2, CheckCircle2, Shield, ExternalLink } from 'lucide-react';
 import { getCertificate, exportCertificate, type CertificateDetail } from '@/lib/offers-api';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
@@ -133,6 +133,15 @@ export function CertificateShowcase({ certificateId }: Props) {
           className="bg-green-600 hover:bg-green-700 focus:ring-green-500 border-green-600"
         >
           Download certificate
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => window.open(`/verify/${certificateId}`, '_blank')}
+          leftIcon={<ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />}
+          className="border-green-300 text-green-700 hover:bg-green-100 hover:border-green-400"
+        >
+          Verify certificate
         </Button>
         <Button
           variant="secondary"

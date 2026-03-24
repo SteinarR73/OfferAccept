@@ -91,6 +91,11 @@ function createMockDb() {
     supportAuditLog: {
       create: jest.fn<() => Promise<{ id: string }>>().mockResolvedValue({ id: 'audit-1' }),
     },
+    reminderSchedule: {
+      create: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+      deleteMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
+      delete: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+    },
   };
   // $transaction must pass `mock` as the tx argument so tx.offer.update etc. resolve correctly.
   mock.$transaction.mockImplementation(async (fn: unknown) => (fn as (tx: typeof mock) => Promise<unknown>)(mock));
