@@ -79,15 +79,17 @@ export class ExpireOffersHandler {
       }),
     ]);
 
-    this.logger.log(
-      `Expired ${offerResult.count} offer(s) and ${recipientResult.count} recipient(s)`,
-    );
+    this.logger.log(JSON.stringify({
+      event: 'offers_expired',
+      offerCount: offerResult.count,
+      recipientCount: recipientResult.count,
+    }));
 
     // Step 4: cancel reminder schedules for all expired offers — batch delete.
     await this.db.reminderSchedule.deleteMany({
       where: { offerId: { in: offerIds } },
     }).catch((e: unknown) =>
-      this.logger.warn(`Failed to delete reminder schedules after expiry: ${e}`),
+      this.logger.warn(JSON.stringify({ event: 'reminder_schedule_delete_failed', offerIds, error: String(e) })),
     );
 
     // Step 5: emit events + notify senders — best-effort, fired after transaction commits.

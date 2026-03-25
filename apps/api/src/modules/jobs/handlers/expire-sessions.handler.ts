@@ -37,7 +37,7 @@ export class ExpireSessionsHandler {
     });
 
     if (result.count > 0) {
-      this.logger.log(`Expired ${result.count} signing session(s)`);
+      this.logger.log(JSON.stringify({ event: 'sessions_expired', count: result.count }));
     }
 
     // Also expire OTP challenges associated with now-expired sessions.

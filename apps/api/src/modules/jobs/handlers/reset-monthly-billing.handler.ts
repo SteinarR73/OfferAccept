@@ -30,7 +30,7 @@ export class ResetMonthlyBillingHandler {
 
   async handle(jobs: Job<ResetMonthlyBillingPayload>[]): Promise<void> {
     const count = await this.subscriptionService.resetMonthlyCount();
-    this.logger.log(`Monthly billing reset: ${count} subscription(s) reset`);
+    this.logger.log(JSON.stringify({ event: 'monthly_billing_reset', subscriptionCount: count }));
     void jobs;
   }
 }

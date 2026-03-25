@@ -22,6 +22,7 @@ import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { OffersService } from './services/offers.service';
 import { SendOfferService } from './services/send-offer.service';
 import { DealStatusService } from './services/deal-status.service';
+import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { UpdateOfferDto } from './dto/update-offer.dto';
 import { SetRecipientDto } from './dto/set-recipient.dto';
@@ -39,6 +40,7 @@ export class OffersController {
     private readonly offersService: OffersService,
     private readonly sendOfferService: SendOfferService,
     private readonly dealStatusService: DealStatusService,
+    private readonly rateLimiter: RateLimitService,
     @Inject('PRISMA') private readonly db: PrismaClient,
   ) {}
 
@@ -113,6 +115,8 @@ export class OffersController {
   @Post(':id/send')
   @HttpCode(HttpStatus.OK)
   async send(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    await this.rateLimiter.check('deal_send', user.orgId);
+
     // Load the sending user's name/email for the snapshot and email template
     const sender = await this.db.user.findUniqueOrThrow({
       where: { id: user.sub },
@@ -145,6 +149,8 @@ export class OffersController {
   @Post(':id/resend')
   @HttpCode(HttpStatus.OK)
   async resend(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    await this.rateLimiter.check('deal_resend', user.sub);
+
     const result = await this.sendOfferService.resend(id, user.orgId, user.sub);
     return {
       offerId: id,

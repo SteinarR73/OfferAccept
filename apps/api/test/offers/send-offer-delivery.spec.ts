@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, Global, Module } from '@nestjs/common';
 import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
@@ -12,6 +12,15 @@ import { DomainExceptionFilter } from '../../src/common/filters/domain-exception
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { ResendDeliveryError } from '../../src/common/email/resend-email.adapter';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+
+// ── Global mock for RateLimitService (replaces Redis-backed module in tests) ────
+@Global()
+@Module({
+  providers: [{ provide: RateLimitService, useValue: { check: () => Promise.resolve() } }],
+  exports: [RateLimitService],
+})
+class MockRateLimitModule {}
 import {
   createMockOffersDb,
   MockOffersDb,
@@ -82,6 +91,7 @@ describe('Offer link delivery tracking', () => {
           })],
         }),
         JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+        MockRateLimitModule,
         DatabaseModule,
         AuthModule,
         EmailModule,

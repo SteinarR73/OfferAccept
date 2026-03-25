@@ -135,7 +135,7 @@ export class SendRemindersHandler {
       // Self-heal: delete stale schedule if the offer is no longer SENT.
       if (offer.status !== 'SENT') {
         await this.db.reminderSchedule.delete({ where: { id: schedule.id } }).catch((e: unknown) =>
-          this.logger.warn(`Failed to delete stale schedule ${schedule.id}: ${e}`),
+          this.logger.warn(JSON.stringify({ event: 'stale_schedule_delete_failed', scheduleId: schedule.id, error: String(e) })),
         );
         continue;
       }
@@ -144,7 +144,7 @@ export class SendRemindersHandler {
       const snapshot  = offer.snapshot;
 
       if (!recipient || !snapshot) {
-        this.logger.warn(`ReminderSchedule ${schedule.id}: missing recipient or snapshot — skipping`);
+        this.logger.warn(JSON.stringify({ event: 'reminder_schedule_skipped', scheduleId: schedule.id, reason: 'missing_recipient_or_snapshot' }));
         continue;
       }
 
@@ -174,13 +174,17 @@ export class SendRemindersHandler {
           reminderNumber: newCount,
         });
         void this.dealEventService.emit(offer.id, 'deal_reminder_sent', { reminderNumber: newCount, variant });
-        this.logger.log(
-          `Reminder #${newCount} (${variant}) sent to ${recipient.email} for offer ${offer.id}`,
-        );
+        this.logger.log(JSON.stringify({
+          event: 'reminder_sent',
+          offerId: offer.id,
+          reminderNumber: newCount,
+          variant,
+          recipientEmail: recipient.email,
+        }));
       } catch (err) {
         this.logger.error(
-          `Failed to send reminder #${newCount} to ${recipient.email} for offer ${offer.id}: ` +
-          `${err instanceof Error ? err.message : String(err)}`,
+          JSON.stringify({ event: 'reminder_send_failed', offerId: offer.id, reminderNumber: newCount, variant }),
+          err instanceof Error ? err.message : String(err),
         );
         // Do NOT update the schedule — let the next sweep retry.
         continue;
@@ -251,11 +255,11 @@ export class SendRemindersHandler {
           expiresAt: offer.expiresAt,
           warningLevel: '24h',
         });
-        this.logger.log(`24h expiry warning sent to ${offer.snapshot.senderEmail} for offer ${offer.id}`);
+        this.logger.log(JSON.stringify({ event: 'expiry_warning_sent', offerId: offer.id, warningLevel: '24h' }));
       } catch (err) {
         this.logger.error(
-          `Failed to send 24h expiry warning to ${offer.snapshot.senderEmail} for offer ${offer.id}: ` +
-          `${err instanceof Error ? err.message : String(err)}`,
+          JSON.stringify({ event: 'expiry_warning_send_failed', offerId: offer.id, warningLevel: '24h' }),
+          err instanceof Error ? err.message : String(err),
         );
       }
     }
@@ -303,11 +307,11 @@ export class SendRemindersHandler {
           expiresAt: offer.expiresAt,
           warningLevel: '2h',
         });
-        this.logger.log(`2h expiry warning sent to ${offer.snapshot.senderEmail} for offer ${offer.id}`);
+        this.logger.log(JSON.stringify({ event: 'expiry_warning_sent', offerId: offer.id, warningLevel: '2h' }));
       } catch (err) {
         this.logger.error(
-          `Failed to send 2h expiry warning to ${offer.snapshot.senderEmail} for offer ${offer.id}: ` +
-          `${err instanceof Error ? err.message : String(err)}`,
+          JSON.stringify({ event: 'expiry_warning_send_failed', offerId: offer.id, warningLevel: '2h' }),
+          err instanceof Error ? err.message : String(err),
         );
       }
     }

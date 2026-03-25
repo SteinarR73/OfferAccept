@@ -60,7 +60,10 @@ export type RateLimitProfile =
   | 'resend_verification'    // 3 resend-verification requests per IP per hour
   // Organisation / invite endpoints
   | 'invite_attempt'         // 10 invitations sent per actor (userId) per hour
-  | 'invite_accept_attempt'; // 5 accept attempts per IP per 15 minutes
+  | 'invite_accept_attempt'  // 5 accept attempts per IP per 15 minutes
+  // Deal sending — authenticated, keyed by orgId / userId
+  | 'deal_send'              // 30 sends per org per hour
+  | 'deal_resend';           // 15 resends per user per hour
 
 export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
   token_verification:     { limit: 10, windowMs: 15 * 60 * 1000 },
@@ -79,6 +82,8 @@ export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: numbe
   resend_verification:    { limit: 3,  windowMs: 60 * 60 * 1000 },
   invite_attempt:         { limit: 10, windowMs: 60 * 60 * 1000 },
   invite_accept_attempt:  { limit: 5,  windowMs: 15 * 60 * 1000 },
+  deal_send:              { limit: 30, windowMs: 60 * 60 * 1000 },
+  deal_resend:            { limit: 15, windowMs: 60 * 60 * 1000 },
 };
 
 // ── Lua scripts ────────────────────────────────────────────────────────────────

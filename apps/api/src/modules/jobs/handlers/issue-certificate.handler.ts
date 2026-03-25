@@ -33,12 +33,14 @@ export class IssueCertificateHandler {
         const { certificateId } = await this.certificateService.generateForAcceptance(
           acceptanceRecordId,
         );
-        this.logger.log(
-          `Certificate issued: certId=${certificateId} record=${acceptanceRecordId}`,
-        );
+        this.logger.log(JSON.stringify({
+          event: 'certificate_issued',
+          certId: certificateId,
+          acceptanceRecordId,
+        }));
       } catch (err) {
         this.logger.error(
-          `Certificate issuance failed: record=${acceptanceRecordId}`,
+          JSON.stringify({ event: 'certificate_issuance_failed', acceptanceRecordId }),
           err instanceof Error ? err.stack : String(err),
         );
         // Re-throw so pg-boss marks this job as failed and schedules a retry.
