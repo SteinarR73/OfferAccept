@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import type { Job } from 'pg-boss';
 import type { SendRemindersPayload } from '../job.types';
 import { EMAIL_PORT, EmailPort, ReminderVariant } from '../../../common/email/email.port';
+import { DealEventService } from '../../deal-events/deal-events.service';
 
 // ─── SendRemindersHandler ──────────────────────────────────────────────────────
 //
@@ -88,6 +89,7 @@ export class SendRemindersHandler {
     @Inject('PRISMA') private readonly db: PrismaClient,
     @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
     private readonly config: ConfigService,
+    private readonly dealEventService: DealEventService,
   ) {}
 
   async handle(jobs: Job<SendRemindersPayload>[]): Promise<void> {
@@ -171,6 +173,7 @@ export class SendRemindersHandler {
           variant,
           reminderNumber: newCount,
         });
+        void this.dealEventService.emit(offer.id, 'deal_reminder_sent', { reminderNumber: newCount, variant });
         this.logger.log(
           `Reminder #${newCount} (${variant}) sent to ${recipient.email} for offer ${offer.id}`,
         );

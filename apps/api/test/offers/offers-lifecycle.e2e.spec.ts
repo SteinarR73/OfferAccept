@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
@@ -9,6 +10,7 @@ import { AuthModule } from '../../src/common/auth/auth.module';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { DatabaseModule } from '../../src/modules/database/database.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
+import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import {
   createMockOffersDb,
   MockOffersDb,
@@ -63,6 +65,8 @@ describe('Offers Lifecycle (e2e)', () => {
     })
       .overrideProvider('PRISMA')
       .useValue(db)
+      .overrideProvider(DealEventService)
+      .useValue({ emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) })
       .compile();
 
     app = module.createNestApplication();

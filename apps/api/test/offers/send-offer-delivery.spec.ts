@@ -11,6 +11,7 @@ import { DatabaseModule } from '../../src/modules/database/database.module';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { ResendDeliveryError } from '../../src/common/email/resend-email.adapter';
+import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import {
   createMockOffersDb,
   MockOffersDb,
@@ -89,6 +90,8 @@ describe('Offer link delivery tracking', () => {
     })
       .overrideProvider('PRISMA')
       .useValue(db)
+      .overrideProvider(DealEventService)
+      .useValue({ emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) })
       .compile();
 
     app = module.createNestApplication();

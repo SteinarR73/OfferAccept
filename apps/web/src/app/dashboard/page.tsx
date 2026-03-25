@@ -209,7 +209,7 @@ export default function DashboardPage() {
                 <InsightsPanel offers={offers} loading={loading} />
                 <AcceptanceTrend offers={offers} loading={loading} />
                 <AnalyticsOverview />
-                <ActivityFeed offers={offers} loading={loading} />
+                <ActivityFeed />
               </div>
             </div>
           </>

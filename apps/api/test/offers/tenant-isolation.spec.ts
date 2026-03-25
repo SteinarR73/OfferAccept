@@ -80,7 +80,8 @@ describe('OffersService — tenant isolation', () => {
 
   beforeEach(() => {
     db = makeDb();
-    service = new OffersService(db as unknown as any);
+    const noopDealEventService = { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]) } as any;
+    service = new OffersService(db as unknown as any, noopDealEventService);
   });
 
   // ── findOne ───────────────────────────────────────────────────────────────

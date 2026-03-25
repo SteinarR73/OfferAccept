@@ -4,6 +4,7 @@ import type { Job } from 'pg-boss';
 import type { ExpireOffersPayload } from '../job.types';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { DealExpiredEvent } from '../../notifications/events/deal-expired.event';
+import { DealEventService } from '../../deal-events/deal-events.service';
 
 // ─── ExpireOffersHandler ───────────────────────────────────────────────────────
 // Batch sweep: marks SENT offers whose expiresAt has passed as EXPIRED, and
@@ -30,6 +31,7 @@ export class ExpireOffersHandler {
   constructor(
     @Inject('PRISMA') private readonly db: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly dealEventService: DealEventService,
   ) {}
 
   async handle(jobs: Job<ExpireOffersPayload>[]): Promise<void> {
@@ -88,9 +90,10 @@ export class ExpireOffersHandler {
       this.logger.warn(`Failed to delete reminder schedules after expiry: ${e}`),
     );
 
-    // Step 5: notify senders — best-effort, fired after the transaction commits.
+    // Step 5: emit events + notify senders — best-effort, fired after transaction commits.
     // Each notification is independent; a failure on one does not prevent others.
     for (const offer of expiredOffers) {
+      void this.dealEventService.emit(offer.id, 'deal_expired');
       if (!offer.snapshot) continue; // no snapshot = offer was never sent; skip
       await this.notificationsService.onDealExpired(new DealExpiredEvent(
         offer.id,

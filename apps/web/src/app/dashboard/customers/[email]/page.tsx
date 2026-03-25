@@ -94,7 +94,7 @@ export default function CustomerDetailPage() {
           />
         </div>
         <div className="lg:col-span-1">
-          <ActivityFeed offers={customerOffers} loading={false} />
+          <ActivityFeed />
         </div>
       </div>
     </div>

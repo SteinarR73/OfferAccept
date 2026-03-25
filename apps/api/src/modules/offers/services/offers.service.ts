@@ -5,6 +5,7 @@ import { CreateOfferDto } from '../dto/create-offer.dto';
 import { UpdateOfferDto } from '../dto/update-offer.dto';
 import { SetRecipientDto } from '../dto/set-recipient.dto';
 import { AddDocumentDto } from '../dto/add-document.dto';
+import { DealEventService } from '../../deal-events/deal-events.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,10 @@ const EDITABLE_STATUSES: OfferStatus[] = ['DRAFT'];
 
 @Injectable()
 export class OffersService {
-  constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
+  constructor(
+    @Inject('PRISMA') private readonly db: PrismaClient,
+    private readonly dealEventService: DealEventService,
+  ) {}
 
   // ── Read ──────────────────────────────────────────────────────────────────
 
@@ -64,8 +68,8 @@ export class OffersService {
   // ── Draft creation ────────────────────────────────────────────────────────
 
   async create(orgId: string, userId: string, dto: CreateOfferDto) {
-    return this.db.$transaction(async (tx) => {
-      const offer = await tx.offer.create({
+    const offer = await this.db.$transaction(async (tx) => {
+      const created = await tx.offer.create({
         data: {
           organizationId: orgId,
           createdById: userId,
@@ -78,18 +82,21 @@ export class OffersService {
       if (dto.recipient) {
         await tx.offerRecipient.create({
           data: {
-            offerId: offer.id,
+            offerId: created.id,
             email: dto.recipient.email,
             name: dto.recipient.name,
             // Placeholder hashes — replaced atomically at send time with real token
-            tokenHash: `draft_${offer.id}`,
+            tokenHash: `draft_${created.id}`,
             tokenExpiresAt: new Date(0), // invalid until send
           },
         });
       }
 
-      return offer;
+      return created;
     });
+
+    void this.dealEventService.emit(offer.id, 'deal_created');
+    return offer;
   }
 
   // ── Draft editing (DRAFT-only mutations) ───────────────────────────────────
@@ -158,6 +165,10 @@ export class OffersService {
   // ── Timeline ──────────────────────────────────────────────────────────────
   // Returns an ordered list of lifecycle events for a single deal.
   // Pending steps (not yet reached) are included with timestamp: null and pending: true.
+  //
+  // Dual-path strategy:
+  //   - If DealEvents exist for this deal → use them as the source of truth.
+  //   - If not → fall back to the DB-state inference path (for pre-migration deals).
 
   async getTimeline(offerId: string, orgId: string): Promise<TimelineEvent[]> {
     const offer = await this.db.offer.findFirst({
@@ -173,6 +184,13 @@ export class OffersService {
     });
     if (!offer) throw new NotFoundException('Offer not found.');
 
+    // ── Dual-path: prefer DealEvents when available ────────────────────────────
+    const dealEvents = await this.dealEventService.getForDeal(offerId);
+    if (dealEvents.length > 0) {
+      return this.buildTimelineFromDealEvents(dealEvents, offer.status);
+    }
+
+    // ── Fallback: DB-state inference (pre-migration deals) ─────────────────────
     const events: TimelineEvent[] = [];
     const isDraft = !offer.snapshot;
 
@@ -253,6 +271,33 @@ export class OffersService {
     }
 
     return events;
+  }
+
+  // Builds a timeline from DealEvent rows (new-path, post-migration deals).
+  // Appends pending future steps based on the current offer status.
+  private buildTimelineFromDealEvents(
+    dealEvents: Array<{ eventType: string; createdAt: Date }>,
+    status: string,
+  ): TimelineEvent[] {
+    const recorded: TimelineEvent[] = dealEvents.map((e) => ({
+      event: e.eventType,
+      label: DealEventService.labelFor(e.eventType as Parameters<typeof DealEventService.labelFor>[0]),
+      timestamp: e.createdAt.toISOString(),
+      pending: false,
+    }));
+
+    // Append pending future steps when still in-flight
+    const hasEvent = (type: string) => recorded.some((e) => e.event === type);
+
+    if (status === 'SENT') {
+      if (!hasEvent('deal_opened'))   recorded.push({ event: 'deal_opened',   label: 'Opened by recipient', timestamp: null, pending: true });
+      if (!hasEvent('otp_verified'))  recorded.push({ event: 'otp_verified',  label: 'Identity verified',   timestamp: null, pending: true });
+      if (!hasEvent('deal_accepted')) recorded.push({ event: 'deal_accepted', label: 'Deal accepted',        timestamp: null, pending: true });
+    } else if (status === 'ACCEPTED' && !hasEvent('certificate_generated')) {
+      recorded.push({ event: 'certificate_generated', label: 'Certificate generated', timestamp: null, pending: true });
+    }
+
+    return recorded;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

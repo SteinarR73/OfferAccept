@@ -390,6 +390,32 @@ export async function getAnalytics(): Promise<AnalyticsOverview> {
   return request<AnalyticsOverview>('/analytics/overview');
 }
 
+export type DealEventType =
+  | 'deal_created'
+  | 'deal_sent'
+  | 'deal_opened'
+  | 'otp_verified'
+  | 'deal_accepted'
+  | 'certificate_generated'
+  | 'deal_reminder_sent'
+  | 'deal_revoked'
+  | 'deal_expired'
+  | 'deal_declined';
+
+export interface RecentDealEvent {
+  id: string;
+  dealId: string;
+  dealTitle: string;
+  eventType: DealEventType;
+  metadata: Record<string, unknown> | null;
+  createdAt: string; // ISO 8601
+}
+
+export async function getRecentEvents(limit = 20): Promise<RecentDealEvent[]> {
+  const res = await request<{ events: RecentDealEvent[] }>(`/analytics/events?limit=${limit}`);
+  return res.events;
+}
+
 export interface DealTimelineEvent {
   event: string;
   label: string;

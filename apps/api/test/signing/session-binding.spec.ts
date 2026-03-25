@@ -13,6 +13,7 @@ import { SigningEventService } from '../../src/modules/signing/services/signing-
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
+import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 
 // ─── Session binding tests ────────────────────────────────────────────────────
 //
@@ -164,6 +165,7 @@ async function buildService(
         provide: WebhookService,
         useValue: { dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) },
       },
+      { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
     ],
   }).compile();
 

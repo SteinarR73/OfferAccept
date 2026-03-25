@@ -10,6 +10,7 @@ import {
 import { assertOfferIsComplete } from '../domain/offer-completeness';
 import { EMAIL_PORT, EmailPort } from '../../../common/email/email.port';
 import { ResendDeliveryError } from '../../../common/email/resend-email.adapter';
+import { DealEventService } from '../../deal-events/deal-events.service';
 
 // ─── Token generation ─────────────────────────────────────────────────────────
 // Mirrors signing-token.service.ts — kept in the offers module to avoid
@@ -127,6 +128,7 @@ export class SendOfferService {
     @Inject('PRISMA') private readonly db: PrismaClient,
     @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
     private readonly config: ConfigService,
+    private readonly dealEventService: DealEventService,
   ) {}
 
   async send(
@@ -266,6 +268,7 @@ export class SendOfferService {
         this.logger.warn(`Failed to create reminder schedule for offer ${offer.id}: ${e}`),
       );
 
+      void this.dealEventService.emit(offer.id, 'deal_sent', { deliveryAttemptId: attempt.id });
       return {
         snapshotId: snapshot.id,
         sentAt: snapshot.frozenAt,
@@ -475,5 +478,7 @@ export class SendOfferService {
     await this.db.reminderSchedule.deleteMany({ where: { offerId: offer.id } }).catch((e: unknown) =>
       this.logger.warn(`Failed to delete reminder schedule on revoke for offer ${offer.id}: ${e}`),
     );
+
+    void this.dealEventService.emit(offer.id, 'deal_revoked');
   }
 }

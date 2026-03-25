@@ -14,6 +14,7 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { DatabaseModule } from '../../src/modules/database/database.module';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
+import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import {
   createMockDb,
   makeRecipient,
@@ -81,6 +82,8 @@ describe('Public Signing Flow (e2e)', () => {
       // Return [1, 0, 0] = [allowed=1, count, resetAtMs] — RateLimitService destructures this tuple.
       // Returning null would cause "null is not iterable" outside the try-catch.
       .useValue({ eval: jest.fn<() => Promise<number[]>>().mockResolvedValue([1, 0, 0]), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
+      .overrideProvider(DealEventService)
+      .useValue({ emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) })
       .compile();
 
     app = module.createNestApplication();

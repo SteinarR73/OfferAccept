@@ -271,6 +271,7 @@ model Offer {
   deliveryAttempts  OfferDeliveryAttempt[]
 
   reminderSchedule  ReminderSchedule?
+  dealEvents        DealEvent[]
 
   @@index([organizationId, status])
   @@index([createdById])
@@ -913,6 +914,51 @@ model WebhookEndpoint {
 // attempt: 1-based retry counter — first delivery is attempt=1.
 // httpStatus: null if the connection failed before receiving a response.
 // responseBody: truncated to 1000 bytes; for debugging only.
+
+// ─── DealEvent ────────────────────────────────────────────────────────────────
+// Lightweight lifecycle event log — one row per significant deal lifecycle step.
+// This is the single source of truth for the activity feed, deal timeline, and
+// analytics. Events are append-only; never updated or deleted.
+//
+// Event emission points:
+//   deal_created        → OffersService.create()
+//   deal_sent           → SendOfferService.send()
+//   deal_opened         → SigningFlowService.requestOtp() (first open only)
+//   otp_verified        → SigningFlowService.verifyOtp()
+//   deal_accepted       → SigningFlowService.accept()
+//   certificate_generated → CertificateService.generateForAcceptance()
+//   deal_reminder_sent  → SendRemindersHandler (per reminder sent)
+//   deal_revoked        → SendOfferService.revoke()
+//   deal_expired        → ExpireOffersHandler (per expired offer)
+//   deal_declined       → SigningFlowService.decline()
+
+enum DealEventType {
+  deal_created
+  deal_sent
+  deal_opened
+  otp_verified
+  deal_accepted
+  certificate_generated
+  deal_reminder_sent
+  deal_revoked
+  deal_expired
+  deal_declined
+}
+
+model DealEvent {
+  id        String        @id @default(cuid())
+  dealId    String
+  eventType DealEventType
+  metadata  Json?
+  createdAt DateTime      @default(now())
+
+  offer Offer @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // Used for timeline queries (ASC) and activity feed queries (DESC)
+  @@index([dealId])
+  @@index([createdAt])
+  @@map("deal_events")
+}
 
 model WebhookDeliveryAttempt {
   id             String   @id @default(cuid())

@@ -20,6 +20,7 @@ import {
 } from '../../../common/errors/domain.errors';
 import { buildAcceptanceStatement } from '../domain/acceptance-statement';
 import { WebhookService } from '../../enterprise/webhook.service';
+import { DealEventService } from '../../deal-events/deal-events.service';
 
 // ─── Response types ────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ export class SigningFlowService {
     private readonly certificateService: CertificateService,
     private readonly notificationsService: NotificationsService,
     private readonly webhookService: WebhookService,
+    private readonly dealEventService: DealEventService,
   ) {}
 
   // Step 1: Validate token and return the frozen offer context.
@@ -151,6 +153,7 @@ export class SigningFlowService {
         where: { id: recipient.id },
         data: { status: 'VIEWED', viewedAt: new Date() },
       });
+      void this.dealEventService.emit(offer.id, 'deal_opened');
     }
 
     // Resume existing non-expired session or create a fresh one
@@ -188,7 +191,9 @@ export class SigningFlowService {
     const recipient = await this.tokenService.verifyToken(rawToken);
 
     // Atomic: validates challenge binding, verifies code, advances all state in one tx.
-    return this.otpService.verifyAndAdvanceSession(challengeId, recipient.id, rawCode, ctx);
+    const result = await this.otpService.verifyAndAdvanceSession(challengeId, recipient.id, rawCode, ctx);
+    void this.dealEventService.emit(recipient.offerId, 'otp_verified');
+    return result;
   }
 
   // Step 4a: Accept offer (requires OTP_VERIFIED session).
@@ -212,6 +217,7 @@ export class SigningFlowService {
     const session = await this.getSessionFromVerifiedChallenge(challengeId, recipient.id);
 
     const result = await this.acceptanceService.accept(session, challengeId, context);
+    void this.dealEventService.emit(result.offerId, 'deal_accepted');
 
     const { certificateId } = await this.certificateService.generateForAcceptance(
       result.acceptanceRecord.id,
@@ -290,6 +296,7 @@ export class SigningFlowService {
       : await this.sessionService.findResumable(recipient.id);
     if (!session) throw new SessionExpiredError();
     await this.acceptanceService.decline(session, ctx);
+    void this.dealEventService.emit(session.offerId, 'deal_declined');
 
     // Cancel reminder schedule — best-effort.
     await this.db.reminderSchedule.deleteMany({ where: { offerId: session.offerId } }).catch((e: unknown) =>

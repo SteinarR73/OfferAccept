@@ -8,6 +8,7 @@ import {
 } from './certificate-payload.builder';
 import { SigningEventService } from '../signing/services/signing-event.service';
 import { computeSnapshotHash } from '../signing/domain/signing-event.builder';
+import { DealEventService } from '../deal-events/deal-events.service';
 
 // ─── CertificateService ────────────────────────────────────────────────────────
 // Owns the full certificate lifecycle:
@@ -61,6 +62,7 @@ export class CertificateService {
     @Inject('PRISMA') private readonly db: PrismaClient,
     private readonly builder: CertificatePayloadBuilder,
     private readonly eventService: SigningEventService,
+    private readonly dealEventService: DealEventService,
   ) {}
 
   // Creates a certificate for an AcceptanceRecord.
@@ -103,6 +105,7 @@ export class CertificateService {
           issuedAt,
         },
       });
+      void this.dealEventService.emit(record.snapshot.offerId, 'certificate_generated', { certificateId: cert.id });
       return { certificateId: cert.id };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {

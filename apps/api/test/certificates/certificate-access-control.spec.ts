@@ -4,6 +4,7 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
+import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
 
 // ─── Certificate access control tests ─────────────────────────────────────────
@@ -93,6 +94,7 @@ async function buildService(db: MockDb, builder: { build: AnyMock }, eventServic
       { provide: 'PRISMA', useValue: db },
       { provide: CertificatePayloadBuilder, useValue: builder },
       { provide: SigningEventService, useValue: eventService },
+      { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
     ],
   }).compile();
   return module.get(CertificateService);

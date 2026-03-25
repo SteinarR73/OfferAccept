@@ -16,6 +16,7 @@ import { DomainExceptionFilter } from '../../src/common/filters/domain-exception
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 import { DatabaseModule } from '../../src/modules/database/database.module';
+import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 
 // ─── Support tooling tests ─────────────────────────────────────────────────────
 //
@@ -246,6 +247,8 @@ async function buildApp(db: MockDb) {
     // Override REDIS_CLIENT so RateLimitModule factory doesn't crash on undefined REDIS_URL.
     .overrideProvider(REDIS_CLIENT)
     .useValue({ eval: jest.fn<() => Promise<number[]>>().mockResolvedValue([1, 0, 0]), quit: jest.fn<() => Promise<string>>().mockResolvedValue('OK') })
+    .overrideProvider(DealEventService)
+    .useValue({ emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) })
     .compile();
 
   const app = module.createNestApplication();

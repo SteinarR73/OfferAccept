@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Briefcase, User, FileText, DollarSign, Send,
+  FileText, User, Send,
   ChevronRight, ChevronLeft, Check, FileCheck,
 } from 'lucide-react';
 import {
@@ -12,9 +12,6 @@ import {
   setRecipient as setOfferRecipient,
   sendOffer,
 } from '../../../../lib/offers-api';
-import { serializeQuote, QuoteSummary, type QuoteData } from '../../../../components/deals/QuoteSummary';
-import { QuoteSummaryCard } from '../../../../components/deals/QuoteSummaryCard';
-import { DealTypeBadge, type DealType } from '../../../../components/ui/DealTypeBadge';
 import { FileUploadFlow } from '../../../../components/dashboard/FileUploadFlow';
 import { TemplateSelector, DEAL_TEMPLATES, type DealTemplate } from '../../../../components/deals/TemplateSelector';
 import { PageHeader } from '../../../../components/ui/PageHeader';
@@ -27,25 +24,16 @@ import { cn } from '@/lib/cn';
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface WizardState {
-  // Step 1 — Deal basics
   dealName: string;
-  dealType: DealType;
-  /** Set when user picks a template; null = upload own document */
   selectedTemplateId: string | null;
-  // Step 2 — Customer
   customerEmail: string;
   customerName: string;
-  company: string;
-  // Step 4 — Quote
-  quote: QuoteData;
 }
 
 interface UploadedDoc {
   docId: string;
   filename: string;
 }
-
-const EMPTY_QUOTE: QuoteData = { description: '', lineItems: [] };
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
@@ -56,11 +44,10 @@ interface StepDef {
 }
 
 const STEPS: StepDef[] = [
-  { id: 1, label: 'Basics',    icon: Briefcase  },
-  { id: 2, label: 'Customer',  icon: User       },
-  { id: 3, label: 'Documents', icon: FileText   },
-  { id: 4, label: 'Quote',     icon: DollarSign },
-  { id: 5, label: 'Review',    icon: Send       },
+  { id: 1, label: 'Deal name',  icon: FileText },
+  { id: 2, label: 'Document',   icon: FileCheck },
+  { id: 3, label: 'Recipient',  icon: User     },
+  { id: 4, label: 'Review',     icon: Send     },
 ];
 
 // ─── NewDealWizardPage ─────────────────────────────────────────────────────────
@@ -72,21 +59,18 @@ export default function NewDealWizardPage() {
   const [step, setStep] = useState(1);
   const [state, setState] = useState<WizardState>({
     dealName: '',
-    dealType: 'offer',
     selectedTemplateId: null,
     customerEmail: params.get('email') ?? '',
     customerName: params.get('name') ?? '',
-    company: '',
-    quote: EMPTY_QUOTE,
   });
 
-  // Draft lifecycle — created lazily when advancing from step 2
+  // Draft created on Step 1→2 advance
   const [draftOfferId, setDraftOfferId] = useState<string | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Loading / error
   const [creatingDraft, setCreatingDraft] = useState(false);
+  const [settingRecipient, setSettingRecipient] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,33 +82,31 @@ export default function NewDealWizardPage() {
     if (tpl) {
       update({
         selectedTemplateId: tpl.id,
-        // Pre-fill name if the user hasn't typed one yet
         dealName: state.dealName.trim() ? state.dealName : tpl.title,
-        dealType: tpl.dealType,
       });
     } else {
       update({ selectedTemplateId: null });
     }
   }
 
-  const usingTemplate = state.selectedTemplateId !== null;
-
   function canAdvance(): boolean {
     if (step === 1) return state.dealName.trim().length > 0;
-    if (step === 2) return state.customerEmail.trim().length > 0;
-    // Block advancing from documents step while any file is still in-flight
-    if (step === 3) return !isUploading;
+    if (step === 2) return !isUploading;
+    if (step === 3) return state.customerEmail.trim().length > 0;
     return true;
   }
 
   async function handleNext() {
     setError(null);
-    if (step === 2) {
-      // Create (or refresh) the draft before showing the upload step
-      await ensureDraft();
+    if (step === 1) {
+      await createDraft();
       return;
     }
-    if (step < 5) setStep((s) => s + 1);
+    if (step === 3) {
+      await persistRecipient();
+      return;
+    }
+    if (step < 4) setStep((s) => s + 1);
   }
 
   function prevStep() {
@@ -132,46 +114,53 @@ export default function NewDealWizardPage() {
     if (step > 1) setStep((s) => s - 1);
   }
 
-  // Creates the draft offer on first call; on subsequent calls (user went back
-  // and changed title / recipient) it updates the existing draft instead.
-  // When a template is selected, the template message is applied and step 3 is skipped.
-  async function ensureDraft() {
+  // Creates the draft on Step 1→2. If the user goes back and returns,
+  // update the existing draft title instead.
+  async function createDraft() {
     setCreatingDraft(true);
     try {
-      const recipient = state.customerEmail
-        ? { email: state.customerEmail, name: state.customerName || state.customerEmail }
-        : undefined;
-
-      const template = usingTemplate
-        ? DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId)
-        : undefined;
-
       if (!draftOfferId) {
-        const { offerId } = await createOffer({ title: state.dealName, recipient });
+        const { offerId } = await createOffer({ title: state.dealName });
         setDraftOfferId(offerId);
 
-        // Apply template message immediately after creation
+        // Apply template message immediately if a template is pre-selected
+        const template = state.selectedTemplateId
+          ? DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId)
+          : undefined;
         if (template?.message) {
           await updateOffer(offerId, { message: template.message });
         }
       } else {
-        // Sync any edits the user made while backtracking
         await updateOffer(draftOfferId, { title: state.dealName });
-        if (recipient) {
-          await setOfferRecipient(draftOfferId, recipient);
-        }
-        // Re-apply template message if template is (still) selected
+        const template = state.selectedTemplateId
+          ? DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId)
+          : undefined;
         if (template?.message) {
           await updateOffer(draftOfferId, { message: template.message });
         }
       }
-
-      // Skip the Documents upload step when a template is active
-      setStep(usingTemplate ? 4 : 3);
+      setStep(2);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to prepare deal. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to create draft. Please try again.');
     } finally {
       setCreatingDraft(false);
+    }
+  }
+
+  // Persists the recipient on Step 3→4 advance.
+  async function persistRecipient() {
+    if (!draftOfferId) return;
+    setSettingRecipient(true);
+    try {
+      await setOfferRecipient(draftOfferId, {
+        email: state.customerEmail,
+        name: state.customerName || state.customerEmail,
+      });
+      setStep(4);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to set recipient. Please try again.');
+    } finally {
+      setSettingRecipient(false);
     }
   }
 
@@ -184,17 +173,6 @@ export default function NewDealWizardPage() {
     setSubmitting(true);
     setError(null);
     try {
-      // Persist the quote as the deal message — but don't overwrite a template message
-      // unless the user actually entered quote content.
-      const quoteText = serializeQuote('', state.quote);
-      if (quoteText && !usingTemplate) {
-        await updateOffer(draftOfferId, { message: quoteText });
-      } else if (quoteText && usingTemplate) {
-        // Append quote below the template body
-        const template = DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId);
-        const combined = [template?.message, quoteText].filter(Boolean).join('\n\n---\n\n');
-        await updateOffer(draftOfferId, { message: combined });
-      }
       await sendOffer(draftOfferId);
       router.push(`/dashboard/offers/${draftOfferId}`);
     } catch (err: unknown) {
@@ -204,10 +182,7 @@ export default function NewDealWizardPage() {
     }
   }
 
-  // When a template is active, step 3 label in the indicator shows as "Template"
-  const visibleSteps = usingTemplate
-    ? STEPS.map((s) => s.id === 3 ? { ...s, label: 'Template', icon: FileCheck } : s)
-    : STEPS;
+  const isLoading = creatingDraft || settingRecipient;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -219,35 +194,31 @@ export default function NewDealWizardPage() {
       />
 
       {/* ── Step indicator ───────────────────────────────────────────────────── */}
-      <StepIndicator current={step} steps={visibleSteps} />
+      <StepIndicator current={step} steps={STEPS} />
 
       {/* ── Step content ─────────────────────────────────────────────────────── */}
       <div className="mt-6">
         {error && (
           <Alert variant="error" dismissible className="mb-4">
             {error}
-            {/* If the deal exists but sending failed, offer a direct link */}
             {draftOfferId && error.startsWith('Deal created') && (
               <>{' '}<a href={`/dashboard/offers/${draftOfferId}`} className="underline font-medium">Open deal →</a></>
             )}
           </Alert>
         )}
 
-        {step === 1 && <StepBasics state={state} onChange={update} onTemplateSelect={handleTemplateSelect} />}
-        {step === 2 && <StepCustomer state={state} onChange={update} />}
-        {step === 3 && draftOfferId && (
-          <StepDocuments
+        {step === 1 && <StepDealName state={state} onChange={update} />}
+        {step === 2 && draftOfferId && (
+          <StepDocument
             offerId={draftOfferId}
+            state={state}
+            onTemplateSelect={handleTemplateSelect}
             onUploaded={handleDocUploaded}
             onUploadingChange={setIsUploading}
           />
         )}
-        {step === 4 && (
-          <QuoteSummary value={state.quote} onChange={(quote) => update({ quote })} />
-        )}
-        {step === 5 && (
-          <StepReview state={state} uploadedDocs={uploadedDocs} />
-        )}
+        {step === 3 && <StepRecipient state={state} onChange={update} />}
+        {step === 4 && <StepReview state={state} uploadedDocs={uploadedDocs} />}
       </div>
 
       {/* ── Navigation ───────────────────────────────────────────────────────── */}
@@ -256,22 +227,22 @@ export default function NewDealWizardPage() {
           variant="secondary"
           size="md"
           onClick={prevStep}
-          disabled={step === 1 || creatingDraft || submitting}
+          disabled={step === 1 || isLoading || submitting}
           leftIcon={<ChevronLeft className="w-4 h-4" aria-hidden="true" />}
         >
           Back
         </Button>
 
-        {step < 5 ? (
+        {step < 4 ? (
           <Button
             variant="primary"
             size="md"
             onClick={handleNext}
             disabled={!canAdvance()}
-            loading={creatingDraft}
-            rightIcon={creatingDraft ? undefined : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
+            loading={isLoading}
+            rightIcon={isLoading ? undefined : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
           >
-            {step === 4 ? 'Review deal' : 'Continue'}
+            {step === 3 ? 'Review deal' : 'Continue'}
           </Button>
         ) : (
           <Button
@@ -291,27 +262,44 @@ export default function NewDealWizardPage() {
 
 // ─── Step components ──────────────────────────────────────────────────────────
 
-const DEAL_TYPE_OPTIONS: Array<{ value: DealType; label: string; desc: string }> = [
-  { value: 'proposal',   label: 'Proposal',   desc: 'A detailed proposal for a project or service'  },
-  { value: 'quote',      label: 'Quote',      desc: 'A priced quote for products or services'       },
-  { value: 'offer',      label: 'Offer',      desc: 'A general offer letter or agreement'           },
-  { value: 'onboarding', label: 'Onboarding', desc: 'A welcome package or onboarding agreement'    },
-];
-
-interface StepBasicsProps {
-  state: WizardState;
-  onChange: (p: Partial<WizardState>) => void;
-  onTemplateSelect: (tpl: DealTemplate | null) => void;
+function StepDealName({ state, onChange }: { state: WizardState; onChange: (p: Partial<WizardState>) => void }) {
+  return (
+    <Card>
+      <CardHeader title="Name your deal" description="Give this deal a descriptive name." border />
+      <CardSection>
+        <Input
+          label="Deal name"
+          placeholder="e.g. Software Development Proposal — Q2 2026"
+          value={state.dealName}
+          onChange={(e) => onChange({ dealName: e.target.value })}
+          required
+          autoFocus
+          hint="This appears in the email and acceptance certificate."
+        />
+      </CardSection>
+    </Card>
+  );
 }
 
-function StepBasics({ state, onChange, onTemplateSelect }: StepBasicsProps) {
+interface StepDocumentProps {
+  offerId: string;
+  state: WizardState;
+  onTemplateSelect: (tpl: DealTemplate | null) => void;
+  onUploaded: (docId: string, filename: string) => void;
+  onUploadingChange: (uploading: boolean) => void;
+}
+
+function StepDocument({ offerId, state, onTemplateSelect, onUploaded, onUploadingChange }: StepDocumentProps) {
+  const selectedTemplate = state.selectedTemplateId
+    ? DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId)
+    : null;
+
   return (
     <div className="space-y-4">
-      {/* Template selector */}
       <Card>
         <CardHeader
-          title="Start from a template"
-          description="Pick a pre-written agreement — or skip and fill in your own details below."
+          title="Use a template"
+          description="Pick a pre-written agreement, or skip and upload your own document below."
           border
         />
         <CardSection>
@@ -322,79 +310,38 @@ function StepBasics({ state, onChange, onTemplateSelect }: StepBasicsProps) {
         </CardSection>
       </Card>
 
-      {/* Deal details */}
-      <Card>
-        <CardHeader title="Deal basics" description="Name and categorize this deal." border />
-        <CardSection>
-          <div className="space-y-5">
-            <Input
-              label="Deal name"
-              placeholder="e.g. Software Development Proposal — Q2 2026"
-              value={state.dealName}
-              onChange={(e) => onChange({ dealName: e.target.value })}
-              required
-              autoFocus={!state.selectedTemplateId}
-              hint="This appears in the email and acceptance certificate."
+      {selectedTemplate ? (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5">
+          <FileCheck className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
+          <p className="text-xs text-green-700">
+            <span className="font-semibold">{selectedTemplate.title}</span> template applied —
+            pre-written agreement terms will be included.
+          </p>
+        </div>
+      ) : (
+        <Card>
+          <CardHeader
+            title="Upload document"
+            description="Attach PDF or DOCX files — optional, you can add them later from the deal page."
+            border
+          />
+          <CardSection>
+            <FileUploadFlow
+              offerId={offerId}
+              onUploaded={onUploaded}
+              onUploadingChange={onUploadingChange}
             />
-
-            <fieldset>
-              <legend className="block text-xs font-semibold text-gray-700 mb-2">
-                Deal type
-              </legend>
-              <div className="grid grid-cols-2 gap-2">
-                {DEAL_TYPE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={cn(
-                      'flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer transition-all',
-                      'hover:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500',
-                      state.dealType === opt.value
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white',
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="dealType"
-                      value={opt.value}
-                      checked={state.dealType === opt.value}
-                      onChange={() => onChange({ dealType: opt.value })}
-                      className="mt-0.5 accent-blue-600"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{opt.label}</p>
-                      <p className="text-xs text-[--color-text-muted] mt-0.5">{opt.desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </div>
-        </CardSection>
-      </Card>
-
-      {/* Template applied indicator */}
-      {state.selectedTemplateId && (() => {
-        const tpl = DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId);
-        return tpl ? (
-          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5">
-            <FileCheck className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
-            <p className="text-xs text-green-700">
-              <span className="font-semibold">{tpl.title}</span> template applied —
-              pre-written agreement terms will be included in your deal.
-              The Documents upload step will be skipped.
-            </p>
-          </div>
-        ) : null;
-      })()}
+          </CardSection>
+        </Card>
+      )}
     </div>
   );
 }
 
-function StepCustomer({ state, onChange }: { state: WizardState; onChange: (p: Partial<WizardState>) => void }) {
+function StepRecipient({ state, onChange }: { state: WizardState; onChange: (p: Partial<WizardState>) => void }) {
   return (
     <Card>
-      <CardHeader title="Customer" description="Who is receiving this deal?" border />
+      <CardHeader title="Recipient" description="Who is receiving this deal?" border />
       <CardSection>
         <div className="space-y-4">
           <Input
@@ -408,45 +355,13 @@ function StepCustomer({ state, onChange }: { state: WizardState; onChange: (p: P
             hint="A secure signing link will be sent to this address."
           />
           <Input
-            label="Customer name"
+            label="Recipient name"
             placeholder="Jane Smith"
             value={state.customerName}
             onChange={(e) => onChange({ customerName: e.target.value })}
             hint="Optional — shown in the deal and certificate."
           />
-          <Input
-            label="Company"
-            placeholder="Acme Ltd"
-            value={state.company}
-            onChange={(e) => onChange({ company: e.target.value })}
-            hint="Optional — for your reference only."
-          />
         </div>
-      </CardSection>
-    </Card>
-  );
-}
-
-interface StepDocumentsProps {
-  offerId: string;
-  onUploaded: (docId: string, filename: string) => void;
-  onUploadingChange: (uploading: boolean) => void;
-}
-
-function StepDocuments({ offerId, onUploaded, onUploadingChange }: StepDocumentsProps) {
-  return (
-    <Card>
-      <CardHeader
-        title="Documents"
-        description="Attach PDF or DOCX files — optional, you can skip and add later"
-        border
-      />
-      <CardSection>
-        <FileUploadFlow
-          offerId={offerId}
-          onUploaded={onUploaded}
-          onUploadingChange={onUploadingChange}
-        />
       </CardSection>
     </Card>
   );
@@ -458,7 +373,6 @@ interface StepReviewProps {
 }
 
 function StepReview({ state, uploadedDocs }: StepReviewProps) {
-  const hasQuote = state.quote.description.trim() || state.quote.lineItems.length > 0;
   const template = state.selectedTemplateId
     ? DEAL_TEMPLATES.find((t) => t.id === state.selectedTemplateId)
     : null;
@@ -473,30 +387,19 @@ function StepReview({ state, uploadedDocs }: StepReviewProps) {
               <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">Deal name</dt>
               <dd className="text-sm font-medium text-gray-900">{state.dealName}</dd>
             </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">Type</dt>
-              <dd><DealTypeBadge type={state.dealType} /></dd>
-            </div>
             {state.customerEmail && (
               <div className="flex items-center justify-between">
-                <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">Customer</dt>
+                <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">Recipient</dt>
                 <dd className="text-sm text-gray-700">
                   {state.customerName ? `${state.customerName} (${state.customerEmail})` : state.customerEmail}
                 </dd>
-              </div>
-            )}
-            {state.company && (
-              <div className="flex items-center justify-between">
-                <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">Company</dt>
-                <dd className="text-sm text-gray-700">{state.company}</dd>
               </div>
             )}
           </dl>
         </CardSection>
       </Card>
 
-      {/* Template applied */}
-      {template && (
+      {template ? (
         <Card>
           <CardHeader title="Agreement template" border />
           <CardSection>
@@ -511,10 +414,7 @@ function StepReview({ state, uploadedDocs }: StepReviewProps) {
             </div>
           </CardSection>
         </Card>
-      )}
-
-      {/* Documents attached in step 3 (only when no template) */}
-      {!template && (
+      ) : (
         <Card>
           <CardHeader title="Documents" border />
           <CardSection>
@@ -537,16 +437,9 @@ function StepReview({ state, uploadedDocs }: StepReviewProps) {
         </Card>
       )}
 
-      {hasQuote && (
-        <QuoteSummaryCard
-          description={state.quote.description}
-          lineItems={state.quote.lineItems}
-        />
-      )}
-
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
         <p className="text-xs text-blue-700 font-medium">
-          Clicking &ldquo;Send deal&rdquo; will deliver a secure signing link to your customer immediately.
+          Clicking &ldquo;Send deal&rdquo; will deliver a secure signing link to your recipient immediately.
         </p>
       </div>
     </div>

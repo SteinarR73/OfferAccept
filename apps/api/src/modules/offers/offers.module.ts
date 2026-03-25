@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { OffersController } from './offers.controller';
 import { OffersService } from './services/offers.service';
 import { SendOfferService } from './services/send-offer.service';
+import { DealEventsModule } from '../deal-events/deal-events.module';
 
 @Module({
+  imports: [DealEventsModule],
   controllers: [OffersController],
   providers: [OffersService, SendOfferService],
   // SendOfferService exported for use by SupportModule (revoke / resend-link actions)
