@@ -5,218 +5,73 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listOffers } from '../../lib/offers-api';
 import type { OfferItem } from '@offeraccept/types';
-import { StatsCard, StatsCardSkeleton } from '../../components/dashboard/StatsCard';
-import { OfferTable } from '../../components/dashboard/OfferTable';
-import { OnboardingBanner } from '../../components/dashboard/OnboardingBanner';
-import { OnboardingTour, type TourStep } from '../../components/dashboard/OnboardingTour';
-import { FirstDealEmptyState } from '../../components/dashboard/FirstDealEmptyState';
-import { ActionPanel } from '../../components/dashboard/ActionPanel';
-import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
-import { InsightsPanel } from '../../components/dashboard/InsightsPanel';
-import { AcceptanceInsightsPanel } from '../../components/dashboard/AcceptanceInsightsPanel';
-import { AcceptanceTrend } from '../../components/dashboard/AcceptanceTrend';
-import { UsageProgress } from '../../components/dashboard/UsageProgress';
-import { DealsPipeline } from '../../components/dashboard/DealsPipeline';
-import { AnalyticsOverview } from '../../components/dashboard/AnalyticsOverview';
 import { Button } from '../../components/ui/Button';
-
-// ─── Tour steps ────────────────────────────────────────────────────────────────
-
-const TOUR_STEPS: TourStep[] = [
-  {
-    target: 'stats-total',
-    title: 'Your deals overview',
-    body: 'These cards show a live summary of all your deals — total sent, accepted, pending, and your acceptance rate.',
-    placement: 'bottom',
-  },
-  {
-    target: 'create-offer',
-    title: 'Create a deal',
-    body: 'Click here to draft a new deal. Add the title, terms, and customer — then send with one click.',
-    placement: 'bottom',
-  },
-  {
-    target: 'offer-table',
-    title: 'Track your deals',
-    body: 'All deals appear here. Filter by status and click any row to view details or take action.',
-    placement: 'top',
-  },
-  {
-    target: 'billing-card',
-    title: 'Plan & usage',
-    body: 'Monitor how many deals you\'ve sent this month. Upgrade anytime to unlock higher limits.',
-    placement: 'left',
-  },
-];
-
-// ─── Derived stats ─────────────────────────────────────────────────────────────
-
-interface Stats {
-  total: number;
-  accepted: number;
-  pending: number;
-  conversionPct: number;
-}
-
-function deriveStats(offers: OfferItem[]): Stats {
-  const accepted   = offers.filter((o) => o.status === 'ACCEPTED');
-  const pending    = offers.filter((o) => o.status === 'SENT');
-  // Denominator: only SENT + ACCEPTED + DECLINED — offers that reached the recipient.
-  // EXPIRED and REVOKED are excluded: they never had a chance to be accepted and
-  // including them artificially deflates the acceptance rate.
-  const eligible   = offers.filter((o) => ['SENT', 'ACCEPTED', 'DECLINED'].includes(o.status));
-  const conversionPct = eligible.length > 0 ? Math.round((accepted.length / eligible.length) * 100) : 0;
-  return { total: offers.length, accepted: accepted.length, pending: pending.length, conversionPct };
-}
+import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
+import { DealStatusList } from '../../components/dashboard/DealStatusList';
+import { FirstDealEmptyState } from '../../components/dashboard/FirstDealEmptyState';
 
 // ─── DashboardPage ─────────────────────────────────────────────────────────────
+//
+// Launch dashboard — three elements only:
+//   1. Send Deal CTA
+//   2. Activity feed (DealEvent-powered)
+//   3. Deal status list (name, recipient, status, last activity, action)
+//
+// All analytics panels, pipeline views, and stat cards have been moved out of
+// the primary path. They remain available at /dashboard/analytics if needed.
 
 export default function DashboardPage() {
   const [offers, setOffers] = useState<OfferItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tourDone, setTourDone] = useState(false);
 
   useEffect(() => {
-    // Check if tour has been seen already (avoids flash)
-    setTourDone(localStorage.getItem('oa_tour_v1') === 'done');
-
-    // Page size 250 keeps dashboard stats accurate for typical orgs.
-    // Orgs with more than 250 offers will see a "showing recent 250" note below stats.
-    listOffers(1, 250)
+    listOffers(1, 50)
       .then(({ data }) => setOffers(data))
-      .catch(() => {/* offers failed — show empty state gracefully */})
+      .catch(() => {/* show empty state gracefully */})
       .finally(() => setLoading(false));
   }, []);
 
-  const stats = deriveStats(offers);
-  const isFirstSession = !loading && offers.length === 0;
-  // Warn when stats may be incomplete (page size cap reached)
-  const statsTruncated = !loading && offers.length === 250;
+  const hasDeals = !loading && offers.length > 0;
 
   return (
-    <>
-      {/* Spotlight tour — rendered into body via portal */}
-      {!tourDone && !loading && (
-        <OnboardingTour
-          steps={TOUR_STEPS}
-          onDone={() => setTourDone(true)}
-        />
+    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+
+      {/* ── Header ───────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold text-[--color-text-primary]">Overview</h1>
+        <Link href="/dashboard/deals/new">
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />}
+          >
+            Send deal
+          </Button>
+        </Link>
+      </div>
+
+      {/* ── Empty state ───────────────────────────────────────────────────────── */}
+      {!loading && !hasDeals && (
+        <FirstDealEmptyState />
       )}
 
-      <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        {/* ── Page heading ─────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-[--color-text-primary]">Overview</h1>
-            <p className="text-sm text-[--color-text-muted] mt-0.5">
-              {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
+      {/* ── Active dashboard ─────────────────────────────────────────────────── */}
+      {(loading || hasDeals) && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+          {/* Deal status list — takes 2/3 width on desktop */}
+          <div className="lg:col-span-2">
+            <DealStatusList offers={offers} loading={loading} />
           </div>
-          {!isFirstSession && (
-            <Link href="/dashboard/deals/new">
-              <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />} data-tour="create-offer">
-                New deal
-              </Button>
-            </Link>
-          )}
+
+          {/* Activity feed — takes 1/3 width on desktop */}
+          <div className="lg:col-span-1">
+            <ActivityFeed maxItems={12} />
+          </div>
+
         </div>
+      )}
 
-        {/* ── First-session: replace the full dashboard with a focused empty state ── */}
-        {isFirstSession && (
-          <FirstDealEmptyState />
-        )}
-
-        {/* ── Active dashboard (offers exist) ─────────────────────────────── */}
-        {!isFirstSession && (
-          <>
-            {/* Onboarding checklist for users still working through setup */}
-            <OnboardingBanner completedStepIds={[]} tourId="onboarding-banner" />
-
-            {/* Action panel (derived from offers, no extra API call) */}
-            <ActionPanel offers={offers} loading={loading} />
-
-            {/* Stats row */}
-            {statsTruncated && (
-              <p className="text-xs text-[--color-text-muted]">
-                Showing statistics for the most recent 250 deals.{' '}
-                <a href="/dashboard/offers" className="underline">View all deals →</a>
-              </p>
-            )}
-            <div
-              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-              aria-label="Deal statistics"
-            >
-              {loading ? (
-                <>
-                  <StatsCardSkeleton />
-                  <StatsCardSkeleton />
-                  <StatsCardSkeleton />
-                  <StatsCardSkeleton />
-                </>
-              ) : (
-                <>
-                  <StatsCard
-                    label="Total deals"
-                    value={stats.total}
-                    tourId="stats-total"
-                    description={`Total deals: ${stats.total}`}
-                  />
-                  <StatsCard
-                    label="Accepted"
-                    value={stats.accepted}
-                    trend="positive"
-                    sub={stats.accepted > 0 ? `${stats.conversionPct}% rate` : undefined}
-                    description={`Accepted deals: ${stats.accepted}`}
-                  />
-                  <StatsCard
-                    label="Awaiting response"
-                    value={stats.pending}
-                    trend="neutral"
-                    description={`Deals awaiting response: ${stats.pending}`}
-                  />
-                  <StatsCard
-                    label="Acceptance rate"
-                    value={`${stats.conversionPct}%`}
-                    trend={
-                      stats.conversionPct >= 70 ? 'positive'
-                      : stats.conversionPct >= 40 ? 'neutral'
-                      : stats.total > 0 ? 'negative'
-                      : 'neutral'
-                    }
-                    description={`Acceptance rate: ${stats.conversionPct}%`}
-                  />
-                </>
-              )}
-            </div>
-
-            {/* Deals pipeline */}
-            <DealsPipeline offers={offers} loading={loading} />
-
-            {/* Usage progress (billing — independent fetch inside component) */}
-            <UsageProgress />
-
-            {/* Main grid: Offer table + right sidebar */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <OfferTable
-                  offers={offers}
-                  loading={loading}
-                  tourId="offer-table"
-                  headingLabel="Recent deals"
-                  columnLabels={{ title: 'Deal name', recipient: 'Customer' }}
-                />
-              </div>
-              <div className="lg:col-span-1 flex flex-col gap-5">
-                <AcceptanceInsightsPanel />
-                <InsightsPanel offers={offers} loading={loading} />
-                <AcceptanceTrend offers={offers} loading={loading} />
-                <AnalyticsOverview />
-                <ActivityFeed />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
