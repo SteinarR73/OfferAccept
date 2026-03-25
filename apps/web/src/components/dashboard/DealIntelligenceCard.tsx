@@ -19,7 +19,7 @@ const ACTIVITY_LABELS: Record<string, { label: string; color: string }> = {
   never_opened:    { label: 'Not opened',        color: 'text-gray-500' },
   opened:          { label: 'Opened',             color: 'text-blue-600' },
   viewed_document: { label: 'Viewed documents',   color: 'text-blue-700' },
-  otp_started:     { label: 'Started signing',    color: 'text-amber-600' },
+  otp_started:     { label: 'Verifying identity', color: 'text-amber-600' },
   otp_verified:    { label: 'Identity verified',  color: 'text-amber-700' },
   accepted:        { label: 'Accepted',           color: 'text-green-700' },
 };
@@ -29,7 +29,7 @@ const ACTIVITY_LABELS: Record<string, { label: string; color: string }> = {
 const ACTION_CONFIG: Record<RecommendedAction, { label: string; icon: string; classes: string } | null> = {
   SEND_REMINDER:          { label: 'Send a reminder', icon: '🔔', classes: 'bg-amber-50 border-amber-300 text-amber-800' },
   FOLLOW_UP:              { label: 'Follow up with recipient', icon: '💬', classes: 'bg-blue-50 border-blue-300 text-blue-800' },
-  CHECK_WITH_RECIPIENT:   { label: 'Check in with recipient — they verified but haven\'t signed yet', icon: '⏳', classes: 'bg-purple-50 border-purple-300 text-purple-800' },
+  CHECK_WITH_RECIPIENT:   { label: 'Check in with recipient — they verified but haven\'t confirmed yet', icon: '⏳', classes: 'bg-purple-50 border-purple-300 text-purple-800' },
   NONE:                   null,
 };
 

@@ -47,7 +47,7 @@ export function buildSteps(status: OfferStatusValue): Step[] {
       id: 'awaiting',
       label: terminal ? (accepted ? 'Accepted' : 'Closed') : 'Awaiting acceptance',
       sublabel: accepted
-        ? 'Customer accepted & signed'
+        ? 'Customer confirmed acceptance'
         : declined
         ? 'Customer declined'
         : revoked

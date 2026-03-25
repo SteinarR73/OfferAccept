@@ -2,9 +2,9 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'OfferAccept — Secure offer letter management',
+  title: 'OfferAccept — Deal acceptance and agreement confirmation',
   description:
-    'Send offer letters, get them signed with OTP-verified identity, and receive tamper-proof acceptance certificates.',
+    'Send deals, collect OTP-verified acceptance, and receive tamper-proof acceptance certificates. Not an e-signature tool.',
 };
 
 // ─── Landing page (server component — zero API calls) ────────────────────────
@@ -59,13 +59,13 @@ function Hero() {
       </div>
 
       <h1 className="text-5xl font-bold tracking-tight text-gray-900 leading-tight mb-5">
-        Send offer letters.<br />Get them signed.{' '}
+        Send deals.<br />Get verified acceptance.{' '}
         <span className="text-blue-600">Instantly.</span>
       </h1>
 
       <p className="text-lg text-gray-500 max-w-xl mx-auto mb-8 leading-relaxed">
-        OfferAccept delivers legally-binding offer acceptance via a secure email link —
-        no account required for candidates. Every acceptance produces a tamper-proof certificate.
+        OfferAccept collects verifiable deal acceptance via a secure email link —
+        no account required for recipients. Every acceptance produces a tamper-proof certificate.
       </p>
 
       <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -160,12 +160,12 @@ const STEPS = [
   {
     n: '2',
     title: 'Send via secure link',
-    desc: 'One click. Your candidate receives a private email with a time-limited signing link.',
+    desc: 'One click. Your recipient receives a private email with a time-limited acceptance link.',
   },
   {
     n: '3',
-    title: 'Get it signed',
-    desc: 'Candidate verifies identity via OTP, reviews documents, and accepts. Certificate issued immediately.',
+    title: 'Get it accepted',
+    desc: 'Recipient verifies identity via OTP, reviews documents, and confirms. Certificate issued immediately.',
   },
 ];
 
@@ -174,7 +174,7 @@ function HowItWorks() {
     <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-20">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold text-gray-900">How it works</h2>
-        <p className="mt-2 text-gray-500 text-sm">Three steps from draft to legally-binding acceptance.</p>
+        <p className="mt-2 text-gray-500 text-sm">Three steps from draft to verified acceptance.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {STEPS.map((step) => (

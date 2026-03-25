@@ -64,5 +64,5 @@ export function FirstDealEmptyState() {
 const STEPS = [
   { label: 'Add details', detail: 'Name your deal, attach a document, and set the recipient.' },
   { label: 'Send it', detail: 'Your customer receives a secure link — no account needed.' },
-  { label: 'Get signed', detail: 'They accept via email verification. A tamper-proof certificate is issued.' },
+  { label: 'Get accepted', detail: 'They confirm via email verification. A tamper-proof certificate is issued.' },
 ];

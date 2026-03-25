@@ -38,8 +38,8 @@ const STEPS: OnboardingStep[] = [
   },
   {
     id: 'get-signature',
-    label: 'Get it signed',
-    description: 'Your customer signs and a tamper-proof certificate is issued.',
+    label: 'Get it accepted',
+    description: 'Your customer confirms acceptance and a tamper-proof certificate is issued.',
     href: '/dashboard/offers',
     cta: 'View deals →',
   },
