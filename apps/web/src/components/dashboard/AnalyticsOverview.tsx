@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, Bell, FileX, RotateCcw } from 'lucide-react';
+import { Clock, Timer, Bell, FileX, RotateCcw } from 'lucide-react';
 import { getAnalytics, type AnalyticsOverview } from '@/lib/offers-api';
 import { Card, CardHeader } from '../ui/Card';
 import { cn } from '@/lib/cn';
@@ -10,7 +10,8 @@ import { cn } from '@/lib/cn';
 // Lightweight analytics widget for the dashboard sidebar.
 //
 // Shows metrics not covered by the existing stats row:
-//   - Median acceptance time  (Feature 3: "Most deals accepted within X hours")
+//   - Average acceptance time (Feature 1: shown as soon as 1 deal is accepted)
+//   - Median acceptance time  (Feature 3: "Most deals accepted within X hours", ≥ 10 deals)
 //   - Reminder effectiveness  (Feature 4: "X% of accepted deals required a reminder")
 //   - Status breakdown        (Feature 5: Expired + Revoked + Declined counts)
 //
@@ -69,7 +70,9 @@ export function AnalyticsOverview() {
   if (!data) return null;
 
   // Only render when there's meaningful analytics to show
-  const hasTimingData    = data.medianAcceptanceHours !== null;
+  const hasAvgTime       = data.avgAcceptanceHours !== null;
+  const hasMedianTime    = data.medianAcceptanceHours !== null;
+  const hasTimingData    = hasAvgTime || hasMedianTime;
   const hasReminderData  = data.dealsAccepted >= 3 && data.acceptedWithReminderPct !== null;
   const hasStatusDetails = data.dealsExpired > 0 || data.dealsRevoked > 0 || data.dealsDeclined > 0;
 
@@ -81,8 +84,21 @@ export function AnalyticsOverview() {
 
       <ul className="divide-y divide-gray-50" role="list">
 
-        {/* Feature 3: Median acceptance time */}
-        {hasTimingData && (
+        {/* Feature 1: Average acceptance time */}
+        {hasAvgTime && (
+          <li>
+            <MetricRow
+              icon={<Timer className="w-3.5 h-3.5" aria-hidden="true" />}
+              label="Avg. acceptance time"
+              value={formatHours(data.avgAcceptanceHours!)}
+              sub="average"
+              accent="blue"
+            />
+          </li>
+        )}
+
+        {/* Feature 3: Median acceptance time (shown when dataset ≥ 10) */}
+        {hasMedianTime && (
           <li>
             <MetricRow
               icon={<Clock className="w-3.5 h-3.5" aria-hidden="true" />}

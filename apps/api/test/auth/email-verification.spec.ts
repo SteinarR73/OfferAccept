@@ -70,9 +70,13 @@ describe('AuthController.verifyEmail()', () => {
 });
 
 describe('AuthController.resendVerification()', () => {
+  // Minimal Express-like request stub — only the IP fields consumed by
+  // extractClientIp() are needed. The rate limiter mock ignores the IP value.
+  const mockReq = { ip: '127.0.0.1', headers: {}, socket: { remoteAddress: '127.0.0.1' } } as never;
+
   it('always returns 200 with a generic message', async () => {
     const { controller } = await buildController();
-    const result = await controller.resendVerification({ email: 'anyone@example.com' } as never);
+    const result = await controller.resendVerification({ email: 'anyone@example.com' } as never, mockReq);
     expect(result).toHaveProperty('message');
     expect(typeof result.message).toBe('string');
   });
@@ -83,7 +87,7 @@ describe('AuthController.resendVerification()', () => {
     (authSvc.resendVerificationEmail as jest.Mock<(...args: any[]) => any>).mockResolvedValue(undefined);
 
     await expect(
-      controller.resendVerification({ email: 'nobody@void.io' } as never),
+      controller.resendVerification({ email: 'nobody@void.io' } as never, mockReq),
     ).resolves.toBeDefined();
   });
 });
