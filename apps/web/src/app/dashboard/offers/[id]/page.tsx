@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Send, RotateCcw, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   getOffer,
@@ -13,6 +13,7 @@ import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { OfferEditor } from './offer-editor';
 import { DeliveryTimeline } from '../../../../components/dashboard/DeliveryTimeline';
 import { DealTimeline } from '../../../../components/dashboard/DealTimeline';
+import { DealIntelligenceCard } from '../../../../components/dashboard/DealIntelligenceCard';
 import { CertificateShowcase } from '../../../../components/dashboard/CertificateShowcase';
 import { PageHeader } from '../../../../components/ui/PageHeader';
 import { Card, CardHeader, CardSection } from '../../../../components/ui/Card';
@@ -137,8 +138,11 @@ function StatusActionBar({ offer, onSend, onRevoke, onResend }: StatusActionBarP
 
 export default function OfferDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const [offer, setOffer] = useState<OfferItemExtended | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Show a success banner when arriving from the new-deal wizard (?sent=1)
+  const [showSentBanner, setShowSentBanner] = useState(searchParams.get('sent') === '1');
 
   const refresh = useCallback(() => {
     getOffer(id)
@@ -204,6 +208,17 @@ export default function OfferDetailPage() {
           </div>
         }
       />
+
+      {/* ── Post-wizard success banner ───────────────────────────────────── */}
+      {showSentBanner && (
+        <Alert variant="success" dismissible className="mb-4" onDismiss={() => setShowSentBanner(false)}>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
+            <span className="font-medium">Deal sent successfully.</span>
+            <span className="text-green-700">Your recipient will receive a secure signing link shortly.</span>
+          </div>
+        </Alert>
+      )}
 
       {/* ── Terminal status alert ─────────────────────────────────────────── */}
       {offer.status === 'REVOKED' && (
@@ -279,8 +294,11 @@ export default function OfferDetailPage() {
           <OfferEditor initial={offer} />
         </div>
 
-        {/* Right sidebar: lifecycle timeline + delivery timeline */}
+        {/* Right sidebar: intelligence card + lifecycle timeline + delivery timeline */}
         <div className="lg:col-span-1 flex flex-col gap-4">
+          {offer.status !== 'DRAFT' && (
+            <DealIntelligenceCard offerId={id} offerStatus={offer.status} />
+          )}
           <DealTimeline offerId={id} />
           <DeliveryTimeline offerId={id} offerStatus={offer.status as 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'REVOKED'} />
         </div>

@@ -21,6 +21,7 @@ import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { OffersService } from './services/offers.service';
 import { SendOfferService } from './services/send-offer.service';
+import { DealStatusService } from './services/deal-status.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { UpdateOfferDto } from './dto/update-offer.dto';
 import { SetRecipientDto } from './dto/set-recipient.dto';
@@ -37,6 +38,7 @@ export class OffersController {
   constructor(
     private readonly offersService: OffersService,
     private readonly sendOfferService: SendOfferService,
+    private readonly dealStatusService: DealStatusService,
     @Inject('PRISMA') private readonly db: PrismaClient,
   ) {}
 
@@ -168,6 +170,17 @@ export class OffersController {
   @Get(':id/timeline')
   async getTimeline(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.offersService.getTimeline(id, user.orgId);
+  }
+
+  // GET /offers/:id/status — computed deal intelligence from event log
+  //
+  // Returns derived status, recipient engagement level, recommended next action,
+  // and human-readable insight strings. Scoped to the caller's org via findOne.
+  @Get(':id/status')
+  async getDealStatus(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    // Verify org access before computing status
+    await this.offersService.findOne(id, user.orgId);
+    return this.dealStatusService.getDealStatus(id);
   }
 
   // POST /offers/:id/revoke

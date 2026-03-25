@@ -13,6 +13,7 @@ import { FirstDealEmptyState } from '../../components/dashboard/FirstDealEmptySt
 import { ActionPanel } from '../../components/dashboard/ActionPanel';
 import { ActivityFeed } from '../../components/dashboard/ActivityFeed';
 import { InsightsPanel } from '../../components/dashboard/InsightsPanel';
+import { AcceptanceInsightsPanel } from '../../components/dashboard/AcceptanceInsightsPanel';
 import { AcceptanceTrend } from '../../components/dashboard/AcceptanceTrend';
 import { UsageProgress } from '../../components/dashboard/UsageProgress';
 import { DealsPipeline } from '../../components/dashboard/DealsPipeline';
@@ -206,6 +207,7 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="lg:col-span-1 flex flex-col gap-5">
+                <AcceptanceInsightsPanel />
                 <InsightsPanel offers={offers} loading={loading} />
                 <AcceptanceTrend offers={offers} loading={loading} />
                 <AnalyticsOverview />

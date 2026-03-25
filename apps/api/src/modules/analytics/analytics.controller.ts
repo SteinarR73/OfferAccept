@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { AnalyticsService } from './analytics.service';
+import { AcceptanceInsightsService } from './acceptance-insights.service';
 import { DealEventService } from '../deal-events/deal-events.service';
 
 // ─── AnalyticsController ──────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ import { DealEventService } from '../deal-events/deal-events.service';
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
+    private readonly insightsService: AcceptanceInsightsService,
     private readonly dealEventService: DealEventService,
   ) {}
 
@@ -22,6 +24,13 @@ export class AnalyticsController {
   @Get('overview')
   async getOverview(@CurrentUser() user: JwtPayload) {
     return this.analyticsService.getOverview(user.orgId);
+  }
+
+  // GET /analytics/insights
+  // Returns actionable acceptance intelligence for the caller's org.
+  @Get('insights')
+  async getInsights(@CurrentUser() user: JwtPayload) {
+    return this.insightsService.getInsights(user.orgId);
   }
 
   // GET /analytics/events?limit=20

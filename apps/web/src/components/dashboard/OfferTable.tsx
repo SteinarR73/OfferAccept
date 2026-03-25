@@ -27,6 +27,44 @@ const HEALTH_META: Record<NonNullable<HealthState>, { dot: string; label: string
   healthy:  { dot: 'bg-green-400', label: 'Active'        },
 };
 
+// ─── Suggested action ─────────────────────────────────────────────────────────
+// Client-side derivation from offer data — no extra API calls.
+
+type SuggestedAction = 'send_reminder' | 'urgent_expiring' | 'ready_to_send' | null;
+
+interface SuggestedActionMeta { label: string; classes: string }
+
+const SUGGESTED_ACTION_META: Record<NonNullable<SuggestedAction>, SuggestedActionMeta> = {
+  urgent_expiring: { label: 'Expires soon',    classes: 'bg-red-50 text-red-700' },
+  send_reminder:   { label: 'Send reminder',   classes: 'bg-amber-50 text-amber-700' },
+  ready_to_send:   { label: 'Ready to send',   classes: 'bg-blue-50 text-blue-700' },
+};
+
+function getSuggestedAction(offer: OfferItem): SuggestedAction {
+  const now = Date.now();
+  const MS_DAY = 86_400_000;
+  if (offer.status === 'SENT') {
+    if (offer.expiresAt) {
+      const expiresMs = new Date(offer.expiresAt).getTime();
+      if (expiresMs > now && expiresMs - now < MS_DAY) return 'urgent_expiring';
+    }
+    if (now - new Date(offer.updatedAt).getTime() > 3 * MS_DAY) return 'send_reminder';
+  }
+  if (offer.status === 'DRAFT' && offer.recipient?.email) return 'ready_to_send';
+  return null;
+}
+
+function SuggestedActionChip({ offer }: { offer: OfferItem }) {
+  const action = getSuggestedAction(offer);
+  if (!action) return <span className="text-gray-300 text-xs">—</span>;
+  const meta = SUGGESTED_ACTION_META[action];
+  return (
+    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', meta.classes)}>
+      {meta.label}
+    </span>
+  );
+}
+
 function HealthDot({ offer }: { offer: OfferItem }) {
   const state = getHealth(offer);
   if (!state) return null;
@@ -160,7 +198,7 @@ export function OfferTable({
           )}
         </h2>
         <Link
-          href="/dashboard/offers/new"
+          href="/dashboard/deals/new"
           data-tour="create-offer"
           className={cn(
             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium btn-lift',
@@ -285,8 +323,11 @@ export function OfferTable({
                     className="flex items-center hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
                     aria-label={`Sort by last activity ${sortKey === 'updatedAt' && sortDir === 'asc' ? 'descending' : 'ascending'}`}
                   >
-                    Activity <SortIcon col="updatedAt" />
+                    Last activity <SortIcon col="updatedAt" />
                   </button>
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">
+                  Suggested action
                 </th>
                 <th scope="col" className="sr-only">Actions</th>
               </tr>
@@ -330,6 +371,9 @@ export function OfferTable({
                         month: 'short', day: 'numeric', year: 'numeric',
                       })}
                     </time>
+                  </td>
+                  <td className="px-4 py-3.5 hidden xl:table-cell">
+                    <SuggestedActionChip offer={offer} />
                   </td>
                   <td className="px-3 py-3.5 text-right">
                     <Link
@@ -404,7 +448,7 @@ function EmptyState({
           ? 'Try a different search term.'
           : hasOffers
           ? 'Try a different filter tab above.'
-          : 'Create your first deal to get started.'}
+          : 'Send your first agreement in under 2 minutes.'}
       </p>
       {hasSearch && (
         <button
@@ -416,10 +460,10 @@ function EmptyState({
       )}
       {!hasOffers && !hasSearch && (
         <Link
-          href="/dashboard/offers/new"
+          href="/dashboard/deals/new"
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors"
         >
-          Create first deal
+          Create your first deal
         </Link>
       )}
     </div>
@@ -435,6 +479,7 @@ function OfferTableSkeleton() {
           <div className="skeleton-shimmer h-4 rounded w-32 hidden sm:block" />
           <div className="skeleton-shimmer h-5 rounded-full w-16" />
           <div className="skeleton-shimmer h-3 rounded w-20 hidden md:block" />
+          <div className="skeleton-shimmer h-5 rounded-full w-24 hidden xl:block" />
         </div>
       ))}
     </div>

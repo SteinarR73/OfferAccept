@@ -435,3 +435,69 @@ export async function verifyCertificate(id: string): Promise<CertificateVerifica
   if (!res.ok) throw new Error(`Verification failed: HTTP ${res.status}`);
   return res.json() as Promise<CertificateVerification>;
 }
+
+// ─── Acceptance Insights ──────────────────────────────────────────────────────
+
+export interface AcceptanceInsightDeal {
+  dealId: string;
+  dealTitle: string;
+  hoursSinceLastEvent?: number;
+  hoursSinceSent?: number;
+}
+
+export interface AcceptanceInsights {
+  /** Median hours from deal_sent → deal_accepted. Null if < 10 data points. */
+  medianAcceptanceHours: number | null;
+  /** % of accepted deals where a reminder was sent before acceptance. */
+  reminderRate: number | null;
+  /** Deals opened but not accepted; idle > 24 h. */
+  openedNotAccepted: AcceptanceInsightDeal[];
+  /** Deals sent but never opened; age > 24 h. */
+  unopened: AcceptanceInsightDeal[];
+  /** Deals opened with no activity > 48 h; not in a terminal state. */
+  stalled: AcceptanceInsightDeal[];
+}
+
+export async function getAcceptanceInsights(): Promise<AcceptanceInsights> {
+  return request<AcceptanceInsights>('/analytics/insights');
+}
+
+// ─── Deal Status Intelligence ──────────────────────────────────────────────────
+
+export type DealComputedStatus =
+  | 'CREATED'
+  | 'SENT'
+  | 'OPENED'
+  | 'OTP_STARTED'
+  | 'OTP_VERIFIED'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'EXPIRED'
+  | 'REVOKED';
+
+export type RecipientActivity =
+  | 'never_opened'
+  | 'opened'
+  | 'viewed_document'
+  | 'otp_started'
+  | 'otp_verified'
+  | 'accepted';
+
+export type RecommendedAction =
+  | 'SEND_REMINDER'
+  | 'FOLLOW_UP'
+  | 'CHECK_WITH_RECIPIENT'
+  | 'NONE';
+
+export interface DealStatusResult {
+  status: DealComputedStatus;
+  lastEvent: DealEventType | null;
+  lastActivityAt: string | null;
+  recipientActivity: RecipientActivity;
+  recommendedAction: RecommendedAction;
+  insights: string[];
+}
+
+export async function getDealStatus(offerId: string): Promise<DealStatusResult> {
+  return request<DealStatusResult>(`/offers/${offerId}/status`);
+}
