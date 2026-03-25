@@ -235,6 +235,194 @@ Key evidence points:
 
 ---
 
+### P6: Reminder emails not being sent
+
+**Symptom:** Senders report no reminders received; activity feed shows no `deal_reminder_sent`
+events after 24 h, 72 h, or 5 days.
+
+**How reminders work:**
+
+- A `ReminderSchedule` row is created at send time with `nextReminderAt` set to 24 h after send.
+- The `send-reminders` pg-boss job runs every 5 minutes and sweeps for due schedules.
+- Each sent reminder increments `reminderCount` and advances `nextReminderAt`.
+- If the offer reaches a terminal state (`ACCEPTED`, `REVOKED`, `EXPIRED`), the schedule
+  row is deleted on the next sweep (self-healing).
+- Reminder emails are sent only when `offer.status === 'SENT'`.
+
+**Diagnosis steps:**
+
+1. Check whether the pg-boss worker is running: look in logs for
+   `[JobWorker]` startup messages. If absent, the worker did not register.
+
+2. Confirm the `send-reminders` queue is processing jobs:
+   ```sql
+   SELECT name, state, created_on, completed_on, fail_count
+   FROM pgboss.job
+   WHERE name = 'send-reminders'
+   ORDER BY created_on DESC
+   LIMIT 10;
+   ```
+   Jobs in `failed` state with non-zero `fail_count` indicate repeated handler errors.
+
+3. Check for stale `ReminderSchedule` rows:
+   ```sql
+   SELECT rs.id, rs.offer_id, rs.next_reminder_at, rs.reminder_count,
+          o.status
+   FROM reminder_schedules rs
+   JOIN offers o ON o.id = rs.offer_id
+   WHERE rs.next_reminder_at <= NOW()
+     AND o.status = 'SENT'
+   ORDER BY rs.next_reminder_at ASC
+   LIMIT 20;
+   ```
+   Rows here that are not being processed indicate the job runner is stuck.
+
+4. Look for email delivery failures in logs: search for
+   `[SendRemindersHandler] Failed to send reminder`.
+
+**Recovery steps:**
+
+- If the job worker is down: restart the API process. The worker re-registers
+  on startup and will process overdue schedules on the next sweep.
+- If a specific reminder failed due to an email delivery error: the schedule
+  is NOT advanced, so the next sweep will retry automatically.
+- If the `ReminderSchedule` row is corrupted: manually delete and re-create it,
+  or use `POST /support/offers/:id/resend-link` to issue a fresh email to the
+  recipient as an alternative.
+- If Resend is degraded: check status.resend.com. Remind senders that the email
+  provider is experiencing issues; reminders will self-recover on the next sweep
+  once delivery succeeds.
+
+---
+
+### P7: OTP abuse detected
+
+**Symptom:** Rate-limit alerts fire on OTP endpoints; support inbox receives reports of
+unsolicited OTP codes; abnormally high `OTP_ISSUED` or `OTP_ATTEMPT_FAILED` events in logs.
+
+**OTP security controls in place:**
+
+- `POST /signing/:token/otp` — 3 issuances per token per hour (`otp_issuance` profile)
+  and 60 per IP per minute (`signing_global` profile).
+- `POST /signing/:token/otp/verify` — 10 per IP per 15 min (`otp_verification` profile);
+  5 failed attempts locks the challenge (`OTP_LOCKED` status).
+- All limits are logged at `WARN` level when exceeded (HTTP 429).
+
+**Diagnosis steps:**
+
+1. Search logs for HTTP 429 responses on `/signing/` paths. Cluster by IP address and
+   token prefix to identify the attack source.
+
+2. Query for locked challenges:
+   ```sql
+   SELECT soc.id, soc.offer_recipient_id, soc.status, soc.attempt_count,
+          soc.created_at, or.email
+   FROM signing_otp_challenges soc
+   JOIN offer_recipients or ON or.id = soc.offer_recipient_id
+   WHERE soc.status = 'OTP_LOCKED'
+     AND soc.created_at > NOW() - INTERVAL '1 hour'
+   ORDER BY soc.created_at DESC;
+   ```
+
+3. Check whether the targeted tokens belong to real offers (org-owned) or are
+   random guesses. A high ratio of `NotFoundException` errors on `/signing/:token`
+   suggests token enumeration, not targeted attacks.
+
+4. Determine if the same IP is abusing multiple offers (broad OTP flooding) vs.
+   targeting one specific recipient (targeted credential attack).
+
+**Response steps:**
+
+- **Rate limit exceeded (429) on OTP issuance for a real recipient:**
+  The recipient is temporarily blocked. They can retry after the rate-limit window
+  resets (1 hour per token). Use `POST /support/sessions/:id/resend-otp` to manually
+  issue a fresh code on the recipient's behalf if the window is unacceptable.
+
+- **OTP locked challenge for a real recipient:**
+  The challenge is locked after 5 failed attempts. Issue a fresh session:
+  `POST /support/offers/:id/resend-link` — this invalidates the current token
+  and creates a new signing URL that resets the session.
+
+- **Ongoing flood from a specific IP:**
+  Block the IP at the reverse proxy level (nginx, Cloudflare, load balancer).
+  The in-process rate limiter will recover normally after the block is in place.
+
+- **Suspected targeting of a specific offer:**
+  Notify the offer sender that someone may be attempting to brute-force their
+  recipient's acceptance link. Consider revoking the offer (`POST /support/offers/:id/revoke`)
+  and reissuing it to the recipient directly via a new send.
+
+- **Suspected bot or automated attack across many offers:**
+  Escalate to engineering to evaluate IP-level blocks and consider temporarily
+  tightening the `otp_issuance` rate limit profile in `RateLimitService`.
+
+---
+
+### P8: Background job failures
+
+**Symptom:** Jobs appear in the pg-boss `failed` state; processing is delayed or stopped;
+certificates not being issued after acceptance; reminders not going out.
+
+**pg-boss job state lifecycle:**
+
+```
+created → active → completed  (normal path)
+                ↘ failed      (handler threw; retry scheduled if retries remain)
+                             ↘ archived (retained for debugging)
+```
+
+**Diagnosis: check job state in the database**
+
+```sql
+-- Recent failed jobs across all queues
+SELECT name, id, state, fail_count, data::text, output::text,
+       started_on, completed_on
+FROM pgboss.job
+WHERE state = 'failed'
+ORDER BY started_on DESC
+LIMIT 20;
+```
+
+```sql
+-- Jobs stuck in 'active' for more than 10 minutes (potential hung workers)
+SELECT name, id, state, started_on, expire_in
+FROM pgboss.job
+WHERE state = 'active'
+  AND started_on < NOW() - INTERVAL '10 minutes';
+```
+
+**Per-queue diagnostics:**
+
+| Queue | Failure impact | Retry policy | Recovery action |
+|---|---|---|---|
+| `issue-certificate` | Certificate not issued after acceptance | 5 retries, exponential backoff | Check DB connectivity; certificate issue is idempotent — re-enqueue manually if needed |
+| `send-reminders` | Reminder email not sent | Self-healing on next sweep (5 min) | No action needed unless job runner is down |
+| `expire-offers` / `expire-sessions` | Status not updated in DB | Sweep-based; runs again next cron tick | No action needed unless job runner is down |
+| `send-webhook` | Webhook delivery missed | 3 retries, exponential backoff | Check webhook endpoint; manually replay via pg-boss if needed |
+
+**Re-enqueue a failed `issue-certificate` job manually:**
+
+```sql
+-- Find the failed job
+SELECT id, data FROM pgboss.job
+WHERE name = 'issue-certificate' AND state = 'failed'
+ORDER BY started_on DESC LIMIT 5;
+
+-- Re-send via the API (preferred) or re-insert via pg-boss INSERT
+-- The handler is idempotent: running it again with the same acceptanceRecordId
+-- either creates the certificate or returns the existing one.
+```
+
+**If the job worker does not restart after an API restart:**
+
+1. Check for `[JobWorker] Error starting pg-boss` in logs — this usually means
+   the `pgboss` schema is missing or the `DATABASE_URL` is wrong.
+2. Confirm pg-boss schema exists: `SELECT * FROM pgboss.version;`
+3. If the schema is missing, pg-boss will create it on the next startup.
+   Ensure the database user has `CREATE SCHEMA` and `CREATE TABLE` privileges.
+
+---
+
 ## 5. Known Limitations for v1
 
 These are intentional scope decisions, not bugs. They are documented here to set
@@ -318,6 +506,34 @@ remains verifiable (hash still matches) but the original content cannot be retri
 - [ ] Resend webhook integration for delivery callbacks
 - [ ] Automated offer expiry job
 - [ ] Log aggregation and alerting (Datadog, Sentry, or equivalent)
+
+### Error monitoring setup (required before pilot)
+
+The API emits structured JSON to stdout via NestJS Logger. To wire up alerting:
+
+1. **Minimum (log-based alerting):**
+   Route stdout to a log aggregator (Datadog, Logtail, CloudWatch Logs, etc.).
+   Alert on:
+   - Any log line containing `"level":"error"` from the API process.
+   - HTTP 5xx response rate > 1% over a 5-minute window.
+   - HTTP 429 rate > 10 per minute on `/signing/` paths.
+
+2. **Error tracking (recommended — Sentry or equivalent):**
+   Add `@sentry/nestjs` and configure a `SentryExceptionFilter` or
+   global exception filter to capture unhandled exceptions. Set
+   `SENTRY_DSN` as an environment variable. This gives stack traces,
+   context, and alert grouping without changing application logging.
+
+3. **Critical audit log alerting:**
+   The `SupportAuditService` emits all support actions as structured JSON
+   with `"type":"SUPPORT_AUDIT"`. Alert on any `REVOKE_OFFER`, `RESEND_OFFER_LINK`,
+   or `RESEND_SESSION_OTP` action to give the team real-time visibility into
+   support-initiated mutations.
+
+4. **Background job monitoring:**
+   Query `pgboss.job WHERE state = 'failed'` on a schedule (e.g., every 15 minutes)
+   and alert if any row appears. pg-boss does not emit external events on failure —
+   polling is the only mechanism unless you add a custom failure handler in `JobWorker`.
 
 ### GA requirements (not defined yet)
 

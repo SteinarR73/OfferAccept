@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { CertificatesController } from '../../src/modules/certificates/certificates.controller';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -63,6 +64,7 @@ async function buildController() {
       { provide: CertificateService, useValue: certSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
+      { provide: ConfigService, useValue: { getOrThrow: (_key: string) => 'https://app.test' } },
     ],
   }).compile();
 

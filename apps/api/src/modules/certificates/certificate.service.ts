@@ -237,21 +237,28 @@ export class CertificateService {
     issuedAt: string;
     payload: CertificatePayload;
     canonicalJson: string;
+    eventHistory: Array<{ sequence: number; eventType: string; occurredAt: string }>;
   }> {
     const cert = await this.db.acceptanceCertificate.findUnique({
       where: { id: certificateId },
-      include: { offer: { select: { organizationId: true } } },
+      include: {
+        offer: { select: { organizationId: true } },
+        acceptanceRecord: { select: { sessionId: true } },
+      },
     });
 
     if (!cert) throw new NotFoundException('Certificate not found');
 
     this.assertCanAccess(cert.offer.organizationId, callerOrgId, callerRole);
 
-    const built = await this.builder.build(
-      cert.acceptanceRecordId,
-      certificateId,
-      cert.issuedAt,
-    );
+    const [built, signingEvents] = await Promise.all([
+      this.builder.build(cert.acceptanceRecordId, certificateId, cert.issuedAt),
+      this.db.signingEvent.findMany({
+        where: { sessionId: cert.acceptanceRecord.sessionId },
+        select: { sequenceNumber: true, eventType: true, timestamp: true },
+        orderBy: { sequenceNumber: 'asc' },
+      }),
+    ]);
 
     return {
       certificateId,
@@ -259,6 +266,11 @@ export class CertificateService {
       issuedAt: cert.issuedAt.toISOString(),
       payload: built.payload,
       canonicalJson: built.canonicalJson,
+      eventHistory: signingEvents.map((e) => ({
+        sequence: e.sequenceNumber,
+        eventType: e.eventType,
+        occurredAt: e.timestamp.toISOString(),
+      })),
     };
   }
 

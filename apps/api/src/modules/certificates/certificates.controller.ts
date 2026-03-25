@@ -1,5 +1,6 @@
 import { Controller, Get, Param, UseGuards, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
@@ -30,10 +31,15 @@ import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 
 @Controller('certificates')
 export class CertificatesController {
+  private readonly webBaseUrl: string;
+
   constructor(
     private readonly certificates: CertificateService,
     private readonly rateLimiter: RateLimitService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.webBaseUrl = config.getOrThrow<string>('WEB_BASE_URL');
+  }
 
   // Returns certificate metadata for authenticated callers (sender, support).
   // Does not recompute the hash — returns stored hash.
@@ -46,6 +52,7 @@ export class CertificatesController {
       certificateId: exported.certificateId,
       certificateHash: exported.certificateHash,
       issuedAt: exported.issuedAt,
+      verificationUrl: `${this.webBaseUrl}/verify/${id}`,
       offer: exported.payload.offer,
       recipient: exported.payload.recipient,
       sender: exported.payload.sender,
@@ -90,6 +97,7 @@ export class CertificatesController {
     // Return verification result with no sensitive internal data
     return {
       certificateId: result.certificateId,
+      verificationUrl: `${this.webBaseUrl}/verify/${result.certificateId}`,
       valid: result.valid,
       certificateHashMatch: result.certificateHashMatch,
       reconstructedHash: result.reconstructedHash,
@@ -106,6 +114,7 @@ export class CertificatesController {
   @Get(':id/export')
   @UseGuards(JwtAuthGuard)
   async exportCertificate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.certificates.exportPayload(id, user.orgId, user.role);
+    const result = await this.certificates.exportPayload(id, user.orgId, user.role);
+    return { ...result, verificationUrl: `${this.webBaseUrl}/verify/${id}` };
   }
 }

@@ -65,6 +65,7 @@ type MockDb = {
   acceptanceCertificate: { findUnique: AnyMock; create: AnyMock };
   acceptanceRecord: { findUniqueOrThrow: AnyMock; findUnique: AnyMock };
   offerSnapshot: { findUniqueOrThrow: AnyMock };
+  signingEvent: { findMany: AnyMock };
 };
 
 function makeMockDb(): MockDb {
@@ -72,6 +73,7 @@ function makeMockDb(): MockDb {
     acceptanceCertificate: { findUnique: jest.fn(), create: jest.fn() },
     acceptanceRecord: { findUniqueOrThrow: jest.fn(), findUnique: jest.fn() },
     offerSnapshot: { findUniqueOrThrow: jest.fn() },
+    signingEvent: { findMany: jest.fn<() => Promise<[]>>().mockResolvedValue([]) },
   };
 }
 
