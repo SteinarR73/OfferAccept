@@ -148,20 +148,39 @@ export class SendRemindersHandler {
         continue;
       }
 
-      // Generate a fresh signing token so the reminder contains a live link.
+      // Generate a candidate signing token.
+      //
+      // IMPORTANT — order of operations:
+      //   1. Generate token (candidate — not yet in DB)
+      //   2. Send reminder email using the candidate signing URL
+      //   3. Only if send succeeds, persist the new tokenHash in the DB
+      //
+      // Rationale: if we write the new tokenHash first and the email send
+      // subsequently fails, the OLD signing link is permanently dead and the
+      // recipient has received no replacement. By sending first and writing
+      // second, the existing token remains valid until delivery is confirmed.
+      //
+      // Failure path: email fails → tokenHash not rotated → old link still
+      // valid → schedule not advanced → next sweep retries with a fresh
+      // candidate token.
+      //
+      // Partial-write path: email succeeds but the DB update below fails →
+      // recipient received a link whose tokenHash isn't yet in the DB.  The
+      // old link is still in the DB and still works.  The next sweep generates
+      // another candidate, and if its DB write succeeds, both the old link
+      // (now replaced) and the previously-sent-but-never-persisted link are
+      // dead.  The new link from the retried sweep is live.  The net effect is
+      // one extra reminder email — acceptable.
       const tokenExpiry = offer.expiresAt ?? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const { rawToken, tokenHash, tokenExpiresAt } = generateRecipientToken(tokenExpiry);
-
-      await this.db.offerRecipient.update({
-        where: { id: recipient.id },
-        data: { tokenHash, tokenExpiresAt },
-      });
 
       const signingUrl = `${webBaseUrl}/sign/${rawToken}`;
       const newCount   = (schedule.reminderCount + 1) as 1 | 2 | 3;
       const variant    = recipientStatusToVariant(recipient.status);
 
-      // Send reminder email — best-effort (log failures, keep processing).
+      // ── Step 1: attempt email delivery ──────────────────────────────────────
+      // On failure: skip this schedule — tokenHash NOT rotated, old link
+      // still valid, schedule remains eligible for retry on the next sweep.
       try {
         await this.emailPort.sendRecipientReminder({
           to: recipient.email,
@@ -173,22 +192,37 @@ export class SendRemindersHandler {
           variant,
           reminderNumber: newCount,
         });
-        void this.dealEventService.emit(offer.id, 'deal_reminder_sent', { reminderNumber: newCount, variant });
-        this.logger.log(JSON.stringify({
-          event: 'reminder_sent',
-          offerId: offer.id,
-          reminderNumber: newCount,
-          variant,
-          recipientEmail: recipient.email,
-        }));
       } catch (err) {
         this.logger.error(
-          JSON.stringify({ event: 'reminder_send_failed', offerId: offer.id, reminderNumber: newCount, variant }),
-          err instanceof Error ? err.message : String(err),
+          JSON.stringify({
+            event: 'reminder_send_failed',
+            offerId: offer.id,
+            reminderNumber: newCount,
+            variant,
+            recipientEmail: recipient.email,
+            error: err instanceof Error ? err.message : String(err),
+          }),
         );
-        // Do NOT update the schedule — let the next sweep retry.
+        // Do NOT rotate tokenHash — old link remains valid.
+        // Do NOT advance the schedule — next sweep will retry.
         continue;
       }
+
+      // ── Step 2: persist the new tokenHash only after confirmed delivery ──────
+      // The old tokenHash is replaced here. Any prior link is now superseded.
+      await this.db.offerRecipient.update({
+        where: { id: recipient.id },
+        data: { tokenHash, tokenExpiresAt },
+      });
+
+      void this.dealEventService.emit(offer.id, 'deal_reminder_sent', { reminderNumber: newCount, variant });
+      this.logger.log(JSON.stringify({
+        event: 'reminder_sent',
+        offerId: offer.id,
+        reminderNumber: newCount,
+        variant,
+        recipientEmail: recipient.email,
+      }));
 
       // Advance the schedule.
       const nextAt =
