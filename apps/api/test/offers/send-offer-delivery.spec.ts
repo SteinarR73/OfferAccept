@@ -13,12 +13,20 @@ import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { ResendDeliveryError } from '../../src/common/email/resend-email.adapter';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { SubscriptionService } from '../../src/modules/billing/subscription.service';
+import { PlanLimitExceededError } from '../../src/common/errors/domain.errors';
 
-// ── Global mock for RateLimitService (replaces Redis-backed module in tests) ────
+// ── Global mock for RateLimitService + SubscriptionService ───────────────────
 @Global()
 @Module({
-  providers: [{ provide: RateLimitService, useValue: { check: () => Promise.resolve() } }],
-  exports: [RateLimitService],
+  providers: [
+    { provide: RateLimitService, useValue: { check: () => Promise.resolve() } },
+    { provide: SubscriptionService, useValue: {
+      assertCanSendOffer: () => Promise.resolve(),
+      incrementOfferCount: () => Promise.resolve(),
+    }},
+  ],
+  exports: [RateLimitService, SubscriptionService],
 })
 class MockRateLimitModule {}
 import {
@@ -73,6 +81,7 @@ describe('Offer link delivery tracking', () => {
   let emailAdapter: DevEmailAdapter;
   let jwtService: JwtService;
   let token: string;
+  let subscriptionService: SubscriptionService;
 
   beforeEach(async () => {
     db = createMockOffersDb();
@@ -111,6 +120,7 @@ describe('Offer link delivery tracking', () => {
 
     emailAdapter = module.get(DevEmailAdapter);
     jwtService = module.get(JwtService);
+    subscriptionService = module.get(SubscriptionService);
     token = makeJwt(jwtService);
   });
 
@@ -470,5 +480,37 @@ describe('Offer link delivery tracking', () => {
     await request(app.getHttpServer())
       .post('/offers/offer-1/resend')
       .expect(401);
+  });
+
+  // ── Plan limit enforcement ─────────────────────────────────────────────────
+
+  it('send returns 429 when org has exceeded its plan monthly limit', async () => {
+    setupSendMocks();
+
+    jest.spyOn(subscriptionService, 'assertCanSendOffer').mockRejectedValue(
+      new PlanLimitExceededError('FREE', 3),
+    );
+
+    await request(app.getHttpServer())
+      .post('/offers/offer-1/send')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(402); // Payment Required — plan limit exceeded
+
+    // Offer must NOT be transitioned — plan check fires before any DB write
+    expect(db.offer.updateMany).not.toHaveBeenCalled();
+    expect(db.offerDeliveryAttempt.create).not.toHaveBeenCalled();
+  });
+
+  it('send increments plan usage counter on success', async () => {
+    setupSendMocks();
+
+    const incrementSpy = jest.spyOn(subscriptionService, 'incrementOfferCount').mockResolvedValue();
+
+    await request(app.getHttpServer())
+      .post('/offers/offer-1/send')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(incrementSpy).toHaveBeenCalledWith(ORG_ID);
   });
 });

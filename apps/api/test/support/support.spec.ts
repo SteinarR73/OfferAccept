@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, Global, Module } from '@nestjs/common';
 import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
@@ -17,6 +17,21 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 import { DatabaseModule } from '../../src/modules/database/database.module';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { SubscriptionService } from '../../src/modules/billing/subscription.service';
+
+// ── Global mock for SubscriptionService ──────────────────────────────────────
+// BillingModule is not imported in this test module. This stub provides
+// SubscriptionService globally so SendOfferService (in OffersModule) can be
+// resolved. Support tests never call send(), so assertCanSendOffer is a no-op.
+@Global()
+@Module({
+  providers: [{ provide: SubscriptionService, useValue: {
+    assertCanSendOffer: () => Promise.resolve(),
+    incrementOfferCount: () => Promise.resolve(),
+  }}],
+  exports: [SubscriptionService],
+})
+class MockBillingModule {}
 
 // ─── Support tooling tests ─────────────────────────────────────────────────────
 //
@@ -226,6 +241,7 @@ async function buildApp(db: MockDb) {
         })],
       }),
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+      MockBillingModule,
       DatabaseModule,
       AuthModule,
       EmailModule,

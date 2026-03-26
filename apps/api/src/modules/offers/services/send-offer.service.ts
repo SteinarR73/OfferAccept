@@ -11,6 +11,7 @@ import { assertOfferIsComplete } from '../domain/offer-completeness';
 import { EMAIL_PORT, EmailPort } from '../../../common/email/email.port';
 import { ResendDeliveryError } from '../../../common/email/resend-email.adapter';
 import { DealEventService } from '../../deal-events/deal-events.service';
+import { SubscriptionService } from '../../billing/subscription.service';
 
 // ─── Token generation ─────────────────────────────────────────────────────────
 // Mirrors signing-token.service.ts — kept in the offers module to avoid
@@ -129,6 +130,7 @@ export class SendOfferService {
     @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
     private readonly config: ConfigService,
     private readonly dealEventService: DealEventService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async send(
@@ -151,6 +153,11 @@ export class SendOfferService {
 
     // ── Validate completeness ─────────────────────────────────────────────────
     assertOfferIsComplete(offer, offer.recipient, offer.documents);
+
+    // ── Enforce plan limits ───────────────────────────────────────────────────
+    // Throws PlanLimitExceededError if the org has reached its monthly quota.
+    // Must be checked before the transaction — fail fast before any DB writes.
+    await this.subscriptionService.assertCanSendOffer(orgId);
 
     const recipient = offer.recipient!; // safe after assertOfferIsComplete
 
@@ -221,6 +228,13 @@ export class SendOfferService {
 
       return snap;
     });
+
+    // ── Increment plan usage counter ──────────────────────────────────────────
+    // Called after the transaction commits so aborted concurrent sends don't
+    // inflate the count. Best-effort: a failure here does not reverse the send.
+    await this.subscriptionService.incrementOfferCount(orgId).catch((e: unknown) =>
+      this.logger.error(`Failed to increment offer count for org ${orgId}: ${e}`),
+    );
 
     // ── Record delivery attempt and send email ────────────────────────────────
     const webBaseUrl = this.config.getOrThrow<string>('WEB_BASE_URL');

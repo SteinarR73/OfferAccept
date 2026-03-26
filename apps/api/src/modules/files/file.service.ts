@@ -173,6 +173,8 @@ export class FileService {
     }
 
     // Presigned download URL — caller must not log or cache beyond its TTL.
-    return this.storage.getPresignedDownloadUrl(file.s3Key, DOWNLOAD_TTL_SECONDS);
+    // filename is passed so S3 sets Content-Disposition: attachment on the response,
+    // preventing inline rendering of SVG or other active content in the browser.
+    return this.storage.getPresignedDownloadUrl(file.s3Key, DOWNLOAD_TTL_SECONDS, file.filename);
   }
 }

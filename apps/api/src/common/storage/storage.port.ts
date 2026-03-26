@@ -27,7 +27,10 @@ export interface StoragePort {
     ttlSeconds: number,
   ): Promise<PresignedUploadResult>;
 
-  getPresignedDownloadUrl(key: string, ttlSeconds: number): Promise<string>;
+  // filename is used to set Content-Disposition: attachment; filename="<filename>"
+  // on the presigned GET URL, forcing download in all browsers and preventing
+  // inline rendering of SVG, HTML, or other content that could execute scripts.
+  getPresignedDownloadUrl(key: string, ttlSeconds: number, filename: string): Promise<string>;
 
   /** Returns the SHA-256 hex digest of the stored object, or null if it doesn't exist. */
   getObjectSha256(key: string): Promise<string | null>;

@@ -12,11 +12,18 @@ import { DatabaseModule } from '../../src/modules/database/database.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { SubscriptionService } from '../../src/modules/billing/subscription.service';
 
 @Global()
 @Module({
-  providers: [{ provide: RateLimitService, useValue: { check: () => Promise.resolve() } }],
-  exports: [RateLimitService],
+  providers: [
+    { provide: RateLimitService, useValue: { check: () => Promise.resolve() } },
+    { provide: SubscriptionService, useValue: {
+      assertCanSendOffer: () => Promise.resolve(),
+      incrementOfferCount: () => Promise.resolve(),
+    }},
+  ],
+  exports: [RateLimitService, SubscriptionService],
 })
 class MockRateLimitModule {}
 import {

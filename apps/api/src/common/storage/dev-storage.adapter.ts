@@ -35,7 +35,7 @@ export class DevStorageAdapter implements StoragePort {
     return { uploadUrl: fakeUrl, expiresAt };
   }
 
-  async getPresignedDownloadUrl(key: string, _ttlSeconds: number): Promise<string> {
+  async getPresignedDownloadUrl(key: string, _ttlSeconds: number, _filename: string): Promise<string> {
     return `http://localhost:19999/dev-storage/${encodeURIComponent(key)}`;
   }
 

@@ -76,9 +76,19 @@ export class S3Adapter implements StoragePort {
     return { uploadUrl, expiresAt };
   }
 
-  async getPresignedDownloadUrl(key: string, ttlSeconds: number): Promise<string> {
+  async getPresignedDownloadUrl(key: string, ttlSeconds: number, filename: string): Promise<string> {
     const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+    // ResponseContentDisposition forces the browser to download the file rather
+    // than rendering it inline. This prevents SVG (and other active content) from
+    // executing scripts when opened via a presigned URL.
+    // RFC 5987 encoding is used for filenames with non-ASCII characters.
+    const encoded = encodeURIComponent(filename);
+    const contentDisposition = `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`;
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ResponseContentDisposition: contentDisposition,
+    });
     return getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
   }
 
