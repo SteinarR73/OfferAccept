@@ -402,12 +402,8 @@ function ApiKeysTab() {
 // ─── Webhooks tab ─────────────────────────────────────────────────────────────
 
 const WEBHOOK_EVENTS = [
-  'offer.sent',
-  'offer.accepted',
-  'offer.declined',
-  'offer.expired',
-  'offer.revoked',
-  'certificate.generated',
+  'deal.accepted',
+  'certificate.issued',
 ];
 
 function WebhooksTab() {
@@ -423,7 +419,7 @@ function WebhooksTab() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [formUrl, setFormUrl] = useState('');
-  const [formEvents, setFormEvents] = useState<string[]>(['offer.accepted']);
+  const [formEvents, setFormEvents] = useState<string[]>(['deal.accepted']);
 
   useEffect(() => {
     listWebhooks()
@@ -435,7 +431,7 @@ function WebhooksTab() {
   function startCreate() {
     setEditingId(null);
     setFormUrl('');
-    setFormEvents(['offer.accepted']);
+    setFormEvents(['deal.accepted']);
     setShowForm(true);
   }
 

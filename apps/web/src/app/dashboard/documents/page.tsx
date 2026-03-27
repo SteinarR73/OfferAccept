@@ -145,7 +145,7 @@ export default function DocumentsPage() {
                       {/* Linked deal */}
                       <td className="px-4 py-3.5 hidden sm:table-cell">
                         <Link
-                          href={`/dashboard/offers/${offer.id}`}
+                          href={`/dashboard/deals/${offer.id}`}
                           className="inline-flex items-center gap-1 text-sm text-[--color-accent] hover:underline focus-visible:ring-2 focus-visible:ring-blue-500 rounded truncate max-w-[180px]"
                         >
                           <FileText className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
@@ -178,7 +178,7 @@ export default function DocumentsPage() {
                       {/* Actions */}
                       <td className="px-3 py-3.5 text-right">
                         <Link
-                          href={`/dashboard/offers/${offer.id}`}
+                          href={`/dashboard/deals/${offer.id}`}
                           className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
                           aria-label={`Open deal for ${doc.filename}`}
                         >
@@ -229,7 +229,7 @@ function EmptyDocuments() {
         Documents appear here when you attach files to a deal.
       </p>
       <Link
-        href="/dashboard/offers/new"
+        href="/dashboard/deals/new"
         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors"
       >
         Create a deal

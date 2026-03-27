@@ -28,7 +28,7 @@ export default function DealsPage() {
       {/* ── Header ───────────────────────────────────────────────────────────── */}
       <PageHeader
         title="Deals"
-        description="Manage your proposals, quotes and offers"
+        description="Send, track, and manage your deals."
         action={
           <Link href="/dashboard/deals/new">
             <Button

@@ -13,7 +13,7 @@ import {
 // Manages customer-configured webhook endpoints and dispatches outgoing events.
 //
 // Event catalogue:
-//   offer.accepted       — fired after an offer is accepted and the acceptance
+//   deal.accepted       — fired after an offer is accepted and the acceptance
 //                          record committed. Data includes offerId, recipientEmail,
 //                          acceptedAt, certificateId.
 //   certificate.issued   — fired after the AcceptanceCertificate is generated.
@@ -33,7 +33,7 @@ import {
 //   The body includes the webhookEventId so customers can independently verify
 //   idempotency. signPayload() is also used by SendWebhookHandler.
 
-export const ALL_WEBHOOK_EVENTS = ['offer.accepted', 'certificate.issued'] as const;
+export const ALL_WEBHOOK_EVENTS = ['deal.accepted', 'certificate.issued'] as const;
 export type WebhookEvent = (typeof ALL_WEBHOOK_EVENTS)[number];
 
 @Injectable()

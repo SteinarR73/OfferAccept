@@ -261,10 +261,10 @@ export class SigningFlowService {
     // Dispatch outgoing webhooks — best-effort, enqueued via pg-boss.
     // Failures here do not reverse the acceptance or block the response.
     try {
-      // offer.accepted: emitted immediately after acceptance is committed.
+      // deal.accepted: emitted immediately after acceptance is committed.
       await this.webhookService.dispatchEvent(
         result.organizationId,
-        'offer.accepted',
+        'deal.accepted',
         {
           offerId: result.offerId,
           organizationId: result.organizationId,

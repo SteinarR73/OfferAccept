@@ -28,7 +28,7 @@ function makeEndpoint(overrides: Record<string, unknown> = {}) {
     organizationId: 'org_1',
     url: 'https://customer.example.com/hooks',
     secret: crypto.randomBytes(32).toString('hex'),
-    events: ['offer.accepted'],
+    events: ['deal.accepted'],
     enabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -92,7 +92,7 @@ describe('WebhookService', () => {
       const service = await buildWebhookService(db);
 
       const secret = 'test_secret';
-      const body = '{"id":"uuid","event":"offer.accepted","data":{}}';
+      const body = '{"id":"uuid","event":"deal.accepted","data":{}}';
 
       const signature = service.signPayload(secret, body);
       const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
@@ -132,7 +132,7 @@ describe('WebhookService', () => {
       const result = await service.createEndpoint({
         organizationId: 'org_1',
         url: 'https://example.com/hooks',
-        events: ['offer.accepted'],
+        events: ['deal.accepted'],
       });
 
       // Secret must be non-empty and long enough for HMAC use
@@ -183,20 +183,20 @@ describe('WebhookService', () => {
 
   describe('dispatchEvent()', () => {
     it('enqueues one send-webhook job per matching endpoint', async () => {
-      const endpoint = makeEndpoint({ events: ['offer.accepted'] });
+      const endpoint = makeEndpoint({ events: ['deal.accepted'] });
       const db = buildFakePrisma(endpoint);
       db.webhookEndpoint.findMany = jest.fn<() => Promise<typeof endpoint[]>>().mockResolvedValue([endpoint]);
       const jobService = buildFakeJobService();
       const service = await buildWebhookService(db, jobService);
 
-      await service.dispatchEvent('org_1', 'offer.accepted', { offerId: 'offer_1' });
+      await service.dispatchEvent('org_1', 'deal.accepted', { offerId: 'offer_1' });
 
       expect(jobService.send).toHaveBeenCalledTimes(1);
       expect(jobService.send).toHaveBeenCalledWith(
         'send-webhook',
         expect.objectContaining({
           endpointId: endpoint.id,
-          event: 'offer.accepted',
+          event: 'deal.accepted',
           webhookEventId: expect.stringMatching(/^[0-9a-f-]{36}$/), // UUID format
         }),
       );
@@ -208,19 +208,19 @@ describe('WebhookService', () => {
       const jobService = buildFakeJobService();
       const service = await buildWebhookService(db, jobService);
 
-      await service.dispatchEvent('org_1', 'offer.accepted', {});
+      await service.dispatchEvent('org_1', 'deal.accepted', {});
       expect(jobService.send).not.toHaveBeenCalled();
     });
 
     it('enqueues separate jobs with distinct webhookEventIds for multiple endpoints', async () => {
-      const ep1 = makeEndpoint({ id: 'ep_1', events: ['offer.accepted'] });
-      const ep2 = makeEndpoint({ id: 'ep_2', events: ['offer.accepted'] });
+      const ep1 = makeEndpoint({ id: 'ep_1', events: ['deal.accepted'] });
+      const ep2 = makeEndpoint({ id: 'ep_2', events: ['deal.accepted'] });
       const db = buildFakePrisma(ep1);
       db.webhookEndpoint.findMany = jest.fn<() => Promise<typeof ep1[]>>().mockResolvedValue([ep1, ep2]);
       const jobService = buildFakeJobService();
       const service = await buildWebhookService(db, jobService);
 
-      await service.dispatchEvent('org_1', 'offer.accepted', {});
+      await service.dispatchEvent('org_1', 'deal.accepted', {});
 
       expect(jobService.send).toHaveBeenCalledTimes(2);
       const [call1, call2] = jobService.send.mock.calls as unknown as Array<[string, SendWebhookPayload]>;
@@ -274,7 +274,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       name: 'send-webhook',
       data: {
         endpointId: 'ep_1',
-        event: 'offer.accepted',
+        event: 'deal.accepted',
         payload: { offerId: 'offer_1' },
         attempt: 1,
         webhookEventId: crypto.randomUUID(),
@@ -456,13 +456,13 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
 
     const parsed = JSON.parse(capturedBody!) as Record<string, unknown>;
     expect(parsed.id).toBe(webhookEventId);
-    expect(parsed.event).toBe('offer.accepted');
+    expect(parsed.event).toBe('deal.accepted');
     expect(parsed.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO 8601
     expect(parsed.data).toEqual({ offerId: 'o1' });
   });
 
-  it('ALL_WEBHOOK_EVENTS contains exactly offer.accepted and certificate.issued', () => {
-    expect(ALL_WEBHOOK_EVENTS).toContain('offer.accepted');
+  it('ALL_WEBHOOK_EVENTS contains exactly deal.accepted and certificate.issued', () => {
+    expect(ALL_WEBHOOK_EVENTS).toContain('deal.accepted');
     expect(ALL_WEBHOOK_EVENTS).toContain('certificate.issued');
     expect(ALL_WEBHOOK_EVENTS).toHaveLength(2);
   });
