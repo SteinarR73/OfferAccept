@@ -10,12 +10,14 @@ import {
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty } from 'class-validator';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
+import type { Env } from '../../config/env';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -116,6 +118,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly rateLimiter: RateLimitService,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   // POST /auth/signup
@@ -152,7 +155,7 @@ export class AuthController {
     const context = { ipAddress: extractClientIp(req), userAgent: req.headers['user-agent'] };
     const tokens = await this.authService.login(body.email, body.password, context);
 
-    setCookies(req, res, tokens.accessToken, tokens.refreshToken);
+    setCookies(req, res, tokens.accessToken, tokens.refreshToken, this.config);
 
     return { message: 'Logged in.' };
   }
@@ -197,7 +200,7 @@ export class AuthController {
     const context = { ipAddress: extractClientIp(req), userAgent: req.headers['user-agent'] };
     const tokens = await this.authService.refresh(rawRefreshToken, context);
 
-    setCookies(req, res, tokens.accessToken, tokens.refreshToken);
+    setCookies(req, res, tokens.accessToken, tokens.refreshToken, this.config);
 
     return { message: 'Token refreshed.' };
   }
@@ -303,14 +306,30 @@ export class AuthController {
 }
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
+//
+// SameSite=Strict is the primary CSRF defence. It must NEVER be relaxed to Lax or None
+// without simultaneously adding double-submit CSRF tokens to every state-mutating route.
+// CsrfOriginMiddleware provides server-side defense-in-depth on top of this.
+//
+// COOKIE_DOMAIN: when set (e.g. '.example.com'), the cookie is sent to all subdomains.
+// Leave unset for single-domain deploys (localhost dev, simple production setups).
+// SameSite=Strict still applies to all subdomains — they are "same-site" with each other,
+// so the CSRF protection is not weakened by a domain-scoped cookie.
 
 function isSecure(req: Request): boolean {
   // Trust X-Forwarded-Proto if behind a reverse proxy (set via app.set('trust proxy'))
   return req.secure || req.headers['x-forwarded-proto'] === 'https';
 }
 
-function setCookies(req: Request, res: Response, accessToken: string, refreshToken: string): void {
-  const secure = isSecure(req) || process.env.NODE_ENV === 'production';
+function setCookies(
+  req: Request,
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+  config: ConfigService<Env, true>,
+): void {
+  const secure = isSecure(req) || config.get('COOKIE_SECURE', { infer: true });
+  const domain = config.get('COOKIE_DOMAIN', { infer: true }); // undefined → omit domain attr
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
@@ -318,6 +337,7 @@ function setCookies(req: Request, res: Response, accessToken: string, refreshTok
     sameSite: 'strict',
     path: '/',
     maxAge: 15 * 60 * 1000, // 15 minutes (mirrors JWT_ACCESS_TTL)
+    ...(domain ? { domain } : {}),
   });
 
   res.cookie('refreshToken', refreshToken, {
@@ -326,10 +346,12 @@ function setCookies(req: Request, res: Response, accessToken: string, refreshTok
     sameSite: 'strict',
     path: '/api/v1/auth/refresh', // scoped: only sent to the refresh endpoint
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days (mirrors JWT_REFRESH_TTL_DAYS)
+    ...(domain ? { domain } : {}),
   });
 }
 
 function clearCookies(res: Response): void {
+  // path must match what was set; sameSite/httpOnly are not needed for clearing
   res.clearCookie('accessToken', { path: '/' });
   res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh' });
 }

@@ -68,8 +68,18 @@ async function bootstrap() {
   );
 
   app.enableCors({
+    // Exact origin match — no wildcard. 'credentials: true' requires a non-wildcard origin.
     origin: config.get('WEB_BASE_URL', { infer: true }),
     credentials: true,
+    // Restrict to methods the app actually uses. Browsers cache preflight for
+    // up to maxAge seconds; being explicit reduces the attack surface for
+    // future method additions that haven't been security-reviewed.
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    // Only headers the browser client or API clients actually send.
+    // Any other header in a CORS request will be denied at the preflight stage.
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Api-Key'],
+    // Expose X-Request-ID so clients can log/trace individual requests.
+    exposedHeaders: ['X-Request-ID'],
   });
 
   const port = config.get('API_PORT', { infer: true });

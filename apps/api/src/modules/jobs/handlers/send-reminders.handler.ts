@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import type { Job } from 'pg-boss';
 import type { SendRemindersPayload } from '../job.types';
 import { EMAIL_PORT, EmailPort, ReminderVariant } from '../../../common/email/email.port';
@@ -178,6 +178,37 @@ export class SendRemindersHandler {
       const newCount   = (schedule.reminderCount + 1) as 1 | 2 | 3;
       const variant    = recipientStatusToVariant(recipient.status);
 
+      // ── Pre-send re-check (serialization guard) ──────────────────────────────
+      // Re-reads offer.status inside a fresh transaction immediately before
+      // sending. If acceptance committed after the outer findMany, we see
+      // ACCEPTED here and skip — closing the race window to near-zero (the
+      // remaining gap is only the email API call latency, not the full sweep).
+      //
+      // This works correctly because the acceptance transaction now deletes
+      // the ReminderSchedule row atomically alongside the status change. Once
+      // that commit lands, any re-check in READ COMMITTED will see ACCEPTED and
+      // the schedule row will be gone — consistent in both directions.
+      const offerStillSent = await this.db.$transaction(async (tx) => {
+        const fresh = await tx.offer.findUnique({
+          where: { id: offer.id },
+          select: { status: true },
+        });
+        if (fresh?.status !== 'SENT') {
+          await tx.reminderSchedule.deleteMany({ where: { id: schedule.id } }).catch(() => {});
+          return false;
+        }
+        return true;
+      });
+
+      if (!offerStillSent) {
+        this.logger.log(JSON.stringify({
+          event: 'reminder_skipped_concurrent_state_change',
+          scheduleId: schedule.id,
+          offerId: offer.id,
+        }));
+        continue;
+      }
+
       // ── Step 1: attempt email delivery ──────────────────────────────────────
       // On failure: skip this schedule — tokenHash NOT rotated, old link
       // still valid, schedule remains eligible for retry on the next sweep.
@@ -230,10 +261,26 @@ export class SendRemindersHandler {
           ? new Date(schedule.dealSentAt.getTime() + REMINDER_OFFSETS_MS[newCount as 1 | 2])
           : null; // all reminders sent; keep row alive for expiry warnings
 
-      await this.db.reminderSchedule.update({
-        where: { id: schedule.id },
-        data: { reminderCount: newCount, nextReminderAt: nextAt },
-      });
+      // P2025 guard: schedule row deleted between re-check and here (extremely
+      // rare — acceptance committed in the narrow window after our $transaction
+      // but before this write). Email already sent; log and move on.
+      try {
+        await this.db.reminderSchedule.update({
+          where: { id: schedule.id },
+          data: { reminderCount: newCount, nextReminderAt: nextAt },
+        });
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+          this.logger.warn(JSON.stringify({
+            event: 'reminder_schedule_advance_missed',
+            scheduleId: schedule.id,
+            offerId: offer.id,
+            reminderNumber: newCount,
+          }));
+        } else {
+          throw err;
+        }
+      }
     }
   }
 

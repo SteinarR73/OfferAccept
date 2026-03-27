@@ -13,6 +13,7 @@ import {
   SessionNotVerifiedError,
   OtpExpiredError,
   OtpLockedError,
+  OtpRecipientLockedError,
   OtpInvalidError,
   OtpAlreadyVerifiedError,
   OtpInvalidatedError,
@@ -27,6 +28,7 @@ import {
   InvalidStateTransitionError,
   TerminalStateError,
   RateLimitExceededError,
+  RateLimitServiceUnavailableError,
   ConcurrencyConflictError,
   EmailAlreadyExistsError,
   InvalidCredentialsError,
@@ -209,6 +211,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return this.make(HttpStatus.CONFLICT, err.message, 'CONCURRENCY_CONFLICT', { retryable: true });
     }
 
+    // ── 429 Too Many Requests — cross-session recipient lockout ───────────────
+    if (err instanceof OtpRecipientLockedError) {
+      return this.make(HttpStatus.TOO_MANY_REQUESTS, err.message, 'OTP_RECIPIENT_LOCKED');
+    }
+
     // ── 400 Bad Request — OTP verification failures ───────────────────────────
     if (err instanceof OtpExpiredError) {
       return this.make(HttpStatus.BAD_REQUEST, err.message, 'OTP_EXPIRED');
@@ -247,6 +254,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
         retryAfterMs: err.retryAfterMs,
         resetAt: err.resetAt.toISOString(),
       });
+    }
+
+    // ── 503 Service Unavailable — rate limiter Redis unavailable on high-risk endpoint ──
+    if (err instanceof RateLimitServiceUnavailableError) {
+      return this.make(HttpStatus.SERVICE_UNAVAILABLE, err.message, 'RATE_LIMIT_UNAVAILABLE');
     }
 
     // ── Fallback for any other DomainError ────────────────────────────────────

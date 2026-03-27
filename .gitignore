@@ -48,3 +48,10 @@ coverage/
 
 # TypeScript incremental build cache — never commit build artefacts
 *.tsbuildinfo
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

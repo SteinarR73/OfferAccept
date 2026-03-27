@@ -103,6 +103,16 @@ export class OtpChallengeMismatchError extends DomainError {
   }
 }
 
+// Thrown when a recipient has accumulated too many failed OTP attempts across
+// sessions/challenges within the sliding lockout window. Unlike OtpLockedError
+// (which is scoped to a single challenge), this error cannot be bypassed by
+// requesting a new OTP — the lockout is enforced at the issuance layer.
+export class OtpRecipientLockedError extends DomainError {
+  constructor() {
+    super('Too many incorrect attempts. Please try again in 30 minutes.');
+  }
+}
+
 // ─── Offer (sender-side) ──────────────────────────────────────────────────────
 
 // Thrown when a mutation is attempted on an offer that is not in DRAFT state.
@@ -327,5 +337,18 @@ export class RateLimitExceededError extends DomainError {
     public readonly resetAt: Date,
   ) {
     super('Too many requests. Please wait before trying again.');
+  }
+}
+
+/**
+ * Thrown by high-risk rate-limit profiles when Redis is unavailable.
+ * These endpoints (OTP, login, signup) must fail closed to prevent
+ * Redis downtime from becoming a brute-force bypass window.
+ *
+ * Maps to HTTP 503 Service Unavailable with Retry-After header support.
+ */
+export class RateLimitServiceUnavailableError extends DomainError {
+  constructor() {
+    super('Service temporarily unavailable. Please try again shortly.');
   }
 }

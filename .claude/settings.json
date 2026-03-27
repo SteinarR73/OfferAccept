@@ -20,10 +20,28 @@
       "Bash(npx turbo:*)",
       "Bash(git fetch:*)",
       "Bash(git diff:*)",
-      "Bash(__NEW_LINE_8583b9540ea37670__ git:*)"
+      "Bash(__NEW_LINE_8583b9540ea37670__ git:*)",
+      "Bash(ls /c/Users/steir/OfferAccept/apps/web/src/app/sign/[token]/)",
+      "Bash(NEXT_PUBLIC_API_URL=https://api.example.com/api/v1 npm run build --workspace=apps/web)",
+      "Bash(find c:UserssteirOfferAcceptappsapisrc -type d -name *event* -o -type d -name *email* -o -type d -name *mail* -o -type d -name *signing*)",
+      "Bash(find c:UserssteirOfferAccept -name schema.prisma -o -name *.prisma)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(find c:UserssteirOfferAcceptpackagestypes -type f -name *.ts)",
+      "Bash(xargs sed:*)",
+      "Bash(grep -r launch-scope c:/Users/steir/OfferAccept/ --include=*.md -l)",
+      "Bash(ls c:/Users/steir/OfferAccept/apps/web/src/app/verify/[certificateId]/)",
+      "Bash(find c:/Users/steir/OfferAccept/packages/types -name *.ts)",
+      "Bash(grep '\"\"@nestjs/core\"\"' apps/api/package.json)",
+      "Bash(cat apps/api/src/common/filters/*.ts)",
+      "Bash(grep -n \"PlanLimitExceeded\" apps/api/src/common/filters/*.ts)",
+      "Bash(ls c:/Users/steir/OfferAccept/node_modules/pg-boss/dist/*.d.ts)",
+      "Bash(grep '\"\"prisma\"\"\\\\|\"\"@prisma/client\"\"' c:/Users/steir/OfferAccept/packages/database/package.json)",
+      "Bash(grep '\"\"@prisma/client\"\"' c:/Users/steir/OfferAccept/apps/api/package.json)",
+      "Bash(find /c/Users/steir/OfferAccept -type f -name *webhook*)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\steir\\.claude\\projects\\c--Users-steir-OfferAccept\\memory"
+      "c:\\Users\\steir\\.claude\\projects\\c--Users-steir-OfferAccept\\memory",
+      "c:\\Users\\steir\\OfferAccept\\apps\\web\\src\\app\\verify"
     ]
   }
 }

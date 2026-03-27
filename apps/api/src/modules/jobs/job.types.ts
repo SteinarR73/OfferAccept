@@ -55,6 +55,44 @@ export interface SendRemindersPayload {
   // Cron-triggered sweep — no per-job parameters needed.
 }
 
+// ── notify-deal-accepted ───────────────────────────────────────────────────────
+//
+// Enqueued by SigningFlowService immediately after the acceptance transaction
+// commits and the certificate ID is known. The handler sends two emails:
+//   1. Sender   — "Your deal was accepted" + certificate ID
+//   2. Recipient — "Your acceptance is confirmed" + certificate ID
+//
+// All fields are serialisable primitives so the payload survives pg-boss JSON
+// storage cleanly. Dates are carried as ISO-8601 strings.
+//
+// Idempotency:
+//   Enqueued with singletonKey = "notify-deal-accepted:{acceptanceRecordId}".
+//   pg-boss will refuse a second enqueue while a job with the same key is
+//   pending, preventing duplicate jobs if accept() is somehow called twice.
+//
+//   Handler-level: if the job is retried after a transient Resend failure it
+//   may resend emails already delivered. For transactional confirmation emails
+//   one extra send is acceptable and far better than silent non-delivery.
+//   The acceptanceRecordId is logged on every attempt for ops investigation.
+
+export interface NotifyDealAcceptedPayload {
+  // Stable identifier used for idempotency key and operational tracing.
+  acceptanceRecordId: string;
+  offerId: string;
+  // All contact details are snapshotted into the payload at enqueue time.
+  // The handler requires no DB reads — the payload is self-contained.
+  offerTitle: string;
+  senderEmail: string;
+  senderName: string;
+  recipientEmail: string;
+  recipientName: string;
+  // ISO-8601 string — Dates do not survive JSON serialisation.
+  acceptedAt: string;
+  // Empty string when certificate generation failed (rare).
+  // The email templates handle an empty certificateId gracefully.
+  certificateId: string;
+}
+
 // ── Discriminated union of all registered jobs ───────────────────────────────
 
 export type JobName = keyof JobPayloadMap;
@@ -67,6 +105,7 @@ export interface JobPayloadMap {
   'send-webhook': SendWebhookPayload;
   'reset-monthly-billing': ResetMonthlyBillingPayload;
   'send-reminders': SendRemindersPayload;
+  'notify-deal-accepted': NotifyDealAcceptedPayload;
 }
 
 // ── Queue-level retry + TTL defaults ─────────────────────────────────────────
@@ -108,6 +147,15 @@ export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
     retryDelay: 60,
     retryBackoff: true,
     expireInSeconds: 1800,
+  },
+  'notify-deal-accepted': {
+    // Acceptance confirmation emails — high value, generous retry window.
+    // Retry schedule (exponential): 1 min → 2 min → 4 min → 8 min → 16 min.
+    // Total window: ~31 min before archival to DLQ.
+    retryLimit: 5,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInSeconds: 3600, // kill if stuck for > 1 h
   },
   'send-webhook': {
     retryLimit: 5,

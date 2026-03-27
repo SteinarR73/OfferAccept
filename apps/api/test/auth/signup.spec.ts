@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -32,6 +33,7 @@ async function buildController() {
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
+      { provide: ConfigService, useValue: { get: () => undefined } },
     ],
   }).compile();
 

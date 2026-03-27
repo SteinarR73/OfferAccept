@@ -5,7 +5,7 @@ import {
   REDIS_CLIENT,
   PROFILES,
 } from '../../src/common/rate-limit/rate-limit.service';
-import { RateLimitExceededError } from '../../src/common/errors/domain.errors';
+import { RateLimitExceededError, RateLimitServiceUnavailableError } from '../../src/common/errors/domain.errors';
 
 // ─── Sliding window unit tests ─────────────────────────────────────────────────
 //
@@ -362,41 +362,99 @@ describe('peek()', () => {
   });
 });
 
-// ── Fail-open on Redis error ───────────────────────────────────────────────────
+// ── Redis-unavailable behaviour — differentiated by risk profile ───────────────
+//
+// HIGH_RISK profiles (OTP, login, signup): fail closed → RateLimitServiceUnavailableError
+// LOW_RISK profiles (cert_verify, deal_send, etc.): fail open → request allowed
 
-describe('fail-open behaviour when Redis is unavailable', () => {
-  it('check() allows request and does not throw on Redis error', async () => {
-    const brokenRedis = {
-      eval: jest.fn<() => Promise<never>>().mockRejectedValue(new Error('ECONNREFUSED')),
-      quit: jest.fn<() => Promise<'OK'>>().mockResolvedValue('OK'),
-    };
+function makeBrokenRedis() {
+  return {
+    eval: jest.fn<() => Promise<never>>().mockRejectedValue(new Error('ECONNREFUSED')),
+    quit: jest.fn<() => Promise<'OK'>>().mockResolvedValue('OK'),
+  };
+}
 
-    const module = await Test.createTestingModule({
-      providers: [
-        RateLimitService,
-        { provide: REDIS_CLIENT, useValue: brokenRedis },
-      ],
-    }).compile();
+async function buildServiceWithBrokenRedis() {
+  const module = await Test.createTestingModule({
+    providers: [
+      RateLimitService,
+      { provide: REDIS_CLIENT, useValue: makeBrokenRedis() },
+    ],
+  }).compile();
+  return module.get(RateLimitService);
+}
 
-    const service = module.get(RateLimitService);
-    await expect(service.check('login_attempt', '1.1.1.1')).resolves.not.toThrow();
+describe('Redis unavailable — high-risk profiles fail closed', () => {
+  const highRiskProfiles = [
+    'otp_verification',
+    'otp_verification_burst',
+    'otp_issuance',
+    'login_attempt',
+    'login_attempt_burst',
+    'forgot_password',
+    'signup_attempt',
+    'signup_attempt_burst',
+  ] as const;
+
+  it.each(highRiskProfiles)(
+    'check() throws RateLimitServiceUnavailableError for high-risk profile: %s',
+    async (profile) => {
+      const service = await buildServiceWithBrokenRedis();
+      await expect(service.check(profile, '1.1.1.1')).rejects.toThrow(
+        RateLimitServiceUnavailableError,
+      );
+    },
+  );
+
+  it('otp_verification fails closed and does not silently allow the request', async () => {
+    const service = await buildServiceWithBrokenRedis();
+    // Must throw — not resolve — so Redis downtime is never a bypass path.
+    await expect(service.check('otp_verification', 'ip')).rejects.toBeInstanceOf(
+      RateLimitServiceUnavailableError,
+    );
   });
 
-  it('peek() returns full limit on Redis error', async () => {
-    const brokenRedis = {
-      eval: jest.fn<() => Promise<never>>().mockRejectedValue(new Error('ECONNREFUSED')),
-      quit: jest.fn<() => Promise<'OK'>>().mockResolvedValue('OK'),
-    };
+  it('login_attempt fails closed with RateLimitServiceUnavailableError (not RateLimitExceededError)', async () => {
+    const service = await buildServiceWithBrokenRedis();
+    const err = await service.check('login_attempt', '2.2.2.2').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RateLimitServiceUnavailableError);
+    expect(err).not.toBeInstanceOf(RateLimitExceededError);
+  });
+});
 
-    const module = await Test.createTestingModule({
-      providers: [
-        RateLimitService,
-        { provide: REDIS_CLIENT, useValue: brokenRedis },
-      ],
-    }).compile();
+describe('Redis unavailable — low-risk profiles fail open', () => {
+  const lowRiskProfiles = [
+    'token_verification',
+    'signing_global',
+    'cert_verify',
+    'resend_verification',
+    'invite_attempt',
+    'invite_accept_attempt',
+    'deal_send',
+    'deal_resend',
+    'support_resend_otp',
+    'support_resend_link',
+  ] as const;
 
-    const service = module.get(RateLimitService);
+  it.each(lowRiskProfiles)(
+    'check() allows request (fail open) for low-risk profile: %s',
+    async (profile) => {
+      const service = await buildServiceWithBrokenRedis();
+      await expect(service.check(profile, '1.1.1.1')).resolves.not.toThrow();
+    },
+  );
+});
+
+describe('peek() on Redis error — always fail open regardless of profile', () => {
+  it('peek() returns full limit for high-risk profile on Redis error', async () => {
+    const service = await buildServiceWithBrokenRedis();
     const { remaining } = await service.peek('login_attempt', '1.1.1.1');
     expect(remaining).toBe(PROFILES.login_attempt.limit);
+  });
+
+  it('peek() returns full limit for low-risk profile on Redis error', async () => {
+    const service = await buildServiceWithBrokenRedis();
+    const { remaining } = await service.peek('cert_verify', '1.1.1.1');
+    expect(remaining).toBe(PROFILES.cert_verify.limit);
   });
 });

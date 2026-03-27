@@ -19,6 +19,7 @@ import { IssueCertificateHandler } from './handlers/issue-certificate.handler';
 import { SendWebhookHandler } from './handlers/send-webhook.handler';
 import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.handler';
 import { SendRemindersHandler } from './handlers/send-reminders.handler';
+import { NotifyDealAcceptedHandler } from './handlers/notify-deal-accepted.handler';
 
 // ─── JobWorker ─────────────────────────────────────────────────────────────────
 // Lifecycle service that owns the pg-boss start/stop sequence and registers all
@@ -43,14 +44,16 @@ import { SendRemindersHandler } from './handlers/send-reminders.handler';
 //   For event-driven jobs increase to match expected throughput.
 
 const WORKER_OPTIONS: Record<Exclude<JobName, 'send-email'>, WorkOptions> = {
-  'expire-sessions':       { batchSize: 1, localConcurrency: 1 },
-  'expire-offers':         { batchSize: 1, localConcurrency: 1 },
-  'issue-certificate':     { batchSize: 5, localConcurrency: 3 },
+  'expire-sessions':        { batchSize: 1, localConcurrency: 1 },
+  'expire-offers':          { batchSize: 1, localConcurrency: 1 },
+  'issue-certificate':      { batchSize: 5, localConcurrency: 3 },
   // 'send-email' deliberately omitted — handler is a stub, not registered as a worker.
   // Restore this entry when the handler is implemented.
-  'send-webhook':          { batchSize: 5, localConcurrency: 5 },
-  'reset-monthly-billing': { batchSize: 1, localConcurrency: 1 },
-  'send-reminders':        { batchSize: 1, localConcurrency: 1 },
+  'send-webhook':           { batchSize: 5, localConcurrency: 5 },
+  'reset-monthly-billing':  { batchSize: 1, localConcurrency: 1 },
+  'send-reminders':         { batchSize: 1, localConcurrency: 1 },
+  // Each job delivers two emails for a single accepted deal — small batches are fine.
+  'notify-deal-accepted':   { batchSize: 5, localConcurrency: 3 },
 };
 
 @Injectable()
@@ -67,6 +70,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     private readonly sendWebhook: SendWebhookHandler,
     private readonly resetMonthlyBilling: ResetMonthlyBillingHandler,
     private readonly sendReminders: SendRemindersHandler,
+    private readonly notifyDealAccepted: NotifyDealAcceptedHandler,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -121,6 +125,12 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
       'send-reminders',
       WORKER_OPTIONS['send-reminders'],
       (jobs: Job<JobPayloadMap['send-reminders']>[]) => this.sendReminders.handle(jobs),
+    );
+
+    await this.boss.work<JobPayloadMap['notify-deal-accepted']>(
+      'notify-deal-accepted',
+      WORKER_OPTIONS['notify-deal-accepted'],
+      (jobs: Job<JobPayloadMap['notify-deal-accepted']>[]) => this.notifyDealAccepted.handle(jobs),
     );
 
     this.logger.log('All job workers registered');

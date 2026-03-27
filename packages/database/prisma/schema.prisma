@@ -608,7 +608,12 @@ model AcceptanceRecord {
 
   sessionId   String @unique
   recipientId String
-  snapshotId  String
+  // @unique enforces the DB-level guarantee: one AcceptanceRecord per offer.
+  // OfferSnapshot.offerId is already @unique (one snapshot per offer), so
+  // @unique here on snapshotId is equivalent to @unique per offer.
+  // This is the last-resort safety net — the CAS on Offer.status is the primary
+  // guard, but the DB must independently guarantee this invariant.
+  snapshotId  String @unique
 
   // Exact text that was displayed to the recipient at the acceptance UI.
   // Stored verbatim so it can appear on the certificate.
@@ -635,7 +640,7 @@ model AcceptanceRecord {
   certificate AcceptanceCertificate?
 
   @@index([recipientId])
-  @@index([snapshotId])
+  // @@index([snapshotId]) intentionally omitted — @unique above creates the index.
   @@map("acceptance_records")
 }
 

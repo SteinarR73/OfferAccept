@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, Global, Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import request from 'supertest';
 import * as crypto from 'crypto';
 import { ConfigModule } from '@nestjs/config';
@@ -7,6 +8,24 @@ import { jest } from '@jest/globals';
 import { SigningModule } from '../../src/modules/signing/signing.module';
 import { RateLimitModule } from '../../src/common/rate-limit/rate-limit.module';
 import { REDIS_CLIENT } from '../../src/common/rate-limit/rate-limit.service';
+import { JobService } from '../../src/modules/jobs/job.service';
+
+// ─── Minimal global stub for JobsModule ──────────────────────────────────────
+// JobsModule is @Global() in the real app (imported in AppModule) but is NOT
+// imported by SigningModule. In this isolated test setup we provide a global
+// stub so SigningFlowService can receive JobService via DI.
+@Global()
+@Module({})
+class StubJobsModule {
+  static register(value: unknown): DynamicModule {
+    return {
+      module: StubJobsModule,
+      global: true,
+      providers: [{ provide: JobService, useValue: value }],
+      exports: [JobService],
+    };
+  }
+}
 import { AuthModule } from '../../src/common/auth/auth.module';
 import { EmailModule } from '../../src/common/email/email.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
@@ -38,9 +57,11 @@ describe('Public Signing Flow (e2e)', () => {
   let app: INestApplication;
   let db: MockDb;
   let emailAdapter: DevEmailAdapter;
+  let jobService: { send: ReturnType<typeof jest.fn> };
 
   beforeEach(async () => {
     db = createMockDb();
+    jobService = { send: jest.fn<() => Promise<string>>().mockResolvedValue('job-mock-1') };
 
     // Default signingEvent.create to succeed (used by all flow steps)
     db.signingEvent.create.mockResolvedValue({ id: 'event-1', sequenceNumber: 1, eventHash: 'h1', previousEventHash: null } as never);
@@ -62,6 +83,9 @@ describe('Public Signing Flow (e2e)', () => {
         AuthModule,
         RateLimitModule,
         EmailModule,
+        // StubJobsModule must come before SigningModule so JobService is
+        // globally visible when SigningFlowService's dependencies are resolved.
+        StubJobsModule.register(jobService),
         SigningModule,
       ],
     })
@@ -428,6 +452,126 @@ describe('Public Signing Flow (e2e)', () => {
         .expect(422);
 
       expect(res.body.code).toBe('OTP_CHALLENGE_MISMATCH');
+    });
+
+    it('returns 410 OFFER_EXPIRED when offer expires between OTP verification and acceptance commit (CAS race)', async () => {
+      // This test exercises the race condition where:
+      //   A. Pre-transaction guard sees the offer as SENT — passes.
+      //   B. expire-offers job fires and transitions the offer to EXPIRED.
+      //   C. CAS (updateMany WHERE status='SENT') returns 0 rows.
+      //   D. Post-CAS lookup finds EXPIRED → OfferExpiredError → 410.
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
+      const session = makeSession({ status: 'OTP_VERIFIED', otpVerifiedAt: new Date() });
+      const challenge = makeChallenge({ status: 'VERIFIED', verifiedAt: new Date() });
+
+      db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
+      db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
+      db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findFirst.mockResolvedValue(session as never);
+      db.offerSnapshot.findUniqueOrThrow.mockResolvedValue(makeSnapshot() as never);
+
+      // A: pre-transaction guard — offer is SENT
+      // D: post-CAS lookup inside the transaction — offer is now EXPIRED
+      db.offer.findUniqueOrThrow
+        .mockResolvedValueOnce(makeOffer() as never)                            // pre-tx: SENT
+        .mockResolvedValueOnce(makeOffer({ status: 'EXPIRED' }) as never);     // post-CAS: EXPIRED
+
+      // C: CAS returns 0 — concurrent expiry job already transitioned the offer
+      db.offer.updateMany.mockResolvedValueOnce({ count: 0 } as never);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/signing/${VALID_RAW_TOKEN}/accept`)
+        .send({ challengeId: 'challenge-1' })
+        .expect(410);
+
+      expect(res.body.code).toBe('OFFER_EXPIRED');
+    });
+
+    it('does not generate a certificate when the CAS fails due to concurrent expiry', async () => {
+      // If the acceptance transaction rolls back (CAS returns 0), no downstream work
+      // must be triggered. The certificate service must not be called.
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
+      const session = makeSession({ status: 'OTP_VERIFIED', otpVerifiedAt: new Date() });
+      const challenge = makeChallenge({ status: 'VERIFIED', verifiedAt: new Date() });
+
+      db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
+      db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
+      db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findFirst.mockResolvedValue(session as never);
+      db.offerSnapshot.findUniqueOrThrow.mockResolvedValue(makeSnapshot() as never);
+
+      db.offer.findUniqueOrThrow
+        .mockResolvedValueOnce(makeOffer() as never)
+        .mockResolvedValueOnce(makeOffer({ status: 'EXPIRED' }) as never);
+
+      db.offer.updateMany.mockResolvedValueOnce({ count: 0 } as never);
+
+      // Capture the certificate service mock to assert it was not called.
+      // Access via module is not directly available here — use db.acceptanceRecord.create
+      // as the proxy: if no record was created, no certificate can be issued.
+      await request(app.getHttpServer())
+        .post(`/api/v1/signing/${VALID_RAW_TOKEN}/accept`)
+        .send({ challengeId: 'challenge-1' })
+        .expect(410);
+
+      // The acceptance transaction rolled back — no record must have been created.
+      expect(db.acceptanceRecord.create).not.toHaveBeenCalled();
+    });
+
+    it('enqueues notify-deal-accepted job after successful acceptance', async () => {
+      setupForAccept();
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/signing/${VALID_RAW_TOKEN}/accept`)
+        .send({ challengeId: 'challenge-1' })
+        .expect(200);
+
+      expect(jobService.send).toHaveBeenCalledTimes(1);
+      expect(jobService.send).toHaveBeenCalledWith(
+        'notify-deal-accepted',
+        expect.objectContaining({
+          acceptanceRecordId: 'record-1',
+          offerId:            expect.any(String),
+          offerTitle:         expect.any(String),
+          senderEmail:        expect.any(String),
+          senderName:         expect.any(String),
+          recipientEmail:     expect.any(String),
+          recipientName:      expect.any(String),
+          acceptedAt:         expect.any(String), // ISO-8601 string
+          certificateId:      'cert-mock-1',
+        }),
+        expect.objectContaining({
+          singletonKey: 'notify-deal-accepted:record-1',
+        }),
+      );
+    });
+
+    it('does NOT call jobService.send when the CAS fails (offer already expired)', async () => {
+      const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
+      const session = makeSession({ status: 'OTP_VERIFIED', otpVerifiedAt: new Date() });
+      const challenge = makeChallenge({ status: 'VERIFIED', verifiedAt: new Date() });
+
+      db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
+      db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
+      db.signingOtpChallenge.findUnique.mockResolvedValue(challenge as never);
+      db.signingSession.findUnique.mockResolvedValue(session as never);
+      db.signingSession.findFirst.mockResolvedValue(session as never);
+      db.offerSnapshot.findUniqueOrThrow.mockResolvedValue(makeSnapshot() as never);
+
+      db.offer.findUniqueOrThrow
+        .mockResolvedValueOnce(makeOffer() as never)
+        .mockResolvedValueOnce(makeOffer({ status: 'EXPIRED' }) as never);
+
+      db.offer.updateMany.mockResolvedValueOnce({ count: 0 } as never);
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/signing/${VALID_RAW_TOKEN}/accept`)
+        .send({ challengeId: 'challenge-1' })
+        .expect(410);
+
+      expect(jobService.send).not.toHaveBeenCalled();
     });
   });
 

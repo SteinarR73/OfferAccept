@@ -1,9 +1,10 @@
-import { IsString, IsUrl, IsArray, ArrayMinSize, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsArray, ArrayMinSize, IsBoolean, IsOptional } from 'class-validator';
 import { WebhookEvent } from '../webhook.service';
+import { IsWebhookUrl } from '../webhook-url.validator';
 
 export class UpdateWebhookDto {
   @IsOptional()
-  @IsUrl({ protocols: ['https'], require_tld: true })
+  @IsWebhookUrl()
   url?: string;
 
   @IsOptional()

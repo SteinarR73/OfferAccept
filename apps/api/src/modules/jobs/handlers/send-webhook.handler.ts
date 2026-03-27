@@ -83,6 +83,33 @@ export class SendWebhookHandler {
       return;
     }
 
+    // ── SSRF protection (Stage 2 — DNS) ────────────────────────────────────────
+    // Resolve the destination hostname and check all returned IPs against private
+    // ranges. This is defense-in-depth on top of the syntactic check at registration.
+    // It catches domain names that resolve to private IPs ("DNS rebinding" vectors).
+    //
+    // If blocked: record the attempt as failed and return WITHOUT throwing.
+    //   - Not throwing prevents pg-boss from retrying — the URL is permanently unsafe.
+    //   - The delivery attempt is recorded so operators can investigate.
+    const urlCheck = await this.webhookService.validateUrl(endpoint.url);
+    if (!urlCheck.valid) {
+      this.logger.error(
+        `[ssrf_blocked] Webhook delivery blocked by SSRF protection: ` +
+        `endpoint=${endpointId} url=${endpoint.url} reason=${urlCheck.reason}`,
+      );
+      await this.webhookService.recordDeliveryAttempt({
+        endpointId,
+        webhookEventId,
+        event,
+        httpStatus: null,
+        responseBody: `SSRF_BLOCKED: ${urlCheck.reason ?? 'unsafe destination'}`,
+        attempt,
+        success: false,
+      });
+      // Return (not throw): SSRF block is permanent; retrying wastes job slots.
+      return;
+    }
+
     // ── Build signed body ───────────────────────────────────────────────────────
     const body = JSON.stringify({
       id: webhookEventId,     // customers use this as their idempotency key

@@ -78,26 +78,43 @@ function makeSchedule(overrides: Record<string, unknown> = {}) {
 
 type DbMock = {
   reminderSchedule: {
-    findMany: ReturnType<typeof jest.fn>;
-    update: ReturnType<typeof jest.fn>;
-    delete: ReturnType<typeof jest.fn>;
+    findMany:   ReturnType<typeof jest.fn>;
+    update:     ReturnType<typeof jest.fn>;
+    delete:     ReturnType<typeof jest.fn>;
+    deleteMany: ReturnType<typeof jest.fn>;
   };
   offerRecipient: {
     update: ReturnType<typeof jest.fn>;
   };
+  offer: {
+    findUnique: ReturnType<typeof jest.fn>;
+  };
+  $transaction: ReturnType<typeof jest.fn>;
 };
 
-function makeDb(schedules: ReturnType<typeof makeSchedule>[]): DbMock {
-  return {
+function makeDb(schedules: ReturnType<typeof makeSchedule>[], offerStatusAtRecheck = 'SENT'): DbMock {
+  const db: DbMock = {
     reminderSchedule: {
-      findMany: jest.fn<() => Promise<typeof schedules>>().mockResolvedValue(schedules),
-      update:   jest.fn<() => Promise<object>>().mockResolvedValue({}),
-      delete:   jest.fn<() => Promise<object>>().mockResolvedValue({}),
+      findMany:   jest.fn<() => Promise<typeof schedules>>().mockResolvedValue(schedules),
+      update:     jest.fn<() => Promise<object>>().mockResolvedValue({}),
+      delete:     jest.fn<() => Promise<object>>().mockResolvedValue({}),
+      deleteMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
     },
     offerRecipient: {
       update: jest.fn<() => Promise<object>>().mockResolvedValue({}),
     },
+    offer: {
+      findUnique: jest.fn<() => Promise<{ status: string } | null>>()
+        .mockResolvedValue({ status: offerStatusAtRecheck }),
+    },
+    $transaction: jest.fn(),
   };
+  // The $transaction callback receives the same mock as `tx`, so all method
+  // calls inside the handler's transaction are visible on the same mock instance.
+  (db.$transaction as ReturnType<typeof jest.fn>).mockImplementation(
+    async (fn: (tx: DbMock) => Promise<unknown>) => fn(db),
+  );
+  return db;
 }
 
 type EmailMock = {
@@ -502,5 +519,88 @@ describe('SendRemindersHandler — empty sweep', () => {
     expect(email.sendRecipientReminder).not.toHaveBeenCalled();
     expect(db.offerRecipient.update).not.toHaveBeenCalled();
     expect(db.reminderSchedule.update).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. Concurrent acceptance race — pre-send re-check
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Scenario: the outer findMany saw offer.status = SENT, but by the time the
+// handler reaches the pre-send $transaction re-check, acceptance has already
+// committed (offer.status = ACCEPTED). The re-check must abort the send.
+
+describe('SendRemindersHandler — concurrent acceptance race guard', () => {
+  it('does NOT send email when re-check sees offer is ACCEPTED', async () => {
+    const db = makeDb([makeSchedule()], 'ACCEPTED');
+    const email = makeEmailPort();
+    const handler = await buildHandler(db, email);
+
+    await runSweep(handler);
+
+    expect(email.sendRecipientReminder).not.toHaveBeenCalled();
+  });
+
+  it('does NOT write tokenHash when re-check sees ACCEPTED', async () => {
+    const db = makeDb([makeSchedule()], 'ACCEPTED');
+    const handler = await buildHandler(db, makeEmailPort());
+
+    await runSweep(handler);
+
+    expect(db.offerRecipient.update).not.toHaveBeenCalled();
+  });
+
+  it('does NOT advance schedule counter when re-check sees ACCEPTED', async () => {
+    const db = makeDb([makeSchedule()], 'ACCEPTED');
+    const handler = await buildHandler(db, makeEmailPort());
+
+    await runSweep(handler);
+
+    const counterUpdates = (db.reminderSchedule.update.mock.calls as unknown[][]).filter(
+      (args) => (args[0] as { data?: { reminderCount?: number } }).data?.reminderCount !== undefined,
+    );
+    expect(counterUpdates).toHaveLength(0);
+  });
+
+  it('calls deleteMany inside $transaction to clean up stale schedule on ACCEPTED', async () => {
+    const db = makeDb([makeSchedule()], 'ACCEPTED');
+    const handler = await buildHandler(db, makeEmailPort());
+
+    await runSweep(handler);
+
+    expect(db.reminderSchedule.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: SCHEDULE_ID } }),
+    );
+  });
+
+  it.each(['ACCEPTED', 'DECLINED', 'EXPIRED', 'REVOKED'])(
+    'skips email for all terminal states at re-check (%s)',
+    async (status) => {
+      const db = makeDb([makeSchedule()], status);
+      const email = makeEmailPort();
+      const handler = await buildHandler(db, email);
+
+      await runSweep(handler);
+
+      expect(email.sendRecipientReminder).not.toHaveBeenCalled();
+      expect(db.offerRecipient.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('still sends email when re-check confirms offer is SENT', async () => {
+    const db = makeDb([makeSchedule()], 'SENT');
+    const email = makeEmailPort();
+    const handler = await buildHandler(db, email);
+
+    await runSweep(handler);
+
+    expect(email.sendRecipientReminder).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not throw when sweep completes without crashing', async () => {
+    const db = makeDb([makeSchedule()], 'ACCEPTED');
+    const handler = await buildHandler(db, makeEmailPort());
+
+    await expect(runSweep(handler)).resolves.not.toThrow();
   });
 });

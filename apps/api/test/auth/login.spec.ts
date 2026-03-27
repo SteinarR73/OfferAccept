@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
@@ -13,6 +14,8 @@ import {
 //
 // Verifies:
 //   - Successful login sets accessToken and refreshToken cookies
+//   - Cookie SameSite is 'strict' (not 'lax' or 'none') — primary CSRF defence
+//   - Cookie HttpOnly flag is set — XSS cannot read the token
 //   - Returns no token in the response body (tokens are in cookies)
 //   - Rate limiter is called before authService.login
 //   - InvalidCredentialsError propagates
@@ -42,7 +45,17 @@ const TOKENS = {
   sessionId: 'session-1',
 };
 
-async function buildController() {
+function buildConfigMock(overrides: { COOKIE_SECURE?: boolean; COOKIE_DOMAIN?: string } = {}) {
+  return {
+    get: (key: string) => {
+      if (key === 'COOKIE_SECURE') return overrides.COOKIE_SECURE ?? false;
+      if (key === 'COOKIE_DOMAIN') return overrides.COOKIE_DOMAIN;
+      return undefined;
+    },
+  };
+}
+
+async function buildController(configOverrides: { COOKIE_SECURE?: boolean; COOKIE_DOMAIN?: string } = {}) {
   const authSvcMock = {
     login: jest.fn<() => Promise<typeof TOKENS>>().mockResolvedValue(TOKENS),
   };
@@ -54,6 +67,7 @@ async function buildController() {
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
+      { provide: ConfigService, useValue: buildConfigMock(configOverrides) },
     ],
   }).compile();
 
@@ -85,6 +99,114 @@ describe('AuthController.login()', () => {
       res as never,
     );
     expect(res.cookie).toHaveBeenCalledWith('refreshToken', TOKENS.refreshToken, expect.objectContaining({ httpOnly: true }));
+  });
+
+  // ── CSRF / SameSite assertions ──────────────────────────────────────────────
+  //
+  // SameSite=Strict is the primary CSRF defence. If this ever slips to 'lax' or
+  // 'none', cross-site requests would silently start carrying the cookie and the
+  // entire CSRF protection model collapses.
+  //
+  // These tests are intentionally precise: they reject 'lax' and 'none' by name,
+  // not just "it's set to something". A future refactor that weakens SameSite
+  // will fail loudly here rather than silently in production.
+
+  it('accessToken cookie has sameSite=strict', async () => {
+    const { controller } = await buildController();
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'accessToken',
+      TOKENS.accessToken,
+      expect.objectContaining({ sameSite: 'strict' }),
+    );
+  });
+
+  it('refreshToken cookie has sameSite=strict', async () => {
+    const { controller } = await buildController();
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refreshToken',
+      TOKENS.refreshToken,
+      expect.objectContaining({ sameSite: 'strict' }),
+    );
+  });
+
+  it('accessToken cookie does NOT have sameSite=lax or sameSite=none', async () => {
+    const { controller } = await buildController();
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    const [, , opts] = (res.cookie as jest.Mock).mock.calls.find(([name]) => name === 'accessToken') as [string, string, Record<string, unknown>];
+    expect(opts.sameSite).not.toBe('lax');
+    expect(opts.sameSite).not.toBe('none');
+  });
+
+  it('refreshToken cookie does NOT have sameSite=lax or sameSite=none', async () => {
+    const { controller } = await buildController();
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    const [, , opts] = (res.cookie as jest.Mock).mock.calls.find(([name]) => name === 'refreshToken') as [string, string, Record<string, unknown>];
+    expect(opts.sameSite).not.toBe('lax');
+    expect(opts.sameSite).not.toBe('none');
+  });
+
+  it('refreshToken cookie is path-scoped to /api/v1/auth/refresh', async () => {
+    const { controller } = await buildController();
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refreshToken',
+      TOKENS.refreshToken,
+      expect.objectContaining({ path: '/api/v1/auth/refresh' }),
+    );
+  });
+
+  it('sets cookie domain when COOKIE_DOMAIN is configured', async () => {
+    const { controller } = await buildController({ COOKIE_DOMAIN: '.example.com' });
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'accessToken',
+      TOKENS.accessToken,
+      expect.objectContaining({ domain: '.example.com' }),
+    );
+  });
+
+  it('omits domain attribute when COOKIE_DOMAIN is not configured', async () => {
+    const { controller } = await buildController(); // no COOKIE_DOMAIN
+    const res = buildMockRes();
+    await controller.login(
+      { email: 'alice@acme.com', password: 'pass' } as never,
+      buildMockReq() as never,
+      res as never,
+    );
+    const [, , opts] = (res.cookie as jest.Mock).mock.calls.find(([name]) => name === 'accessToken') as [string, string, Record<string, unknown>];
+    expect(opts).not.toHaveProperty('domain');
   });
 
   it('response body does NOT contain the access token', async () => {

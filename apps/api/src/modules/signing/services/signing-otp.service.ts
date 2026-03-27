@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { PrismaClient, SigningOtpChallenge } from '@prisma/client';
 import { otpStateMachine, deriveOtpStatus } from '../domain/signing-otp.state-machine';
 import { SigningEventService } from './signing-event.service';
@@ -11,12 +11,15 @@ import {
   OtpAlreadyVerifiedError,
   OtpInvalidatedError,
   OtpChallengeMismatchError,
+  OtpRecipientLockedError,
   SessionExpiredError,
   ConcurrencyConflictError,
 } from '../../../common/errors/domain.errors';
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS = 5;
+const FAILURE_WINDOW_MS = 30 * 60 * 1000; // 30-minute sliding window
+const RECIPIENT_LOCKOUT_THRESHOLD = 10; // cumulative failures across all challenges
 
 export interface IssuedOtpResult {
   challengeId: string;
@@ -31,6 +34,8 @@ export interface VerifyOtpResult {
 
 @Injectable()
 export class SigningOtpService {
+  private readonly logger = new Logger(SigningOtpService.name);
+
   constructor(
     @Inject('PRISMA') private readonly db: PrismaClient,
     @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
@@ -48,6 +53,25 @@ export class SigningOtpService {
     offerTitle: string,
     context: { ipAddress?: string; userAgent?: string },
   ): Promise<{ rawCode: string; result: IssuedOtpResult }> {
+    // ── Cross-session recipient lockout check ─────────────────────────────────
+    // Aggregate cumulative OTP failures for this recipient within the sliding
+    // window. A new session must not be a bypass path for per-challenge lockout.
+    const windowStart = new Date(Date.now() - FAILURE_WINDOW_MS);
+    const { _sum } = await this.db.signingOtpChallenge.aggregate({
+      where: { recipientId, createdAt: { gte: windowStart } },
+      _sum: { attemptCount: true },
+    });
+    const cumulativeFailures = _sum.attemptCount ?? 0;
+    if (cumulativeFailures >= RECIPIENT_LOCKOUT_THRESHOLD) {
+      this.logger.warn(JSON.stringify({
+        metric: 'otp_recipient_lockout_blocked',
+        recipientId,
+        cumulativeFailures,
+        windowStartIso: windowStart.toISOString(),
+      }));
+      throw new OtpRecipientLockedError();
+    }
+
     const { rawCode, codeHash } = this.generateCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 

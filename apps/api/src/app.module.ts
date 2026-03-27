@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CsrfOriginMiddleware } from './common/middleware/csrf-origin.middleware';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './modules/database/database.module';
 import { HealthModule } from './modules/health/health.module';
@@ -46,4 +47,13 @@ import { DealEventsModule } from './modules/deal-events/deal-events.module';
     AnalyticsModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Apply CSRF origin check to all state-mutating routes globally.
+    // The middleware's own logic gates on cookie presence and Origin header,
+    // so public/Bearer-authenticated endpoints are not affected.
+    consumer
+      .apply(CsrfOriginMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

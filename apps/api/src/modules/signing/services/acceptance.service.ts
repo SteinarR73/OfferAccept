@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { PrismaClient, SigningSession, AcceptanceRecord } from '@prisma/client';
+import { PrismaClient, SigningSession, AcceptanceRecord, Prisma } from '@prisma/client';
 import { offerStateMachine } from '../../offers/domain/offer.state-machine';
 import { recipientStateMachine } from '../../offers/domain/offer-recipient.state-machine';
 import { sessionStateMachine } from '../domain/signing-session.state-machine';
@@ -128,22 +128,38 @@ export class AcceptanceService {
         throw new InvalidStateTransitionError(current.status, 'ACCEPTED', 'Offer');
       }
 
-      const record = await tx.acceptanceRecord.create({
-        data: {
-          sessionId: session.id,
-          recipientId: recipient.id,
-          snapshotId: snapshot.id,
-          acceptanceStatement,
-          verifiedEmail: challenge.deliveryAddress,
-          emailVerifiedAt: challenge.verifiedAt!,
-          acceptedAt,
-          ipAddress: context.ipAddress,
-          userAgent: context.userAgent,
-          locale: context.locale,
-          timezone: context.timezone,
-          snapshotContentHash: snapshot.contentHash,
-        },
-      });
+      // Create the acceptance record.
+      // The snapshotId column has a UNIQUE constraint (one AcceptanceRecord per offer).
+      // If two concurrent transactions both pass the CAS above and both attempt this
+      // insert, the second will receive a P2002 unique-constraint violation.
+      // We translate that into a deterministic OfferAlreadyAcceptedError rather than
+      // letting an unclassified database error propagate as a 500.
+      let record: AcceptanceRecord;
+      try {
+        record = await tx.acceptanceRecord.create({
+          data: {
+            sessionId: session.id,
+            recipientId: recipient.id,
+            snapshotId: snapshot.id,
+            acceptanceStatement,
+            verifiedEmail: challenge.deliveryAddress,
+            emailVerifiedAt: challenge.verifiedAt!,
+            acceptedAt,
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+            locale: context.locale,
+            timezone: context.timezone,
+            snapshotContentHash: snapshot.contentHash,
+          },
+        });
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          // DB unique constraint on snapshotId fired — another concurrent request
+          // already committed an AcceptanceRecord for this offer.
+          throw new OfferAlreadyAcceptedError();
+        }
+        throw err;
+      }
 
       await tx.signingSession.update({
         where: { id: session.id },
@@ -171,6 +187,13 @@ export class AcceptanceService {
         },
         tx as unknown as PrismaClient,
       );
+
+      // Delete reminder schedule atomically with the acceptance state change.
+      // Bundling this inside the transaction guarantees that once the commit
+      // lands, offer.status = ACCEPTED and the schedule is gone in the same
+      // atomic operation — the reminder sweep's re-check will always observe
+      // a consistent state and will never send a reminder after acceptance.
+      await tx.reminderSchedule.deleteMany({ where: { offerId: offer.id } });
 
       return record;
     });

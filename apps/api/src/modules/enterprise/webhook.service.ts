@@ -3,6 +3,11 @@ import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
 import { JobService } from '../jobs/job.service';
 import { WebhookEndpointNotFoundError } from '../../common/errors/domain.errors';
+import {
+  validateWebhookUrl,
+  validateWebhookUrlDns,
+  type UrlValidationResult,
+} from './webhook-url.validator';
 
 // ─── WebhookService ────────────────────────────────────────────────────────────
 // Manages customer-configured webhook endpoints and dispatches outgoing events.
@@ -48,6 +53,9 @@ export class WebhookService {
     events: WebhookEvent[];
   }): Promise<{ id: string; url: string; events: string[]; secret: string }> {
     validateEvents(params.events);
+    // Defense-in-depth: validate the URL at the service layer even though the
+    // DTO already checks it. Direct service calls (tests, scripts) bypass the DTO.
+    enforceWebhookUrl(params.url);
     const secret = crypto.randomBytes(32).toString('hex');
 
     const endpoint = await this.db.webhookEndpoint.create({
@@ -91,6 +99,7 @@ export class WebhookService {
     if (!existing) throw new WebhookEndpointNotFoundError();
 
     if (patch.events) validateEvents(patch.events);
+    if (patch.url) enforceWebhookUrl(patch.url);
 
     const updated = await this.db.webhookEndpoint.update({
       where: { id: endpointId },
@@ -159,6 +168,16 @@ export class WebhookService {
   }
 
   // ── Used by SendWebhookHandler ───────────────────────────────────────────────
+
+  // DNS-based SSRF validation — called by SendWebhookHandler before each HTTP
+  // attempt. Delegating to this method (rather than importing validateWebhookUrlDns
+  // directly in the handler) keeps the handler testable via NestJS DI mocking.
+  //
+  // Returns { valid: true } if the URL is safe to fetch.
+  // Returns { valid: false, reason } if SSRF protection blocks the URL.
+  async validateUrl(url: string): Promise<UrlValidationResult> {
+    return validateWebhookUrlDns(url);
+  }
 
   // Returns the endpoint record including its secret (for signing).
   // Returns null if the endpoint no longer exists.
@@ -283,5 +302,15 @@ function validateEvents(events: string[]): void {
   }
   if (events.length === 0) {
     throw new Error('At least one event type must be subscribed.');
+  }
+}
+
+// Service-layer URL guard — called from createEndpoint/updateEndpoint as defense-in-depth.
+// The DTO-level @IsWebhookUrl() is the primary check for HTTP requests; this catches
+// direct service calls that bypass the DTO (programmatic use, test helpers, scripts).
+function enforceWebhookUrl(url: string): void {
+  const result = validateWebhookUrl(url);
+  if (!result.valid) {
+    throw new Error(`Invalid webhook URL: ${result.reason}`);
   }
 }

@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { WebhookService, ALL_WEBHOOK_EVENTS } from '../../src/modules/enterprise/webhook.service';
 import { WebhookEndpointNotFoundError } from '../../src/common/errors/domain.errors';
 import { SendWebhookHandler } from '../../src/modules/jobs/handlers/send-webhook.handler';
+import type { UrlValidationResult } from '../../src/modules/enterprise/webhook-url.validator';
 import type { Job } from 'pg-boss';
 import type { SendWebhookPayload } from '../../src/modules/jobs/job.types';
 
@@ -291,6 +292,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       getEndpoint: jest.fn<() => Promise<{ id: string; url: string; secret: string; enabled: boolean }>>(),
       signPayload: jest.fn<() => string>(),
       recordDeliveryAttempt: jest.fn<() => Promise<void>>(),
+      validateUrl: jest.fn<() => Promise<UrlValidationResult>>().mockResolvedValue({ valid: true }),
     };
 
     const module = await Test.createTestingModule({
@@ -335,6 +337,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       signPayload: (s: string, b: string) =>
         crypto.createHmac('sha256', s).update(b).digest('hex'),
       recordDeliveryAttempt: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      validateUrl: jest.fn<() => Promise<UrlValidationResult>>().mockResolvedValue({ valid: true }),
     };
 
     const module = await Test.createTestingModule({
@@ -375,6 +378,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       getEndpoint: jest.fn<() => Promise<typeof endpoint>>().mockResolvedValue(endpoint),
       signPayload: jest.fn<() => string>().mockReturnValue('sig'),
       recordDeliveryAttempt: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      validateUrl: jest.fn<() => Promise<UrlValidationResult>>().mockResolvedValue({ valid: true }),
     };
 
     const module = await Test.createTestingModule({
@@ -404,6 +408,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       getEndpoint: jest.fn<() => Promise<typeof disabledEndpoint>>().mockResolvedValue(disabledEndpoint),
       signPayload: jest.fn<() => string>(),
       recordDeliveryAttempt: jest.fn<() => Promise<void>>(),
+      validateUrl: jest.fn<() => Promise<UrlValidationResult>>().mockResolvedValue({ valid: true }),
     };
 
     const module = await Test.createTestingModule({
@@ -436,6 +441,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       signPayload: (s: string, b: string) =>
         crypto.createHmac('sha256', s).update(b).digest('hex'),
       recordDeliveryAttempt: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      validateUrl: jest.fn<() => Promise<UrlValidationResult>>().mockResolvedValue({ valid: true }),
     };
 
     const module = await Test.createTestingModule({
@@ -459,5 +465,47 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
     expect(ALL_WEBHOOK_EVENTS).toContain('offer.accepted');
     expect(ALL_WEBHOOK_EVENTS).toContain('certificate.issued');
     expect(ALL_WEBHOOK_EVENTS).toHaveLength(2);
+  });
+
+  it('records SSRF_BLOCKED attempt and does NOT throw when validateUrl returns invalid', async () => {
+    const fetchMock = jest.fn<() => Promise<Response>>();
+    global.fetch = fetchMock as never;
+
+    const endpoint = { id: 'ep_1', url: 'https://internal.corp/hooks', secret: 'secret', enabled: true };
+    const recordMock = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+    const mockWebhookService = {
+      isAlreadyDelivered: jest.fn<() => Promise<boolean>>().mockResolvedValue(false),
+      getEndpoint: jest.fn<() => Promise<typeof endpoint>>().mockResolvedValue(endpoint),
+      signPayload: jest.fn<() => string>(),
+      recordDeliveryAttempt: recordMock,
+      validateUrl: jest.fn<() => Promise<UrlValidationResult>>().mockResolvedValue({
+        valid: false,
+        reason: "Hostname 'internal.corp' resolves to a reserved or private IP address. Delivery blocked (SSRF protection).",
+      }),
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        SendWebhookHandler,
+        { provide: WebhookService, useValue: mockWebhookService },
+      ],
+    }).compile();
+
+    const handler = module.get(SendWebhookHandler);
+    // Must NOT throw — SSRF block is permanent, retrying would waste job slots
+    await expect(handler.handle([makeJob()])).resolves.not.toThrow();
+
+    // No HTTP request made
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Failure recorded with SSRF_BLOCKED marker
+    expect(recordMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        httpStatus: null,
+        responseBody: expect.stringContaining('SSRF_BLOCKED'),
+      }),
+    );
   });
 });

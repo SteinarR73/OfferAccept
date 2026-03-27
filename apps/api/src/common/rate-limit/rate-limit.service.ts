@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger, OnApplicationShutdown } from '@nestjs/common';
 import type Redis from 'ioredis';
-import { RateLimitExceededError } from '../errors/domain.errors';
+import { RateLimitExceededError, RateLimitServiceUnavailableError } from '../errors/domain.errors';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
 
@@ -29,10 +29,15 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
 //   All API instances share one Redis instance (REDIS_URL). Counters are global
 //   — horizontal scaling does not multiply effective limits.
 //
-// Failure mode:
-//   If Redis is unreachable, check() logs a CRITICAL error and allows the
-//   request (fail-open). This prevents Redis downtime from locking out all
-//   users. Operators must be alerted on the CRITICAL log and restore Redis.
+// Failure mode — differentiated by risk profile:
+//   HIGH_RISK profiles (OTP, login, signup): fail closed → 503 Service Unavailable.
+//     Rationale: Redis downtime on these endpoints creates a brute-force bypass
+//     window. A short outage is less harmful than unbounded credential-stuffing.
+//     Callers receive a deterministic 503 with Retry-After semantics.
+//   LOW_RISK profiles (cert verify, deal send, invite, resend, support tools): fail open.
+//     Rationale: these endpoints carry no credential-guessing risk. Blocking
+//     legitimate users during a Redis blip is more harmful than the abuse risk.
+//     All fail-open events are logged and metered so operators can act promptly.
 //
 // Key expiry:
 //   PEXPIRE is set to (windowMs + 1 s) after each successful request.
@@ -85,6 +90,22 @@ export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: numbe
   deal_send:              { limit: 30, windowMs: 60 * 60 * 1000 },
   deal_resend:            { limit: 15, windowMs: 60 * 60 * 1000 },
 };
+
+// ── High-risk profiles — fail closed when Redis is unavailable ─────────────────
+//
+// These profiles guard credential-sensitive endpoints. If Redis is down, we
+// MUST NOT allow unlimited attempts. Return 503 so callers can retry later.
+
+const HIGH_RISK_PROFILES: ReadonlySet<RateLimitProfile> = new Set<RateLimitProfile>([
+  'otp_issuance',
+  'otp_verification',
+  'otp_verification_burst',
+  'login_attempt',
+  'login_attempt_burst',
+  'forgot_password',
+  'signup_attempt',
+  'signup_attempt_burst',
+]);
 
 // ── Lua scripts ────────────────────────────────────────────────────────────────
 //
@@ -191,12 +212,28 @@ export class RateLimitService implements OnApplicationShutdown {
         member,
       )) as [number, number, number];
     } catch (err) {
-      // Fail-open: Redis unavailable. Log CRITICAL so operators are alerted.
+      const isHighRisk = HIGH_RISK_PROFILES.has(profile);
       // Metric: rate_limit_redis_error — monitor this to detect Redis instability.
+      // Structured JSON so log aggregators can extract metric=rate_limit_redis_error.
       this.logger.error(
-        `[rate_limit_redis_error] profile=${profile} key=${key} action=fail_open ` +
-        `error=${err instanceof Error ? err.message : String(err)}`,
+        JSON.stringify({
+          metric: 'rate_limit_redis_error',
+          profile,
+          key,
+          action: isHighRisk ? 'fail_closed' : 'fail_open',
+          error: err instanceof Error ? err.message : String(err),
+        }),
       );
+
+      if (isHighRisk) {
+        // Fail closed: brute-force protection must not be bypassed during Redis outage.
+        // Callers receive 503 with a deterministic Retry-After expectation.
+        throw new RateLimitServiceUnavailableError();
+      }
+
+      // Fail open: low-risk endpoint — blocking legitimate users during a Redis
+      // blip is more harmful than the marginal abuse risk. Operator is alerted
+      // via the metric log above and must restore Redis promptly.
       return;
     }
 

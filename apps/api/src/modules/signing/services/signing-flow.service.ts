@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-// Note: EMAIL_PORT is no longer injected here — all notification emails are
-// dispatched via NotificationsService to keep signing flow and email concerns separate.
+// Note: EMAIL_PORT is no longer injected here — acceptance notification emails are
+// dispatched via the notify-deal-accepted pg-boss job (durable, retryable).
+// Decline notification emails are still sent via NotificationsService (synchronous, best-effort).
 import { PrismaClient, SigningSession } from '@prisma/client';
 import { SigningTokenService } from './signing-token.service';
 import { SigningSessionService, SessionContext } from './signing-session.service';
@@ -9,7 +10,6 @@ import { AcceptanceService, AcceptanceContext, AcceptanceResult } from './accept
 import { SigningEventService } from './signing-event.service';
 import { CertificateService } from '../../certificates/certificate.service';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { DealAcceptedEvent } from '../../notifications/events/deal-accepted.event';
 import { DealDeclinedEvent } from '../../notifications/events/deal-declined.event';
 import {
   InvalidStateTransitionError,
@@ -21,6 +21,7 @@ import {
 import { buildAcceptanceStatement } from '../domain/acceptance-statement';
 import { WebhookService } from '../../enterprise/webhook.service';
 import { DealEventService } from '../../deal-events/deal-events.service';
+import { JobService } from '../../jobs/job.service';
 
 // ─── Response types ────────────────────────────────────────────────────────────
 
@@ -85,6 +86,7 @@ export class SigningFlowService {
     private readonly notificationsService: NotificationsService,
     private readonly webhookService: WebhookService,
     private readonly dealEventService: DealEventService,
+    private readonly jobService: JobService,
   ) {}
 
   // Step 1: Validate token and return the frozen offer context.
@@ -223,23 +225,38 @@ export class SigningFlowService {
       result.acceptanceRecord.id,
     );
 
-    // Cancel reminder schedule — no more reminders needed after acceptance.
-    // Best-effort: failure here does not reverse the acceptance.
-    await this.db.reminderSchedule.deleteMany({ where: { offerId: result.offerId } }).catch((e: unknown) =>
-      this.logger.warn(`Failed to delete reminder schedule on accept for offer ${result.offerId}: ${e}`),
-    );
-
-    // Send acceptance notifications — best-effort (errors are caught inside NotificationsService).
-    await this.notificationsService.onDealAccepted(new DealAcceptedEvent(
-      result.offerId,
-      result.offerTitle,
-      result.senderEmail,
-      result.senderName,
-      result.recipientEmail,
-      result.recipientName,
-      result.acceptanceRecord.acceptedAt,
-      certificateId ?? '',
-    ));
+    // Enqueue durable notification job — acceptance confirmation emails for both parties.
+    // Business state is already committed; pg-boss persists the job and retries on failure.
+    // Wrapped in .catch() so a transient enqueue error does not block the acceptance response.
+    const notifyJobId = await this.jobService.send(
+      'notify-deal-accepted',
+      {
+        acceptanceRecordId: result.acceptanceRecord.id,
+        offerId: result.offerId,
+        offerTitle: result.offerTitle,
+        senderEmail: result.senderEmail,
+        senderName: result.senderName,
+        recipientEmail: result.recipientEmail,
+        recipientName: result.recipientName,
+        acceptedAt: result.acceptanceRecord.acceptedAt.toISOString(),
+        certificateId: certificateId ?? '',
+      },
+      { singletonKey: `notify-deal-accepted:${result.acceptanceRecord.id}` },
+    ).catch((e: unknown) => {
+      this.logger.error(JSON.stringify({
+        metric: 'notify_deal_accepted_enqueue_failed',
+        offerId: result.offerId,
+        acceptanceRecordId: result.acceptanceRecord.id,
+        error: e instanceof Error ? e.message : String(e),
+      }));
+      return null;
+    });
+    this.logger.log(JSON.stringify({
+      metric: 'notify_deal_accepted_enqueued',
+      offerId: result.offerId,
+      acceptanceRecordId: result.acceptanceRecord.id,
+      jobId: notifyJobId,
+    }));
 
     // Dispatch outgoing webhooks — best-effort, enqueued via pg-boss.
     // Failures here do not reverse the acceptance or block the response.
