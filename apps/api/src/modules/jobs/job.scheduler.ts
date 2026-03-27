@@ -19,14 +19,17 @@ import { JOB_BOSS } from './job.service';
 //
 // ── Schedule table ──────────────────────────────────────────────────────────
 //
-//   Job                    Cron              Description
-//   ─────────────────────  ───────────────   ─────────────────────────────────
-//   expire-sessions        */5 * * * *       Every 5 minutes
-//   expire-offers          */30 * * * *      Every 30 minutes
-//   reset-monthly-billing  0 0 1 * *         Midnight UTC on 1st of month
+//   Job                      Cron              Description
+//   ───────────────────────  ───────────────   ───────────────────────────────
+//   expire-sessions          */5 * * * *       Every 5 minutes
+//   expire-offers            */30 * * * *      Every 30 minutes
+//   send-reminders           */5 * * * *       Every 5 minutes
+//   reconcile-certificates   */15 * * * *      Every 15 minutes
+//   reset-monthly-billing    0 0 1 * *         Midnight UTC on 1st of month
 //
-// issue-certificate, send-email, send-webhook are event-driven — they are
-// enqueued by application code rather than on a schedule.
+// issue-certificate, send-email, send-webhook, notify-deal-accepted are
+// event-driven — they are enqueued by application code rather than on a schedule.
+// reconcile-certificates re-enqueues issue-certificate for any missed certificates.
 
 @Injectable()
 export class JobScheduler implements OnApplicationBootstrap {
@@ -54,6 +57,12 @@ export class JobScheduler implements OnApplicationBootstrap {
       tz: 'UTC',
     });
 
+    // reconcile-certificates: every 15 minutes — detects and re-enqueues missing
+    // certificates for accepted deals that didn't get one due to transient errors.
+    await this.boss.schedule('reconcile-certificates', '*/15 * * * *', {}, {
+      tz: 'UTC',
+    });
+
     // reset-monthly-billing: midnight UTC on the 1st of every month
     // Uses a month-stamped singletonKey so re-registration after a restart
     // on the 1st doesn't fire the job again.
@@ -68,6 +77,6 @@ export class JobScheduler implements OnApplicationBootstrap {
       },
     );
 
-    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders');
+    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders, reconcile-certificates');
   }
 }

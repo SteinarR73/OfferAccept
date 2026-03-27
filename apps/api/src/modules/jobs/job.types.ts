@@ -55,6 +55,10 @@ export interface SendRemindersPayload {
   // Cron-triggered sweep — no per-job parameters needed.
 }
 
+export interface ReconcileCertificatesPayload {
+  // Cron-triggered sweep — no per-job parameters needed.
+}
+
 // ── notify-deal-accepted ───────────────────────────────────────────────────────
 //
 // Enqueued by SigningFlowService immediately after the acceptance transaction
@@ -106,6 +110,7 @@ export interface JobPayloadMap {
   'reset-monthly-billing': ResetMonthlyBillingPayload;
   'send-reminders': SendRemindersPayload;
   'notify-deal-accepted': NotifyDealAcceptedPayload;
+  'reconcile-certificates': ReconcileCertificatesPayload;
 }
 
 // ── Queue-level retry + TTL defaults ─────────────────────────────────────────
@@ -168,5 +173,13 @@ export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
     retryDelay: 300,        // 5 min gaps — no rush
     retryBackoff: false,
     expireInSeconds: 3600,
+  },
+  'reconcile-certificates': {
+    // Lightweight cron sweep — runs every 15 minutes.
+    // Must complete within 5 minutes; retried twice on transient failures.
+    retryLimit: 2,
+    retryDelay: 60,
+    retryBackoff: false,
+    expireInSeconds: 300,
   },
 };

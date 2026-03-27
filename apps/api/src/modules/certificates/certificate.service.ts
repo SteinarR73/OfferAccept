@@ -279,6 +279,25 @@ export class CertificateService {
   // Enforces tenant-scoped access to certificate data.
   // INTERNAL_SUPPORT bypasses the org check — they have explicit cross-tenant access.
   // Any other caller must belong to the same organization that owns the offer.
+  // Returns AcceptanceRecord IDs (and their acceptedAt timestamps) for records
+  // that have no certificate and were accepted more than `thresholdMs` ago.
+  //
+  // Used by ReconcileCertificatesHandler to detect and recover from silent
+  // certificate generation failures. Only reads two immutable tables.
+  async findMissingCertificates(
+    thresholdMs: number,
+  ): Promise<Array<{ id: string; acceptedAt: Date }>> {
+    const cutoff = new Date(Date.now() - thresholdMs);
+    return this.db.acceptanceRecord.findMany({
+      where: {
+        acceptedAt: { lte: cutoff },
+        certificate: { is: null },
+      },
+      select: { id: true, acceptedAt: true },
+      orderBy: { acceptedAt: 'asc' },
+    });
+  }
+
   private assertCanAccess(resourceOrgId: string, callerOrgId: string, callerRole: string): void {
     if (callerRole === 'INTERNAL_SUPPORT') return;
     if (resourceOrgId !== callerOrgId) {

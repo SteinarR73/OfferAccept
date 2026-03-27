@@ -13,6 +13,7 @@ import { SendWebhookHandler } from './handlers/send-webhook.handler';
 import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.handler';
 import { SendRemindersHandler } from './handlers/send-reminders.handler';
 import { NotifyDealAcceptedHandler } from './handlers/notify-deal-accepted.handler';
+import { ReconcileCertificatesHandler } from './handlers/reconcile-certificates.handler';
 import { CertificatesModule } from '../certificates/certificates.module';
 import { BillingModule } from '../billing/billing.module';
 import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
@@ -79,6 +80,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ResetMonthlyBillingHandler,
     SendRemindersHandler,
     NotifyDealAcceptedHandler,
+    ReconcileCertificatesHandler,
   ],
   exports: [JobService],
 })

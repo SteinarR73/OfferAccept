@@ -7,9 +7,9 @@ import type { IssueCertificatePayload } from '../job.types';
 // Generates an AcceptanceCertificate for a completed AcceptanceRecord.
 //
 // Triggered by:
-//   AcceptanceService (synchronous flow) → enqueues this job immediately after
-//   the AcceptanceRecord is committed, so certificate generation is async and
-//   does not block the acceptance response.
+//   ReconcileCertificatesHandler (cron sweep) re-enqueues this job for any
+//   AcceptanceRecord that has no certificate after the grace period.
+//   May also be enqueued directly by application code after acceptance.
 //
 // Idempotency:
 //   CertificateService.generateForAcceptance() has a built-in idempotency
@@ -18,6 +18,18 @@ import type { IssueCertificatePayload } from '../job.types';
 //
 // Retry policy (set on queue): 5 attempts with exponential backoff.
 //   Certificate generation reads immutable tables (no race conditions).
+//
+// Dead-letter detection:
+//   On the final attempt (attempt === retryLimit), a certificate_dlq_risk event
+//   is logged at ERROR level before the attempt. If the attempt fails, the job
+//   is archived to pgboss.archive (DLQ) and the reconciliation sweep will
+//   eventually re-enqueue a fresh job.
+//
+// Observability events (all structured JSON):
+//   certificate_job_started   — logged at the start of every attempt
+//   certificate_issued        — logged on success
+//   certificate_issuance_failed — logged on failure (before rethrow)
+//   certificate_dlq_risk      — logged on the final attempt
 
 @Injectable()
 export class IssueCertificateHandler {
@@ -28,6 +40,33 @@ export class IssueCertificateHandler {
   async handle(jobs: Job<IssueCertificatePayload>[]): Promise<void> {
     for (const job of jobs) {
       const { acceptanceRecordId } = job.data;
+      // pg-boss passes raw DB row fields in lowercase (retrycount, retrylimit).
+      // They are not part of the typed Job<T> interface but are present at runtime.
+      const raw = job as unknown as { retrycount?: number; retrylimit?: number };
+      const attempt    = (raw.retrycount ?? 0) + 1;
+      const retryLimit =  raw.retrylimit ?? 5;
+
+      this.logger.log(JSON.stringify({
+        event: 'certificate_job_started',
+        jobId: job.id,
+        acceptanceRecordId,
+        attempt,
+        retryLimit,
+      }));
+
+      // Warn before the final attempt — if this fails the job goes to the DLQ
+      // and the reconciliation sweep must re-enqueue it.
+      if (attempt >= retryLimit) {
+        this.logger.error(JSON.stringify({
+          event: 'certificate_dlq_risk',
+          jobId: job.id,
+          acceptanceRecordId,
+          attempt,
+          retryLimit,
+          alert: 'Final retry. Failure will archive this job to the DLQ. ' +
+                 'The reconcile-certificates sweep will re-enqueue within 15 min.',
+        }));
+      }
 
       try {
         const { certificateId } = await this.certificateService.generateForAcceptance(
@@ -35,12 +74,14 @@ export class IssueCertificateHandler {
         );
         this.logger.log(JSON.stringify({
           event: 'certificate_issued',
+          jobId: job.id,
           certId: certificateId,
           acceptanceRecordId,
+          attempt,
         }));
       } catch (err) {
         this.logger.error(
-          JSON.stringify({ event: 'certificate_issuance_failed', acceptanceRecordId }),
+          JSON.stringify({ event: 'certificate_issuance_failed', jobId: job.id, acceptanceRecordId, attempt }),
           err instanceof Error ? err.stack : String(err),
         );
         // Re-throw so pg-boss marks this job as failed and schedules a retry.
