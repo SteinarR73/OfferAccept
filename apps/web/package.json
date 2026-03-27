@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@offeraccept/types": "*",
+    "@types/qrcode": "^1.5.6",
     "lucide-react": "^0.577.0",
     "next": "^15.1.4",
     "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

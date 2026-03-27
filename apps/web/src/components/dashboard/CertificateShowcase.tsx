@@ -42,12 +42,25 @@ export function CertificateShowcase({ certificateId }: Props) {
     try {
       const pdfBytes = await generateCertificatePdf(cert, window.location.origin);
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `acceptance-certificate-${cert.certificateId.slice(0, 8)}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const url  = URL.createObjectURL(blob);
+
+      // iOS Safari does not honour the `download` attribute on blob URLs —
+      // the anchor click is silently dropped. Opening in a new tab triggers the
+      // system PDF viewer which lets users save/share via the share sheet.
+      const isIos = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+      if (isIos) {
+        window.open(url, '_blank');
+        // Revoke after a delay to allow the viewer to load the blob.
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `acceptance-certificate-${cert.certificateId.slice(0, 8)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch {
       // silent — user can retry
     } finally {
