@@ -11,6 +11,7 @@ import {
   updateOffer,
   setRecipient as setOfferRecipient,
   sendOffer,
+  ApiError,
 } from '../../../../lib/offers-api';
 import { FileUploadFlow } from '../../../../components/dashboard/FileUploadFlow';
 import { TemplateSelector, DEAL_TEMPLATES, type DealTemplate } from '../../../../components/deals/TemplateSelector';
@@ -78,7 +79,10 @@ export default function NewDealWizardPage() {
   }
 
   function canAdvance(): boolean {
-    if (step === 1) return state.dealName.trim().length > 0;
+    if (step === 1) {
+      const len = state.dealName.trim().length;
+      return len > 0 && len <= 500; // mirrors server @MaxLength(500)
+    }
     if (step === 2) return !isUploading;
     if (step === 3) {
       const e = state.customerEmail.trim();
@@ -148,8 +152,15 @@ export default function NewDealWizardPage() {
       await sendOffer(draftOfferId);
       router.push(`/dashboard/offers/${draftOfferId}?sent=1`);
     } catch (err: unknown) {
-      const detail = err instanceof Error ? err.message : 'Please try again.';
-      setError(`Deal created but sending failed — ${detail}`);
+      if (err instanceof ApiError && err.code === 'PLAN_LIMIT_EXCEEDED') {
+        // Server message already says e.g. "Your free plan allows 5 offer(s) per month.
+        // Upgrade your plan to send more offers." — surface it directly.
+        setError(err.message);
+      } else {
+        // Generic: deal was saved as DRAFT so no work is lost; user can retry.
+        const detail = err instanceof Error ? err.message : 'Please try again.';
+        setError(`Your deal was saved but could not be sent — ${detail}`);
+      }
       setSubmitting(false);
     }
   }
@@ -309,7 +320,12 @@ function StepDealName({
           onKeyDown={(e) => { if (e.key === 'Enter' && state.dealName.trim()) onNext(); }}
           required
           autoFocus
-          hint="Appears in the email and acceptance certificate."
+          maxLength={500}
+          hint={
+            state.dealName.length > 450
+              ? `${state.dealName.length}/500 characters`
+              : 'Appears in the email and acceptance certificate.'
+          }
         />
       </CardSection>
     </Card>
@@ -406,6 +422,7 @@ function StepRecipient({
             placeholder="Jane Smith"
             value={state.customerName}
             onChange={(e) => onChange({ customerName: e.target.value })}
+            maxLength={200}
             hint="Optional — shown in the deal and certificate."
           />
         </div>

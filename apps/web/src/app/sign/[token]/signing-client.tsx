@@ -37,13 +37,16 @@ type Phase =
   | { name: 'offer_expired'; expiresAt: string | null }
   | { name: 'already_terminal'; reason: string }
   | { name: 'offer_view'; ctx: OfferContext; declineError?: string }
-  | { name: 'otp_requesting'; ctx: OfferContext }
+  // prevOtp is set when this is a resend request from the OTP screen.
+  // It lets OTP_SEND_FAILED return to otp_entry (with the still-valid old OTP)
+  // rather than dropping the user back to offer_view.
+  | { name: 'otp_requesting'; ctx: OfferContext; prevOtp?: OtpResult }
   | { name: 'otp_entry'; ctx: OfferContext; otp: OtpResult; error?: string }
   | { name: 'otp_verifying'; ctx: OfferContext; otp: OtpResult }
-  | { name: 'otp_error'; ctx: OfferContext; otp: OtpResult; message: string; locked: boolean }
+  | { name: 'otp_error'; ctx: OfferContext; otp: OtpResult; message: string; locked: boolean; expired: boolean }
   | { name: 'acceptance'; ctx: OfferContext; challengeId: string }
   | { name: 'accepting'; ctx: OfferContext }
-  | { name: 'completed'; acceptedAt: string }
+  | { name: 'completed'; acceptedAt: string; certificateId: string | null }
   | { name: 'declined' };
 
 type Action =
@@ -54,15 +57,16 @@ type Action =
   | { type: 'OTP_SEND_FAILED'; message: string }
   | { type: 'SUBMIT_CODE'; code: string }
   | { type: 'OTP_VERIFIED'; challengeId: string }
-  | { type: 'OTP_FAILED'; message: string; locked: boolean }
+  | { type: 'OTP_FAILED'; message: string; locked: boolean; expired: boolean }
   | { type: 'CONFIRM_ACCEPT' }
-  | { type: 'ACCEPTED'; acceptedAt: string }
+  | { type: 'ACCEPTED'; acceptedAt: string; certificateId: string | null }
   | { type: 'ACCEPT_FAILED'; message: string }
   | { type: 'DECLINE' }
   | { type: 'DECLINED' }
   | { type: 'DECLINE_FAILED'; message: string };
 
-function reducer(state: Phase, action: Action): Phase {
+// Exported for unit testing — pure function, no side effects.
+export function reducer(state: Phase, action: Action): Phase {
   switch (action.type) {
     case 'CONTEXT_LOADED':
       return { name: 'offer_view', ctx: action.ctx };
@@ -75,15 +79,30 @@ function reducer(state: Phase, action: Action): Phase {
       return { name: 'invalid_link' };
 
     case 'CONTINUE_TO_OTP':
-      if (state.name !== 'offer_view') return state;
-      return { name: 'otp_requesting', ctx: state.ctx };
+      // Initial flow (offer_view → requesting) has no prevOtp.
+      if (state.name === 'offer_view')
+        return { name: 'otp_requesting', ctx: state.ctx };
+      // Resend flow (otp_entry / otp_error → requesting): preserve the old OTP so
+      // that if the resend request itself fails, we can return here with an error
+      // instead of silently dropping the user back to the start.
+      if (state.name === 'otp_entry' || state.name === 'otp_error')
+        return { name: 'otp_requesting', ctx: state.ctx, prevOtp: state.otp };
+      return state;
 
     case 'OTP_SENT':
-      if (state.name !== 'otp_requesting' && state.name !== 'otp_entry') return state;
+      // Always arrives via otp_requesting — both initial and resend paths now
+      // transition through otp_requesting before showing the entry screen.
+      if (state.name !== 'otp_requesting') return state;
       return { name: 'otp_entry', ctx: state.ctx, otp: action.otp };
 
     case 'OTP_SEND_FAILED':
       if (state.name !== 'otp_requesting') return state;
+      // Resend path: prevOtp is set — stay on the OTP screen, restore the old
+      // challenge, and show the error so the recipient knows what went wrong.
+      if (state.prevOtp) {
+        return { name: 'otp_entry', ctx: state.ctx, otp: state.prevOtp, error: action.message };
+      }
+      // Initial path: no OTP challenge yet — go back to the offer view.
       return { name: 'offer_view', ctx: state.ctx };
 
     case 'SUBMIT_CODE':
@@ -96,14 +115,14 @@ function reducer(state: Phase, action: Action): Phase {
 
     case 'OTP_FAILED':
       if (state.name !== 'otp_verifying') return state;
-      return { name: 'otp_error', ctx: state.ctx, otp: state.otp, message: action.message, locked: action.locked };
+      return { name: 'otp_error', ctx: state.ctx, otp: state.otp, message: action.message, locked: action.locked, expired: action.expired };
 
     case 'CONFIRM_ACCEPT':
       if (state.name !== 'acceptance') return state;
       return { name: 'accepting', ctx: state.ctx };
 
     case 'ACCEPTED':
-      return { name: 'completed', acceptedAt: action.acceptedAt };
+      return { name: 'completed', acceptedAt: action.acceptedAt, certificateId: action.certificateId };
 
     case 'ACCEPT_FAILED':
       if (state.name !== 'accepting') return state;
@@ -132,6 +151,9 @@ function reducer(state: Phase, action: Action): Phase {
       return state;
   }
 }
+
+// Export types for unit tests.
+export type { Phase, Action };
 
 // ─── Trust banner ──────────────────────────────────────────────────────────────
 
@@ -187,6 +209,7 @@ export function SigningClient({ token }: { token: string }) {
         type: 'OTP_FAILED',
         message: e.message,
         locked: e.code === 'OTP_LOCKED' || e.code === 'OTP_MAX_ATTEMPTS',
+        expired: e.code === 'OTP_EXPIRED',
       });
     }
   }
@@ -197,7 +220,7 @@ export function SigningClient({ token }: { token: string }) {
       const locale = Intl.DateTimeFormat().resolvedOptions().locale;
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const result = await signingApi.accept(token, challengeId, locale, timezone);
-      dispatch({ type: 'ACCEPTED', acceptedAt: result.acceptedAt });
+      dispatch({ type: 'ACCEPTED', acceptedAt: result.acceptedAt, certificateId: result.certificateId });
     } catch (err) {
       dispatch({ type: 'ACCEPT_FAILED', message: (err as ApiError).message });
     }
@@ -298,6 +321,7 @@ export function SigningClient({ token }: { token: string }) {
             codeRef={codeRef}
             error={phase.name === 'otp_error' ? phase.message : undefined}
             locked={phase.name === 'otp_error' ? phase.locked : false}
+            expired={phase.name === 'otp_error' ? phase.expired : false}
             onSubmit={() => handleVerifyCode(phase.otp)}
             onResend={handleContinue}
           />
@@ -321,7 +345,7 @@ export function SigningClient({ token }: { token: string }) {
         )}
 
         {phase.name === 'completed' && (
-          <CompletedView acceptedAt={phase.acceptedAt} />
+          <CompletedView acceptedAt={phase.acceptedAt} certificateId={phase.certificateId} />
         )}
 
         {phase.name === 'declined' && (
@@ -402,6 +426,7 @@ function OtpEntry({
   codeRef,
   error,
   locked,
+  expired,
   onSubmit,
   onResend,
 }: {
@@ -410,9 +435,19 @@ function OtpEntry({
   codeRef: React.RefObject<HTMLInputElement | null>;
   error?: string;
   locked: boolean;
+  expired: boolean;
   onSubmit: () => void;
   onResend: () => void;
 }) {
+  // Input is blocked when the code is definitively unusable.
+  const inputBlocked = locked || expired;
+
+  // Expiry clock — shows the wall-clock time the code stops being valid.
+  const expiresAtTime = new Date(otp.expiresAt).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
     <Card>
       <CardHeader title="Verify your email" border />
@@ -422,49 +457,73 @@ function OtpEntry({
           Enter it below to confirm your identity.
         </p>
 
-        {error && <Alert variant="error" className="mb-4">{error}</Alert>}
-
-        {!locked && (
-          <div className="space-y-4">
-            <div className="flex items-end gap-3">
-              <div>
-                <label htmlFor="otp-code" className="block text-xs font-medium text-gray-700 mb-1">
-                  Verification code
-                </label>
-                <input
-                  id="otp-code"
-                  ref={codeRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  autoFocus
-                  className="block w-36 rounded-lg border border-[--color-border] px-3 py-2.5 text-center text-xl tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent"
-                  placeholder="——————"
-                  onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
-                />
-              </div>
-              <Button variant="primary" size="md" onClick={onSubmit}>
-                Verify
-              </Button>
-            </div>
-          </div>
+        {/* Wrong-code error — only shown when neither locked nor expired */}
+        {error && !inputBlocked && (
+          <Alert variant="error" className="mb-4">{error}</Alert>
         )}
 
+        {/* Locked: too many wrong attempts */}
         {locked && (
-          <Alert variant="error">
+          <Alert variant="error" className="mb-4">
             Too many incorrect attempts. This code has been locked. Request a new code below.
           </Alert>
         )}
+
+        {/* Expired: code TTL elapsed — give a clear inline recovery path */}
+        {expired && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-4">
+            <p className="text-sm font-semibold text-amber-800">Your verification code has expired.</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Codes are valid for 10 minutes.{' '}
+              <button
+                onClick={onResend}
+                className="font-semibold underline underline-offset-2 hover:text-amber-900"
+              >
+                Send a new code →
+              </button>
+            </p>
+          </div>
+        )}
+
+        {/* Code entry — hidden when code is no longer usable */}
+        {!inputBlocked && (
+          <div className="flex items-end gap-3">
+            <div>
+              <label htmlFor="otp-code" className="block text-xs font-medium text-gray-700 mb-1">
+                Verification code
+                <span className="ml-2 font-normal text-gray-400">· expires {expiresAtTime}</span>
+              </label>
+              <input
+                id="otp-code"
+                ref={codeRef}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                autoFocus
+                className="block w-36 rounded-lg border border-[--color-border] px-3 py-2.5 text-center text-xl tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent"
+                placeholder="——————"
+                onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+              />
+            </div>
+            <Button variant="primary" size="md" onClick={onSubmit}>
+              Verify
+            </Button>
+          </div>
+        )}
       </CardSection>
-      <CardFooter>
-        <button
-          onClick={onResend}
-          className="text-xs text-[--color-accent] hover:underline"
-        >
-          Send a new code
-        </button>
-      </CardFooter>
+
+      {/* Footer resend link — hidden when the expired block already shows an inline CTA */}
+      {!expired && (
+        <CardFooter>
+          <button
+            onClick={onResend}
+            className="text-sm text-[--color-accent] hover:underline"
+          >
+            Didn&rsquo;t receive a code? Send a new one
+          </button>
+        </CardFooter>
+      )}
     </Card>
   );
 }
@@ -509,7 +568,7 @@ function AcceptanceView({
   );
 }
 
-function CompletedView({ acceptedAt }: { acceptedAt: string }) {
+function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; certificateId: string | null }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-fade-in">
 
@@ -576,6 +635,25 @@ function CompletedView({ acceptedAt }: { acceptedAt: string }) {
           </div>
         </div>
       </div>
+
+      {/* ── Certificate access ───────────────────────────────────────────────
+           Shown when the certificate was issued before this response.
+           When certificateId is null (still generating), the notice above
+           tells users it will be emailed to both parties — no dead-end. */}
+      {certificateId && (
+        <a
+          href={`/verify/${certificateId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 mb-6 px-5 py-2.5 rounded-xl border border-green-300 bg-white text-sm font-medium text-green-700 hover:bg-green-50 transition-colors shadow-sm"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 flex-shrink-0" aria-hidden="true">
+            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+            <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+          </svg>
+          View acceptance certificate
+        </a>
+      )}
 
       {/* ── Trust footer ────────────────────────────────────────────────────── */}
       <p className="text-xs text-[--color-text-muted]">

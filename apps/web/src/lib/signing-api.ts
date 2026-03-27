@@ -26,7 +26,9 @@ export interface VerifyResult {
 export interface AcceptResult {
   acceptanceRecordId: string;
   acceptedAt: string;
-  certificate: null;
+  // Server returns null when certificate generation is still in-flight;
+  // non-null when the certificate was issued synchronously before the response.
+  certificateId: string | null;
 }
 
 export interface ApiError {
