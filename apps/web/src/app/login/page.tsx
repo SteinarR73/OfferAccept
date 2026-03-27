@@ -37,7 +37,7 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
       {/* Brand */}
       <div className="flex items-center gap-2 mb-8">
-        <span className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-sm font-bold select-none">
+        <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
           OA
         </span>
         <span className="font-semibold text-gray-900">OfferAccept</span>

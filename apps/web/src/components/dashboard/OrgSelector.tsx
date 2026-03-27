@@ -67,27 +67,27 @@ export function OrgSelector() {
         aria-label={`Current organization: ${displayName}. Your role: ${roleLabel}`}
         className={cn(
           'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm',
-          'text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors',
-          'border border-gray-200',
-          'focus-visible:ring-2 focus-visible:ring-blue-500',
+          'text-slate-300 bg-white/5 hover:bg-white/10 transition-colors',
+          'border border-white/10',
+          'focus-visible:ring-2 focus-visible:ring-[--color-accent]',
         )}
       >
         {/* Org avatar */}
         <span
-          className="flex-shrink-0 w-7 h-7 rounded-md bg-blue-600 text-white text-xs font-bold flex items-center justify-center select-none"
+          className="flex-shrink-0 w-7 h-7 rounded-md bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center select-none"
           aria-hidden="true"
         >
           {(orgName ?? 'O').charAt(0).toUpperCase()}
         </span>
 
         <span className="flex-1 text-left min-w-0">
-          <span className="block font-medium truncate">{displayName}</span>
-          <span className="block text-xs text-gray-400">{roleLabel}</span>
+          <span className="block font-medium text-white/90 truncate">{displayName}</span>
+          <span className="block text-xs text-slate-400">{roleLabel}</span>
         </span>
 
         {/* Chevron */}
         <svg
-          className={cn('w-4 h-4 text-gray-400 flex-shrink-0 transition-transform', open && 'rotate-180')}
+          className={cn('w-4 h-4 text-slate-500 flex-shrink-0 transition-transform', open && 'rotate-180')}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -113,19 +113,19 @@ export function OrgSelector() {
           <div
             role="option"
             aria-selected="true"
-            className="flex items-center gap-2.5 px-3 py-2.5 bg-blue-50 cursor-default"
+            className="flex items-center gap-2.5 px-3 py-2.5 bg-[--color-accent-light] cursor-default"
           >
             <span
-              className="w-7 h-7 rounded-md bg-blue-600 text-white text-xs font-bold flex items-center justify-center"
+              className="w-7 h-7 rounded-md bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center"
               aria-hidden="true"
             >
               {(orgName ?? 'O').charAt(0).toUpperCase()}
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-              <p className="text-xs text-blue-600">{roleLabel} · current</p>
+              <p className="text-xs text-[--color-accent]">{roleLabel} · current</p>
             </div>
-            <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <svg className="w-4 h-4 text-[--color-accent]" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 011.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           </div>

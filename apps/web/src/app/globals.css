@@ -1,21 +1,35 @@
 @import "tailwindcss";
 
+/* ── Font theme (Tailwind v4 @theme) ────────────────────────────── */
+@theme {
+  --font-family-sans:  var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-family-serif: var(--font-serif), ui-serif, Georgia, serif;
+  --font-family-mono:  var(--font-mono), ui-monospace, 'Courier New', monospace;
+}
+
 /* ── Design tokens ──────────────────────────────────────────────── */
 :root {
   /* Layout */
   --sidebar-width: 15rem;
   --header-height: 4rem;
 
-  /* Color palette */
-  --color-accent:       #2563eb;
-  --color-accent-hover: #1d4ed8;
-  --color-accent-light: #eff6ff;
+  /* Color palette — "Trust Green" brand */
+  --color-accent:       #059669;   /* emerald-600 */
+  --color-accent-hover: #047857;   /* emerald-700 */
+  --color-accent-light: #ecfdf5;   /* emerald-50  */
+  --color-accent-text:  #065f46;   /* emerald-900 */
   --color-surface:      #ffffff;
   --color-bg:           #f8fafc;
   --color-border:       #e2e8f0;
   --color-text-primary:   #0f172a;
   --color-text-secondary: #475569;
   --color-text-muted:     #94a3b8;
+
+  /* Sidebar (dark) */
+  --color-sidebar-bg:          #0f172a;   /* slate-950 */
+  --color-sidebar-text:        #94a3b8;   /* slate-400 */
+  --color-sidebar-active-bg:   rgba(5,150,105,0.12);
+  --color-sidebar-active-text: #34d399;   /* emerald-400 */
 
   /* Elevation */
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
@@ -40,7 +54,7 @@
 
 /* ── Focus visible ring (WCAG 2.2 2.4.11) ──────────────────────── */
 :focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #059669;
   outline-offset: 2px;
 }
 
@@ -138,7 +152,7 @@
 
 /* ── Table hover row ────────────────────────────────────────────── */
 .table-row-hover:hover { background-color: #f9fafb; }
-.table-row-hover:focus-within { background-color: #eff6ff; }
+.table-row-hover:focus-within { background-color: #ecfdf5; }
 
 /* ── Micro-interactions ─────────────────────────────────────────── */
 .btn-lift { transition: box-shadow 0.15s ease, transform 0.15s ease; }
@@ -147,3 +161,13 @@
 
 .card-hover { transition: box-shadow 0.2s ease; }
 .card-hover:hover { box-shadow: 0 4px 12px rgb(0 0 0 / 0.1); }
+
+/* ── Reduced-motion: honour OS preference ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

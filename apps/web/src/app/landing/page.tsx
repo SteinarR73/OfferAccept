@@ -32,14 +32,14 @@ function LandingNav() {
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100">
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2 font-semibold text-gray-900 text-sm select-none">
-          <span className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+          <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
             OA
           </span>
           OfferAccept
         </div>
         <Link
           href="/login"
-          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded px-1"
+          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded px-1"
         >
           Sign in →
         </Link>
@@ -53,14 +53,14 @@ function LandingNav() {
 function Hero() {
   return (
     <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
-      <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 mb-6">
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 mb-6">
         <span aria-hidden="true">✦</span>
         Trusted by 500+ employers
       </div>
 
-      <h1 className="text-5xl font-bold tracking-tight text-gray-900 leading-tight mb-5">
+      <h1 className="font-serif text-5xl tracking-tight text-gray-900 leading-tight mb-5">
         Send deals.<br />Get verified acceptance.{' '}
-        <span className="text-blue-600">Instantly.</span>
+        <span className="text-[--color-accent]">Instantly.</span>
       </h1>
 
       <p className="text-lg text-gray-500 max-w-xl mx-auto mb-8 leading-relaxed">
@@ -71,7 +71,7 @@ function Hero() {
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[--color-accent] text-white text-sm font-medium hover:bg-[--color-accent-hover] transition-colors shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2"
         >
           Start for free
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -80,7 +80,7 @@ function Hero() {
         </Link>
         <a
           href="#how-it-works"
-          className="inline-flex items-center gap-1 px-5 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-1 px-5 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2"
         >
           See how it works
         </a>
@@ -98,7 +98,7 @@ function Hero() {
         </div>
         <div className="bg-white px-6 py-5">
           <div className="flex items-start gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">OA</div>
+            <div className="w-8 h-8 rounded-full bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">OA</div>
             <div>
               <p className="text-xs font-semibold text-gray-900">Acme Corp has sent you a deal</p>
               <p className="text-xs text-gray-400 mt-0.5">Senior Engineer — Q1 2026</p>
@@ -113,7 +113,7 @@ function Hero() {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-xs text-white font-medium">Accept deal</div>
+            <div className="flex-1 h-9 rounded-lg bg-[--color-accent] flex items-center justify-center text-xs text-white font-medium">Accept deal</div>
             <div className="flex-1 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500">Decline</div>
           </div>
         </div>
@@ -125,10 +125,10 @@ function Hero() {
 // ─── Trust strip ─────────────────────────────────────────────────────────────
 
 const TRUST = [
-  { icon: '🔒', label: '256-bit encryption', desc: 'End-to-end secure' },
-  { icon: '📜', label: 'Tamper-proof certs', desc: 'SHA-256 hash chain' },
-  { icon: '✉️', label: 'OTP-verified identity', desc: 'Recipient accepted' },
-  { icon: '⏱', label: '15-min access tokens', desc: 'Time-limited links' },
+  { label: '256-bit encryption', desc: 'End-to-end secure' },
+  { label: 'Tamper-proof certs', desc: 'SHA-256 hash chain' },
+  { label: 'OTP-verified identity', desc: 'Recipient accepted' },
+  { label: '15-min access tokens', desc: 'Time-limited links' },
 ];
 
 function TrustStrip() {
@@ -137,7 +137,9 @@ function TrustStrip() {
       <div className="max-w-5xl mx-auto px-6 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
         {TRUST.map((t) => (
           <div key={t.label} className="flex items-center gap-3">
-            <span className="text-xl" role="img" aria-label={t.label}>{t.icon}</span>
+            <svg className="w-5 h-5 text-[--color-accent] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
             <div>
               <p className="text-xs font-semibold text-gray-900">{t.label}</p>
               <p className="text-[11px] text-gray-500">{t.desc}</p>

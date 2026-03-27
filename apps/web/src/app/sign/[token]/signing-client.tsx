@@ -378,7 +378,7 @@ function OfferView({
       <p className="text-sm text-[--color-text-muted] mb-1">
         Deal from <span className="font-medium text-gray-700">{ctx.senderName}</span>
       </p>
-      <h1 className="text-2xl font-semibold text-[--color-text-primary]">{ctx.offerTitle}</h1>
+      <h1 className="font-serif text-2xl text-[--color-text-primary]">{ctx.offerTitle}</h1>
 
       {ctx.offerMessage && (
         <p className="mt-4 whitespace-pre-wrap text-sm text-[--color-text-secondary] leading-relaxed">{ctx.offerMessage}</p>

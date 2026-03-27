@@ -3,7 +3,7 @@ import { cn } from '@/lib/cn';
 const BASE_INPUT =
   'w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 ' +
   'placeholder-gray-400 transition-colors ' +
-  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ' +
+  'focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent ' +
   'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed read-only:bg-gray-50';
 
 // ── Input ─────────────────────────────────────────────────────────────────────

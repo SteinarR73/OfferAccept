@@ -2,9 +2,9 @@ import { cn } from '@/lib/cn';
 import { Spinner } from './Spinner';
 
 const VARIANT = {
-  primary:   'bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500 shadow-sm',
-  secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus-visible:ring-blue-500 shadow-sm',
-  ghost:     'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-blue-500',
+  primary:   'bg-[--color-accent] text-white hover:bg-[--color-accent-hover] focus-visible:ring-[--color-accent] shadow-sm hover:shadow-md',
+  secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus-visible:ring-[--color-accent] shadow-sm',
+  ghost:     'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-[--color-accent]',
   danger:    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm',
 } as const;
 

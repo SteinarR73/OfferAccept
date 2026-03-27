@@ -37,7 +37,8 @@
       "Bash(ls c:/Users/steir/OfferAccept/node_modules/pg-boss/dist/*.d.ts)",
       "Bash(grep '\"\"prisma\"\"\\\\|\"\"@prisma/client\"\"' c:/Users/steir/OfferAccept/packages/database/package.json)",
       "Bash(grep '\"\"@prisma/client\"\"' c:/Users/steir/OfferAccept/apps/api/package.json)",
-      "Bash(find /c/Users/steir/OfferAccept -type f -name *webhook*)"
+      "Bash(find /c/Users/steir/OfferAccept -type f -name *webhook*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\steir\\.claude\\projects\\c--Users-steir-OfferAccept\\memory",
