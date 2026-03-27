@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Download, Link2, CheckCircle2, Shield, ExternalLink } from 'lucide-react';
-import { getCertificate, exportCertificate, type CertificateDetail } from '@/lib/offers-api';
+import { getCertificate, type CertificateDetail } from '@/lib/offers-api';
+import { generateCertificatePdf } from '@/lib/certificate-pdf';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 
@@ -36,14 +37,15 @@ export function CertificateShowcase({ certificateId }: Props) {
   }
 
   async function handleDownload() {
+    if (!cert) return;
     setDownloading(true);
     try {
-      const data = await exportCertificate(certificateId);
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const pdfBytes = await generateCertificatePdf(cert, window.location.origin);
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `certificate-${data.certificateId}.json`;
+      a.download = `acceptance-certificate-${cert.certificateId.slice(0, 8)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -95,10 +97,10 @@ export function CertificateShowcase({ certificateId }: Props) {
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-1.5">
           <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" aria-hidden="true" />
-          <h2 className="text-xl font-bold text-green-800">Acceptance verified</h2>
+          <h2 className="text-xl font-bold text-green-800">Deal accepted</h2>
         </div>
         <p className="text-sm text-green-700 max-w-sm mx-auto">
-          This deal has been accepted and a tamper-proof certificate has been issued.
+          A tamper-proof acceptance certificate has been issued. Download the PDF to share with your team.
         </p>
       </div>
 
@@ -132,7 +134,7 @@ export function CertificateShowcase({ certificateId }: Props) {
           leftIcon={<Download className="w-3.5 h-3.5" aria-hidden="true" />}
           className="bg-green-600 hover:bg-green-700 focus:ring-green-500 border-green-600"
         >
-          Download certificate
+          Download PDF
         </Button>
         <Button
           variant="secondary"
