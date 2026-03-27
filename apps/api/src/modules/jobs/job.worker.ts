@@ -43,6 +43,39 @@ import { ReconcileCertificatesHandler } from './handlers/reconcile-certificates.
 //   Controls how many concurrent workers poll the queue per process.
 //   For sweep jobs (expire-*) 1 is sufficient — one batch per tick.
 //   For event-driven jobs increase to match expected throughput.
+//
+// ─── Monitoring & Alerting ──────────────────────────────────────────────────
+//
+// Structured log metrics (query in your log aggregator by the `metric` field):
+//
+//   metric=rate_limit_exceeded      — alert if > 50/min sustained
+//                                     (spike on otp_verification/login = attack)
+//   metric=rate_limit_redis_error   — alert on any occurrence (Redis down)
+//   metric=email_delivery_failed    — alert on > 3 in 5 min (Resend outage)
+//   event=certificate_dlq_risk      — alert on any occurrence (cert gen failing)
+//   metric=notify_deal_accepted_failed — alert if job lands in DLQ (lost email)
+//
+// DLQ alert — run every hour, alert if count > 0 for critical queues:
+//   SELECT name, count(*), max(archivedon) AS latest
+//   FROM pgboss.archive
+//   WHERE archivedon > now() - interval '1 hour'
+//   GROUP BY name ORDER BY count DESC;
+//
+// Critical queues (DLQ tolerance = 0): issue-certificate, notify-deal-accepted
+// Best-effort queues (DLQ tolerance > 0 ok): send-webhook, send-reminders
+//
+// Job lag alert — stuck jobs (created but not picked up within expected window):
+//   SELECT name, count(*), min(createdon) AS oldest
+//   FROM pgboss.job
+//   WHERE state = 'created'
+//   GROUP BY name
+//   HAVING min(createdon) < now() - interval '15 minutes';
+//
+// Job failure rate — jobs that failed at least once (monitor for rising trend):
+//   SELECT name, state, count(*)
+//   FROM pgboss.job
+//   WHERE createdon > now() - interval '1 hour'
+//   GROUP BY name, state ORDER BY name, state;
 
 const WORKER_OPTIONS: Record<Exclude<JobName, 'send-email'>, WorkOptions> = {
   'expire-sessions':           { batchSize: 1, localConcurrency: 1 },

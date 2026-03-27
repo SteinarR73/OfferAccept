@@ -242,10 +242,17 @@ export class RateLimitService implements OnApplicationShutdown {
     if (!allowed) {
       const resetAt = new Date(resetAtMs);
       const retryAfterMs = Math.max(0, resetAtMs - now);
-      // Metric: rate_limit_exceeded — monitor this to detect attacks.
-      // High frequency of this log = likely abuse or misconfigured limit.
+      // Metric: rate_limit_exceeded — alert if this fires > 50×/min sustained.
+      // Sudden spike on otp_verification / login_attempt = active credential-stuffing.
+      // Sustained hits on deal_send / invite_attempt = API abuse or runaway client.
+      // Structured JSON so log aggregators can group by profile and build rate charts.
       this.logger.warn(
-        `[rate_limit_exceeded] profile=${profile} key=${key} retryAfterMs=${retryAfterMs}`,
+        JSON.stringify({
+          metric: 'rate_limit_exceeded',
+          profile,
+          key,
+          retryAfterMs,
+        }),
       );
       throw new RateLimitExceededError(retryAfterMs, resetAt);
     }
@@ -273,9 +280,15 @@ export class RateLimitService implements OnApplicationShutdown {
       };
     } catch (err) {
       // Metric: rate_limit_redis_error — same event as in check(), but from peek().
+      // Alert on any occurrence — indicates Redis connectivity issues.
       this.logger.error(
-        `[rate_limit_redis_error] profile=${profile} key=${key} action=peek_fail_open ` +
-        `error=${err instanceof Error ? err.message : String(err)}`,
+        JSON.stringify({
+          metric: 'rate_limit_redis_error',
+          profile,
+          key,
+          action: 'peek_fail_open',
+          error: err instanceof Error ? err.message : String(err),
+        }),
       );
       // Fail-open: return full remaining count so callers can still serve headers.
       return { remaining: limit, resetAt: new Date(now + windowMs) };
