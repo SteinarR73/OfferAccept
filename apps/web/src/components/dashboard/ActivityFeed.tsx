@@ -79,7 +79,7 @@ export function ActivityFeed({ maxItems = 8 }: ActivityFeedProps) {
           {events.map((event) => (
             <li key={event.id}>
               <Link
-                href={`/dashboard/offers/${event.dealId}`}
+                href={`/dashboard/deals/${event.dealId}`}
                 className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:bg-blue-50"
               >
                 {/* Status dot */}

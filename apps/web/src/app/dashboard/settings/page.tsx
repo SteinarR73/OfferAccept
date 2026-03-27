@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { User, Users, Key, Webhook, Copy, Trash2, Plus, Check } from 'lucide-react';
+
+// Team, API Keys, and Webhooks are hidden for v1 launch.
+// The underlying tab components remain implemented for post-launch activation.
+// To restore: add the tab entries back to TABS and update TabId.
 import {
   getMe,
   getOrg,
@@ -35,9 +39,6 @@ type TabId = 'profile' | 'team' | 'api-keys' | 'webhooks';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-3.5 h-3.5" aria-hidden="true" /> },
-  { id: 'team', label: 'Team', icon: <Users className="w-3.5 h-3.5" aria-hidden="true" /> },
-  { id: 'api-keys', label: 'API Keys', icon: <Key className="w-3.5 h-3.5" aria-hidden="true" /> },
-  { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-3.5 h-3.5" aria-hidden="true" /> },
 ];
 
 // ─── Profile tab ──────────────────────────────────────────────────────────────
@@ -626,7 +627,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <PageHeader title="Settings" description="Manage your account, team, and integrations." />
+      <PageHeader title="Settings" description="Manage your account." />
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-gray-200 mb-6">

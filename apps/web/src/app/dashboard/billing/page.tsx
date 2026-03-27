@@ -23,22 +23,22 @@ const PLAN_META: Record<SubscriptionPlan, { label: string; price: string; featur
   FREE: {
     label: 'Free',
     price: '$0/mo',
-    features: ['3 offers / month', 'PDF & DOCX documents', 'Acceptance certificates', 'Email support'],
+    features: ['3 deals / month', 'PDF & DOCX documents', 'Acceptance certificates', 'Email support'],
   },
   STARTER: {
     label: 'Starter',
     price: '$29/mo',
-    features: ['25 offers / month', 'All Free features', 'Custom expiry dates', 'Priority email support'],
+    features: ['25 deals / month', 'All Free features', 'Custom expiry dates', 'Priority email support'],
   },
   PROFESSIONAL: {
     label: 'Professional',
     price: '$79/mo',
-    features: ['100 offers / month', 'All Starter features', 'API access', 'Webhooks', 'Priority support'],
+    features: ['100 deals / month', 'All Starter features', 'API access', 'Webhooks', 'Priority support'],
   },
   ENTERPRISE: {
     label: 'Enterprise',
     price: 'Custom',
-    features: ['Unlimited offers', 'All Professional features', 'SLA guarantee', 'Dedicated support', 'Custom onboarding'],
+    features: ['Unlimited deals', 'All Professional features', 'SLA guarantee', 'Dedicated support', 'Custom onboarding'],
   },
 };
 
@@ -128,7 +128,7 @@ export default function BillingPage() {
             )}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Offers this month</span>
+                <span className="text-gray-600">Deals this month</span>
                 <span className="font-semibold text-gray-900">
                   {sub.monthlyOfferCount} / {limit ?? '∞'}
                 </span>
@@ -139,7 +139,7 @@ export default function BillingPage() {
                   aria-valuenow={usagePct}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={`${usagePct}% of monthly offer limit used`}
+                  aria-label={`${usagePct}% of monthly deal limit used`}
                   className="h-2 bg-gray-100 rounded-full overflow-hidden"
                 >
                   <div

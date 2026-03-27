@@ -150,11 +150,11 @@ export default function NewDealWizardPage() {
     setError(null);
     try {
       await sendOffer(draftOfferId);
-      router.push(`/dashboard/offers/${draftOfferId}?sent=1`);
+      router.push(`/dashboard/deals/${draftOfferId}?sent=1`);
     } catch (err: unknown) {
       if (err instanceof ApiError && err.code === 'PLAN_LIMIT_EXCEEDED') {
-        // Server message already says e.g. "Your free plan allows 5 offer(s) per month.
-        // Upgrade your plan to send more offers." — surface it directly.
+        // Server message already says e.g. "Your free plan allows 5 deal(s) per month.
+        // Upgrade your plan to send more deals." — surface it directly.
         setError(err.message);
       } else {
         // Generic: deal was saved as DRAFT so no work is lost; user can retry.
@@ -191,7 +191,7 @@ export default function NewDealWizardPage() {
           <Alert variant="error" dismissible className="mb-4" onDismiss={() => setError(null)}>
             {error}
             {draftOfferId && error.startsWith('Deal created') && (
-              <>{' '}<a href={`/dashboard/offers/${draftOfferId}`} className="underline font-medium">Open deal →</a></>
+              <>{' '}<a href={`/dashboard/deals/${draftOfferId}`} className="underline font-medium">Open deal →</a></>
             )}
           </Alert>
         )}
@@ -371,7 +371,7 @@ function StepDocument({ offerId, state, onTemplateSelect, onUploaded, onUploadin
         <Card>
           <CardHeader
             title="Upload document"
-            description="PDF or DOCX — or skip and add later from the deal page."
+            description="PDF or DOCX — optional. You can attach a document from the deal page after sending."
             border
           />
           <CardSection>

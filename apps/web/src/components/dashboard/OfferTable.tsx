@@ -342,7 +342,7 @@ export function OfferTable({
                     <div className="flex items-center gap-1.5">
                       <HealthDot offer={offer} />
                       <Link
-                        href={`/dashboard/offers/${offer.id}`}
+                        href={`/dashboard/deals/${offer.id}`}
                         className="font-medium text-gray-900 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
                       >
                         {search ? <Highlight text={offer.title} query={search} /> : offer.title}
@@ -377,7 +377,7 @@ export function OfferTable({
                   </td>
                   <td className="px-3 py-3.5 text-right">
                     <Link
-                      href={`/dashboard/offers/${offer.id}`}
+                      href={`/dashboard/deals/${offer.id}`}
                       className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors"
                       aria-label={`Open deal: ${offer.title}`}
                     >

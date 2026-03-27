@@ -103,7 +103,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
       {/* Deal name */}
       <td className="px-5 py-3.5">
         <Link
-          href={`/dashboard/offers/${offer.id}`}
+          href={`/dashboard/deals/${offer.id}`}
           className="font-medium text-gray-900 hover:text-blue-600 transition-colors line-clamp-1 focus-visible:outline-none focus-visible:text-blue-600"
         >
           {offer.title}
@@ -134,7 +134,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
       {/* Action */}
       <td className="px-5 py-3.5 text-right">
         <Link
-          href={`/dashboard/offers/${offer.id}`}
+          href={`/dashboard/deals/${offer.id}`}
           className="text-xs font-medium text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100"
           aria-label={`View deal: ${offer.title}`}
         >

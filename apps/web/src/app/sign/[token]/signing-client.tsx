@@ -541,7 +541,7 @@ function AcceptanceView({
 }) {
   return (
     <div>
-      <h2 className="text-xl font-semibold text-[--color-text-primary] mb-2">Confirm acceptance</h2>
+      <h2 className="text-xl font-semibold text-[--color-text-primary] mb-2">Accept this deal</h2>
       <p className="text-sm text-[--color-text-secondary] mb-4">
         By clicking <strong>I Accept</strong>, you agree to the following:
       </p>
@@ -593,7 +593,7 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
       {/* ── Heading ─────────────────────────────────────────────────────────── */}
       <h1 className="text-3xl font-bold text-gray-900 mb-3">You&rsquo;re all set.</h1>
       <p className="text-base text-gray-700 font-medium max-w-sm mb-2">
-        This deal has been accepted and verified.
+        This deal has been accepted.
       </p>
       <p className="text-sm text-[--color-text-secondary] max-w-sm mb-6">
         Accepted on{' '}

@@ -85,7 +85,7 @@ export function otpEmail(p: OtpEmailParams): EmailTemplate {
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `You requested a verification code to review the offer "${p.offerTitle}".`,
+    `You requested a verification code to review the deal "${p.offerTitle}".`,
     ``,
     `Your code is:`,
     ``,
@@ -104,7 +104,7 @@ export function otpEmail(p: OtpEmailParams): EmailTemplate {
 
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
-    <p style="margin:0 0 20px;color:#374151">You requested a verification code to review the offer <strong>${escapeHtml(p.offerTitle)}</strong>.</p>
+    <p style="margin:0 0 20px;color:#374151">You requested a verification code to review the deal <strong>${escapeHtml(p.offerTitle)}</strong>.</p>
     <div style="background:#f3f4f6;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px">
       <div style="font-size:36px;font-weight:700;letter-spacing:8px;font-family:'Courier New',monospace;color:#111827">${escapeHtml(p.code)}</div>
       <div style="font-size:13px;color:#6b7280;margin-top:8px">Expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}</div>
@@ -125,16 +125,16 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
     ? `This link expires on ${formatDate(p.expiresAt)}.`
     : 'This link does not have a specific expiry date.';
 
-  const subject = `${p.senderName} has sent you an offer: "${p.offerTitle}"`;
+  const subject = `${p.senderName} has sent you a deal: "${p.offerTitle}"`;
 
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `${p.senderName} has sent you a commercial offer for your review:`,
+    `${p.senderName} has sent you a deal for your review:`,
     ``,
     `  ${p.offerTitle}`,
     ``,
-    `To review and respond to this offer, open the link below:`,
+    `To review and respond to this deal, open the link below:`,
     ``,
     `  ${p.signingUrl}`,
     ``,
@@ -147,13 +147,13 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
 
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
-    <p style="margin:0 0 20px;color:#374151"><strong>${escapeHtml(p.senderName)}</strong> has sent you a commercial offer for your review.</p>
+    <p style="margin:0 0 20px;color:#374151"><strong>${escapeHtml(p.senderName)}</strong> has sent you a deal for your review.</p>
     <div style="border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:0 0 24px;background:#f9fafb">
-      <div style="font-size:13px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Offer</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deal</div>
       <div style="font-size:18px;font-weight:600;color:#111827">${escapeHtml(p.offerTitle)}</div>
     </div>
-    <p style="margin:0 0 20px;color:#374151">To review and respond to this offer, click the button below. You will be asked to verify your email address first.</p>
-    <p style="margin:0 0 20px">${button(p.signingUrl, 'Review offer')}</p>
+    <p style="margin:0 0 20px;color:#374151">To review and respond to this deal, click the button below. You will be asked to verify your email address first.</p>
+    <p style="margin:0 0 20px">${button(p.signingUrl, 'Review deal')}</p>
     <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
     <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.signingUrl)}</p>
     <p style="margin:0;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>`,
@@ -166,13 +166,13 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
 // ─── 3. Acceptance confirmation to sender ─────────────────────────────────────
 
 export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSenderParams): EmailTemplate {
-  const subject = `${p.recipientName} has accepted your offer: "${p.offerTitle}"`;
+  const subject = `${p.recipientName} has accepted your deal: "${p.offerTitle}"`;
   const acceptedAtStr = formatDate(p.acceptedAt);
 
   const text = [
     `Hi ${p.senderName},`,
     ``,
-    `${p.recipientName} (${p.recipientEmail}) has accepted your offer "${p.offerTitle}".`,
+    `${p.recipientName} (${p.recipientEmail}) has accepted your deal "${p.offerTitle}".`,
     ``,
     `Accepted at: ${acceptedAtStr}`,
     `Certificate ID: ${p.certificateId}`,
@@ -185,12 +185,12 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
     <div style="border-left:4px solid #16a34a;padding:12px 16px;margin:0 0 24px;background:#f0fdf4;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Offer accepted</p>
-      <p style="margin:4px 0 0;color:#166534">${escapeHtml(p.recipientName)} has accepted your offer.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Deal accepted</p>
+      <p style="margin:4px 0 0;color:#166534">${escapeHtml(p.recipientName)} has accepted your deal.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Offer</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">
@@ -222,7 +222,7 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `This confirms that you have accepted the offer "${p.offerTitle}" from ${p.senderName}.`,
+    `This confirms that you have accepted the deal "${p.offerTitle}" from ${p.senderName}.`,
     ``,
     `Accepted at: ${acceptedAtStr}`,
     `Certificate ID: ${p.certificateId}`,
@@ -237,11 +237,11 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
     <div style="border-left:4px solid #16a34a;padding:12px 16px;margin:0 0 24px;background:#f0fdf4;border-radius:0 6px 6px 0">
       <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Acceptance confirmed</p>
-      <p style="margin:4px 0 0;color:#166534">You have accepted the offer from ${escapeHtml(p.senderName)}.</p>
+      <p style="margin:4px 0 0;color:#166534">You have accepted the deal from ${escapeHtml(p.senderName)}.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Offer</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">
@@ -556,13 +556,13 @@ export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
 // ─── 5. Decline notification to sender ────────────────────────────────────────
 
 export function declineNotificationEmail(p: DeclineNotificationParams): EmailTemplate {
-  const subject = `${p.recipientName} has declined your offer: "${p.offerTitle}"`;
+  const subject = `${p.recipientName} has declined your deal: "${p.offerTitle}"`;
   const declinedAtStr = formatDate(p.declinedAt);
 
   const text = [
     `Hi ${p.senderName},`,
     ``,
-    `${p.recipientName} (${p.recipientEmail}) has declined your offer "${p.offerTitle}".`,
+    `${p.recipientName} (${p.recipientEmail}) has declined your deal "${p.offerTitle}".`,
     ``,
     `Declined at: ${declinedAtStr}`,
     ``,
@@ -575,12 +575,12 @@ export function declineNotificationEmail(p: DeclineNotificationParams): EmailTem
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
     <div style="border-left:4px solid #dc2626;padding:12px 16px;margin:0 0 24px;background:#fef2f2;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#dc2626">Offer declined</p>
-      <p style="margin:4px 0 0;color:#991b1b">${escapeHtml(p.recipientName)} has declined your offer.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#dc2626">Deal declined</p>
+      <p style="margin:4px 0 0;color:#991b1b">${escapeHtml(p.recipientName)} has declined your deal.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Offer</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">

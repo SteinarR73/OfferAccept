@@ -127,7 +127,7 @@ function Hero() {
 const TRUST = [
   { icon: '🔒', label: '256-bit encryption', desc: 'End-to-end secure' },
   { icon: '📜', label: 'Tamper-proof certs', desc: 'SHA-256 hash chain' },
-  { icon: '✉️', label: 'OTP-verified identity', desc: 'Recipient confirmed' },
+  { icon: '✉️', label: 'OTP-verified identity', desc: 'Recipient accepted' },
   { icon: '⏱', label: '15-min access tokens', desc: 'Time-limited links' },
 ];
 

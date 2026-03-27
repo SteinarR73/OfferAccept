@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: { default: 'OfferAccept', template: '%s | OfferAccept' },
-  description: 'Secure offer letter management with tamper-proof acceptance certificates.',
+  description: 'Secure deal management with tamper-proof acceptance certificates.',
   openGraph: {
     siteName: 'OfferAccept',
     type: 'website',

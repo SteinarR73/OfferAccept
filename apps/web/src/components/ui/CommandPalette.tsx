@@ -38,11 +38,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   // Build commands — stable because router/onClose/logout don't change
   const commands: PaletteCommand[] = [
     {
-      id: 'new-offer',
-      label: 'New offer',
-      description: 'Create a new offer letter',
+      id: 'new-deal',
+      label: 'New deal',
+      description: 'Create a new deal',
       icon: <Plus className="w-4 h-4" aria-hidden="true" />,
-      action: () => { router.push('/dashboard/offers/new'); onClose(); },
+      action: () => { router.push('/dashboard/deals/new'); onClose(); },
       keywords: ['create', 'draft'],
     },
     {
@@ -53,11 +53,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       keywords: ['overview', 'home'],
     },
     {
-      id: 'offers',
-      label: 'Go to Offers',
+      id: 'deals',
+      label: 'Go to Deals',
       icon: <FileText className="w-4 h-4" aria-hidden="true" />,
-      action: () => { router.push('/dashboard/offers'); onClose(); },
-      keywords: ['list', 'all offers'],
+      action: () => { router.push('/dashboard/deals'); onClose(); },
+      keywords: ['list', 'all deals'],
     },
     {
       id: 'billing',

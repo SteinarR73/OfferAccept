@@ -41,7 +41,10 @@ export default function DealDetailPage() {
   const refresh = useCallback(() => {
     getOffer(id)
       .then((data) => setOffer(data as OfferItemExtended))
-      .catch((err: Error) => setError(err.message));
+      .catch((err: { statusCode?: number }) => {
+        if (err.statusCode === 404) setError('Deal not found.');
+        else setError('Could not load deal. Please try again.');
+      });
   }, [id]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -142,7 +145,7 @@ export default function DealDetailPage() {
               <CheckCircle2 className="w-8 h-8 text-white" aria-hidden="true" />
             </div>
           </div>
-          <h2 className="text-lg font-bold text-green-800 mb-1">Acceptance verified</h2>
+          <h2 className="text-lg font-bold text-green-800 mb-1">Deal accepted</h2>
           <p className="text-sm text-green-700">Certificate generation is in progress — refresh in a moment.</p>
         </div>
       )}

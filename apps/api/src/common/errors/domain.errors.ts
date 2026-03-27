@@ -55,13 +55,13 @@ export class TokenInvalidError extends DomainError {
 
 export class SessionExpiredError extends DomainError {
   constructor() {
-    super('This signing session has expired. Please re-open the offer link.');
+    super('This signing session has expired. Please re-open the deal link.');
   }
 }
 
 export class SessionNotVerifiedError extends DomainError {
   constructor() {
-    super('Email verification is required before accepting this offer.');
+    super('Email verification is required before accepting this deal.');
   }
 }
 
@@ -119,8 +119,8 @@ export class OtpRecipientLockedError extends DomainError {
 export class OfferNotEditableError extends DomainError {
   constructor(public readonly currentStatus: string) {
     super(
-      `This offer cannot be edited because it is in '${currentStatus}' status. ` +
-      `Only DRAFT offers can be modified.`,
+      `This deal cannot be edited because it is in '${currentStatus}' status. ` +
+      `Only DRAFT deals can be modified.`,
     );
   }
 }
@@ -129,7 +129,7 @@ export class OfferNotEditableError extends DomainError {
 export class OfferIncompleteError extends DomainError {
   constructor(public readonly missingFields: string[]) {
     super(
-      `This offer is not ready to send. Missing or incomplete: ${missingFields.join(', ')}.`,
+      `This deal is not ready to send. Missing or incomplete: ${missingFields.join(', ')}.`,
     );
   }
 }
@@ -138,7 +138,7 @@ export class OfferIncompleteError extends DomainError {
 export class OfferNotRevocableError extends DomainError {
   constructor(public readonly currentStatus: string) {
     super(
-      `This offer cannot be revoked because it is in '${currentStatus}' status.`,
+      `This deal cannot be revoked because it is in '${currentStatus}' status.`,
     );
   }
 }
@@ -148,8 +148,8 @@ export class OfferNotRevocableError extends DomainError {
 export class OfferNotResendableError extends DomainError {
   constructor(public readonly reason: string) {
     super(
-      `This offer cannot be resent. Reason: ${reason}. ` +
-      `Only SENT offers with a valid recipient token can be resent.`,
+      `This deal cannot be resent. Reason: ${reason}. ` +
+      `Only SENT deals with a valid recipient token can be resent.`,
     );
   }
 }
@@ -158,19 +158,19 @@ export class OfferNotResendableError extends DomainError {
 
 export class OfferExpiredError extends DomainError {
   constructor() {
-    super('This offer has expired.');
+    super('This deal has expired.');
   }
 }
 
 export class OfferNotSentError extends DomainError {
   constructor() {
-    super('This offer has not been sent yet.');
+    super('This deal has not been sent yet.');
   }
 }
 
 export class OfferAlreadyAcceptedError extends DomainError {
   constructor() {
-    super('This offer has already been accepted.');
+    super('This deal has already been accepted.');
   }
 }
 
@@ -299,8 +299,8 @@ export class PlanLimitExceededError extends DomainError {
     public readonly limit: number,
   ) {
     super(
-      `Your ${plan} plan allows ${limit} offer(s) per month. ` +
-      `Upgrade your plan to send more offers.`,
+      `Your ${plan} plan allows ${limit} deal(s) per month. ` +
+      `Upgrade your plan to send more deals.`,
     );
   }
 }
