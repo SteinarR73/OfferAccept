@@ -17,6 +17,7 @@ export default function LandingPage() {
         <Hero />
         <TrustStrip />
         <HowItWorks />
+        <WhyNotEmail />
         <CertificatePreview />
         <PricingBand />
       </main>
@@ -55,7 +56,7 @@ function Hero() {
     <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
       <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 mb-6">
         <span aria-hidden="true">✦</span>
-        Trusted by 500+ employers
+        Built for modern teams
       </div>
 
       <h1 className="font-serif text-5xl tracking-tight text-gray-900 leading-tight mb-5">
@@ -193,6 +194,51 @@ function HowItWorks() {
   );
 }
 
+// ─── Why not email ────────────────────────────────────────────────────────────
+
+const WHY_ITEMS = [
+  { label: 'Who accepted', desc: 'Identity verified via a one-time code sent to their email address.' },
+  { label: 'What was accepted', desc: 'The exact documents and deal title at the time of acceptance.' },
+  { label: 'When acceptance occurred', desc: 'A precise UTC timestamp recorded on the acceptance event.' },
+];
+
+function WhyNotEmail() {
+  return (
+    <section className="max-w-5xl mx-auto px-6 py-20">
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          Why not just ask for &ldquo;I accept&rdquo; in email?
+        </h2>
+        <p className="text-gray-500 text-sm mb-10 leading-relaxed">
+          Email replies can be forged, forwarded, or disputed. OfferAccept creates an independent
+          record that neither party can alter after the fact.
+        </p>
+
+        <div className="space-y-5 mb-10">
+          {WHY_ITEMS.map((item) => (
+            <div key={item.label} className="flex items-start gap-4">
+              <div className="w-5 h-5 rounded-full bg-[--color-accent] flex items-center justify-center flex-shrink-0 mt-0.5" aria-hidden="true">
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-sm text-gray-600 border-l-4 border-[--color-accent] pl-4 leading-relaxed">
+          Each acceptance produces a tamper-proof certificate that anyone can verify independently —
+          without an account and without contacting OfferAccept.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 // ─── Certificate Preview ──────────────────────────────────────────────────────
 
 function CertificatePreview() {
@@ -252,11 +298,17 @@ function CertificatePreview() {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-            <span className="text-xs text-blue-600 font-medium">
-              Verify this certificate →
-            </span>
-            <span className="text-[10px] text-gray-400">tamper-evident · cryptographically sealed</span>
+          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-start justify-between gap-3">
+            <div>
+              <Link
+                href="/verify"
+                className="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors"
+              >
+                Verify a certificate →
+              </Link>
+              <p className="text-[10px] text-gray-400 mt-0.5">Paste a Certificate ID to verify any acceptance.</p>
+            </div>
+            <span className="text-[10px] text-gray-400 flex-shrink-0 pt-0.5">tamper-evident · cryptographically sealed</span>
           </div>
         </div>
       </div>

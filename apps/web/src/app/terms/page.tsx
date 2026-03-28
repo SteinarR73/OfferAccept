@@ -32,6 +32,8 @@ export default function TermsPage() {
             <p>
               OfferAccept provides a platform for organisations to send deal documents to recipients,
               collect OTP-verified acceptance, and receive tamper-proof acceptance certificates.
+              OfferAccept records acceptance events but does not create electronic signatures.
+              Legal enforceability depends on jurisdiction and the underlying agreement.
               OfferAccept is not an e-signature platform and does not create legally binding
               electronic signatures under e-signature legislation.
             </p>

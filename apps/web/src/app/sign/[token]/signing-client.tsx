@@ -5,7 +5,6 @@ import { CheckCircle, XCircle, Shield } from 'lucide-react';
 import { signingApi, OfferContext, OtpResult, ApiError } from '@/lib/signing-api';
 import { SpinnerPage } from '@/components/ui/Spinner';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardSection, CardFooter } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { DocumentPreviewCard } from '@/components/sign/DocumentPreviewCard';
@@ -166,7 +165,7 @@ function TrustBanner({ sessionId }: { sessionId?: string }) {
       {sessionId && (
         <span className="font-mono opacity-70 hidden sm:inline">ID: {sessionId.slice(0, 12)}…</span>
       )}
-      <span className="text-green-600">· End-to-end encrypted</span>
+      <span className="text-green-600">· Encrypted in transit (TLS)</span>
     </div>
   );
 }
@@ -452,9 +451,11 @@ function OtpEntry({
     <Card>
       <CardHeader title="Verify your email" border />
       <CardSection>
-        <p className="text-sm text-[--color-text-secondary] mb-4">
+        <p className="text-sm text-[--color-text-secondary] mb-1">
           A 6-digit code was sent to <strong className="text-gray-900">{otp.deliveryAddressMasked}</strong>.
-          Enter it below to confirm your identity.
+        </p>
+        <p className="text-sm text-[--color-text-secondary] mb-4">
+          This code confirms you control the email address this deal was sent to.
         </p>
 
         {/* Wrong-code error — only shown when neither locked nor expired */}
@@ -591,9 +592,9 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
       </div>
 
       {/* ── Heading ─────────────────────────────────────────────────────────── */}
-      <h1 className="text-3xl font-bold text-gray-900 mb-3">You&rsquo;re all set.</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-3">Accepted. Your record is secured.</h1>
       <p className="text-base text-gray-700 font-medium max-w-sm mb-2">
-        This deal has been accepted.
+        Your acceptance has been recorded.
       </p>
       <p className="text-sm text-[--color-text-secondary] max-w-sm mb-6">
         Accepted on{' '}
@@ -625,12 +626,28 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
             </svg>
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-green-800 mb-0.5">
+            <p className="text-sm font-semibold text-green-800 mb-2">
               Acceptance certificate issued
             </p>
+            <p className="text-xs text-green-700 leading-relaxed mb-2">
+              A certificate has been generated containing:
+            </p>
+            <ul className="text-xs text-green-700 space-y-1 mb-2">
+              <li className="flex items-start gap-1.5">
+                <span className="mt-0.5 flex-shrink-0" aria-hidden="true">·</span>
+                the accepted deal and attached documents
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="mt-0.5 flex-shrink-0" aria-hidden="true">·</span>
+                the acceptance timestamp
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="mt-0.5 flex-shrink-0" aria-hidden="true">·</span>
+                a cryptographic integrity hash
+              </li>
+            </ul>
             <p className="text-xs text-green-700 leading-relaxed">
-              A tamper-proof certificate has been generated and sent to both parties.
-              It serves as legally-binding proof of this acceptance.
+              Anyone can verify this record using the Certificate ID.
             </p>
           </div>
         </div>
