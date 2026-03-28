@@ -45,6 +45,9 @@ export interface SendWebhookPayload {
   //   1. Replay protection in SendWebhookHandler (skip if already delivered).
   //   2. Idempotency for customers — the "id" field in the webhook body.
   webhookEventId: string;
+  // X-Request-ID of the originating HTTP request — carried for log correlation.
+  // Undefined for events dispatched outside a request context (e.g., cron jobs).
+  traceId?: string;
 }
 
 export interface ResetMonthlyBillingPayload {
@@ -95,6 +98,9 @@ export interface NotifyDealAcceptedPayload {
   // Empty string when certificate generation failed (rare).
   // The email templates handle an empty certificateId gracefully.
   certificateId: string;
+  // X-Request-ID of the originating HTTP request — carried for log correlation.
+  // Undefined for jobs enqueued outside a request context.
+  traceId?: string;
 }
 
 // ── Discriminated union of all registered jobs ───────────────────────────────

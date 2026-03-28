@@ -22,6 +22,7 @@ import { buildAcceptanceStatement } from '../domain/acceptance-statement';
 import { WebhookService } from '../../enterprise/webhook.service';
 import { DealEventService } from '../../deal-events/deal-events.service';
 import { JobService } from '../../jobs/job.service';
+import { TraceContext } from '../../../common/trace/trace.context';
 
 // ─── Response types ────────────────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ export class SigningFlowService {
     private readonly webhookService: WebhookService,
     private readonly dealEventService: DealEventService,
     private readonly jobService: JobService,
+    private readonly traceContext: TraceContext,
   ) {}
 
   // Step 1: Validate token and return the frozen offer context.
@@ -155,7 +157,7 @@ export class SigningFlowService {
         where: { id: recipient.id },
         data: { status: 'VIEWED', viewedAt: new Date() },
       });
-      void this.dealEventService.emit(offer.id, 'deal_opened');
+      void this.dealEventService.emit(offer.id, 'deal.opened');
     }
 
     // Resume existing non-expired session or create a fresh one
@@ -194,7 +196,7 @@ export class SigningFlowService {
 
     // Atomic: validates challenge binding, verifies code, advances all state in one tx.
     const result = await this.otpService.verifyAndAdvanceSession(challengeId, recipient.id, rawCode, ctx);
-    void this.dealEventService.emit(recipient.offerId, 'otp_verified');
+    void this.dealEventService.emit(recipient.offerId, 'otp.verified');
     return result;
   }
 
@@ -219,11 +221,13 @@ export class SigningFlowService {
     const session = await this.getSessionFromVerifiedChallenge(challengeId, recipient.id);
 
     const result = await this.acceptanceService.accept(session, challengeId, context);
-    void this.dealEventService.emit(result.offerId, 'deal_accepted');
+    void this.dealEventService.emit(result.offerId, 'deal.accepted');
 
     const { certificateId } = await this.certificateService.generateForAcceptance(
       result.acceptanceRecord.id,
     );
+
+    const traceId = this.traceContext.get();
 
     // Enqueue durable notification job — acceptance confirmation emails for both parties.
     // Business state is already committed; pg-boss persists the job and retries on failure.
@@ -240,11 +244,13 @@ export class SigningFlowService {
         recipientName: result.recipientName,
         acceptedAt: result.acceptanceRecord.acceptedAt.toISOString(),
         certificateId: certificateId ?? '',
+        traceId,
       },
       { singletonKey: `notify-deal-accepted:${result.acceptanceRecord.id}` },
     ).catch((e: unknown) => {
       this.logger.error(JSON.stringify({
         metric: 'notify_deal_accepted_enqueue_failed',
+        traceId,
         offerId: result.offerId,
         acceptanceRecordId: result.acceptanceRecord.id,
         error: e instanceof Error ? e.message : String(e),
@@ -253,6 +259,7 @@ export class SigningFlowService {
     });
     this.logger.log(JSON.stringify({
       metric: 'notify_deal_accepted_enqueued',
+      traceId,
       offerId: result.offerId,
       acceptanceRecordId: result.acceptanceRecord.id,
       jobId: notifyJobId,
@@ -272,6 +279,7 @@ export class SigningFlowService {
           acceptedAt: result.acceptanceRecord.acceptedAt.toISOString(),
           certificateId: certificateId ?? null,
         },
+        traceId,
       );
 
       // certificate.issued: emitted after the certificate is generated.
@@ -286,6 +294,7 @@ export class SigningFlowService {
             certificateId,
             issuedAt: new Date().toISOString(),
           },
+          traceId,
         );
       }
     } catch (err) {
@@ -313,7 +322,7 @@ export class SigningFlowService {
       : await this.sessionService.findResumable(recipient.id);
     if (!session) throw new SessionExpiredError();
     await this.acceptanceService.decline(session, ctx);
-    void this.dealEventService.emit(session.offerId, 'deal_declined');
+    void this.dealEventService.emit(session.offerId, 'deal.declined');
 
     // Cancel reminder schedule — best-effort.
     await this.db.reminderSchedule.deleteMany({ where: { offerId: session.offerId } }).catch((e: unknown) =>

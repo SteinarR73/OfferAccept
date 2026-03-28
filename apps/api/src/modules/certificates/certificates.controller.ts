@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Get, Logger, Param, UseGuards, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
@@ -6,6 +6,7 @@ import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { CertificateService } from './certificate.service';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
+import { TraceContext } from '../../common/trace/trace.context';
 
 // ─── CertificatesController ────────────────────────────────────────────────────
 // Mixed access: some routes are public (no auth), others require a JWT.
@@ -31,11 +32,13 @@ import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 
 @Controller('certificates')
 export class CertificatesController {
+  private readonly logger = new Logger(CertificatesController.name);
   private readonly webBaseUrl: string;
 
   constructor(
     private readonly certificates: CertificateService,
     private readonly rateLimiter: RateLimitService,
+    private readonly traceContext: TraceContext,
     config: ConfigService,
   ) {
     this.webBaseUrl = config.getOrThrow<string>('WEB_BASE_URL');
@@ -93,6 +96,14 @@ export class CertificatesController {
     res.setHeader('X-RateLimit-Reset', String(Math.ceil(resetAt.getTime() / 1000)));
 
     const result = await this.certificates.verify(id);
+
+    this.logger.log(JSON.stringify({
+      event: 'certificate_verify',
+      traceId: this.traceContext.get(),
+      certificateId: id,
+      valid: result.valid,
+      anomalyCount: result.anomaliesDetected.length,
+    }));
 
     // Return verification result with no sensitive internal data
     return {

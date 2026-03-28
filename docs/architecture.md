@@ -67,6 +67,87 @@ graph TB
 
 ---
 
+## Domain model
+
+### Core entities
+
+```mermaid
+erDiagram
+    Deal {
+        string id
+        string status
+        string title
+    }
+    DealRecipient {
+        string id
+        string dealId
+        string email
+        string name
+        string status
+    }
+    AcceptanceRecord {
+        string id
+        string dealRecipientId
+        string verifiedEmail
+        datetime acceptedAt
+        string ipAddress
+        string userAgent
+    }
+    Certificate {
+        string id
+        string dealId
+        string acceptanceRecordId
+        string certificateHash
+        string canonicalHash
+        datetime issuedAt
+    }
+
+    Deal ||--|| DealRecipient       : "has one (v1)"
+    DealRecipient ||--o| AcceptanceRecord : "produces at most one"
+    AcceptanceRecord ||--|| Certificate  : "generates"
+    Deal ||--o| Certificate          : "archived by"
+```
+
+### Entity descriptions
+
+**Deal** — the mutable operational record for a commercial offer. Progresses through a
+defined status lifecycle (`DRAFT → SENT → terminal`). Content is mutable until the deal
+is sent, after which the frozen snapshot becomes authoritative.
+
+**DealRecipient** — represents a single intended counterparty for a deal. Owns the
+signing token, tracks open/verification status, and is the subject of the
+`AcceptanceRecord`. The recipient's email address is verified at acceptance time via OTP,
+not assumed from the initial send.
+
+**AcceptanceRecord** — the immutable evidence of a completed acceptance event. Captures
+the verified email, timestamp, IP address, user-agent, and locale. Created atomically
+with the final state transition; never updated after creation.
+
+**Certificate** — the tamper-evident artifact derived from `AcceptanceRecord` and the
+frozen `OfferSnapshot`. The `certificateHash` is a SHA-256 digest of the full canonical
+certificate payload; the `canonicalHash` is a lighter 5-field acceptance fingerprint.
+Both can be recomputed from stored immutable evidence for independent verification.
+
+### v1 implementation note
+
+`DealRecipient` is a **conceptual entity** in v1. It maps directly to the `OfferRecipient`
+table (`offer_recipients` in the database), which carries a `@unique` constraint on
+`offerId` — enforcing one recipient per deal for the v1 release.
+
+| Conceptual name | v1 table | v1 constraint |
+|-----------------|----------|---------------|
+| Deal | `offers` | — |
+| DealRecipient | `offer_recipients` | `offerId @unique` (one per deal) |
+| AcceptanceRecord | `acceptance_records` | `snapshotId @unique` |
+| Certificate | `acceptance_certificates` | `acceptanceRecordId @unique` |
+
+When multi-recipient support is introduced in a future version, `DealRecipient` will
+become a first-class table with a many-to-one relationship to `Deal`. The
+`AcceptanceRecord → Certificate` chain is already designed for this: it is keyed on
+the recipient record, not on the deal directly.
+
+---
+
 ## Repository structure
 
 ```
@@ -104,21 +185,21 @@ Owns: organization creation, user accounts, authentication, role management, inv
 
 Owns: offer lifecycle and content freezing.
 
-- `Offer` is a mutable operational record (DRAFT → SENT → terminal).
+- `Offer` is a mutable operational record (DRAFT → SENT → terminal). Conceptually a **Deal** — see [Domain model](#domain-model).
 - `OfferDocument` holds file metadata. File bytes live in S3.
 - On send: an `OfferSnapshot` is created atomically. After this point the snapshot owns
   the authoritative content — `Offer` fields are never used for signing or certificates.
-- v1: one recipient per offer (`OfferRecipient.offerId @unique`).
+- `OfferRecipient` is the v1 implementation of **DealRecipient**. One per offer (`offerId @unique`). Owns the signing token and tracks recipient status through the signing flow.
 
 ### 3. Signing (public-facing)
 
-Owns: the recipient's entire journey — token validation, OTP, acceptance, decline.
+Owns: the DealRecipient's entire journey — token validation, OTP, acceptance, decline.
 
 - All endpoints are **unauthenticated**. The signed URL token is the credential.
-- Signing sessions are bound to a specific `OfferSnapshot` at creation.
+- Signing sessions are bound to a specific `OfferSnapshot` and `DealRecipient` at creation.
 - Every meaningful action writes an immutable, hash-chained `SigningEvent`.
 - OTP verification is required before acceptance.
-- Acceptance evidence is captured in an immutable `AcceptanceRecord`.
+- Acceptance evidence is captured in an immutable `AcceptanceRecord` keyed on the `DealRecipient`.
 
 ### 4. Certificates
 
@@ -449,6 +530,67 @@ PENDING ──► VERIFIED    [terminal]
 
 ---
 
+## DealRecipient status derivation
+
+The recipient-facing status of a deal is **derived deterministically from the
+`DealEvent` log**. There is no stored status field for recipient engagement — the status
+is computed at read time by inspecting which lifecycle events exist for the deal.
+
+### Derivation rules
+
+Rules are evaluated in priority order. The first matching rule wins.
+
+| Priority | Status | Condition |
+|----------|--------|-----------|
+| 1 (highest) | `accepted` | `deal.accepted` event exists |
+| 2 | `otp_verified` | `otp.verified` exists **and** `deal.accepted` does not |
+| 3 | `opened` | `deal.opened` exists **and** `otp.verified` does not |
+| 4 (default) | `never_opened` | no `deal.opened` event exists |
+
+### Invariants
+
+- The statuses are **mutually exclusive**: exactly one applies at any point in time.
+- The statuses are **monotonically advancing**: a deal can move from `never_opened` →
+  `opened` → `otp_verified` → `accepted`, but never backwards.
+- No status is stored. Re-evaluating the same event set always produces the same result.
+  Two independent callers with the same event log will always agree.
+
+### Why events, not a status field
+
+A stored status field can diverge from the event log if a write fails or is skipped. A
+derived status cannot — it is always consistent with the evidence that actually exists.
+This matters most for the `accepted` status, which triggers certificate issuance; if the
+event is present, the derivation is `accepted` regardless of any other field.
+
+### Derivation pseudocode
+
+```
+function deriveRecipientStatus(events: DealEventType[]): RecipientStatus {
+  if events.includes('deal.accepted')  → return 'accepted'
+  if events.includes('otp.verified')   → return 'otp_verified'
+  if events.includes('deal.opened')    → return 'opened'
+  return 'never_opened'
+}
+```
+
+### Relationship to `Offer.status`
+
+`Offer.status` is a **separate, database-stored** state machine covering the full deal
+lifecycle including sender-initiated transitions (`DRAFT`, `SENT`, `REVOKED`, `EXPIRED`).
+Recipient-derived status is orthogonal: it tracks how far the recipient has progressed
+within the `SENT` phase, independently of sender actions.
+
+| `Offer.status` | Recipient status can be |
+|----------------|------------------------|
+| `DRAFT` | — (no events; not applicable) |
+| `SENT` | `never_opened`, `opened`, `otp_verified` |
+| `ACCEPTED` | `accepted` |
+| `DECLINED` | `otp_verified` or `opened` (declined before completing) |
+| `EXPIRED` | any (expiry is a sender-side terminal state) |
+| `REVOKED` | any (revocation is sender-initiated) |
+
+---
+
 ## Module dependency graph
 
 ```mermaid
@@ -544,6 +686,7 @@ HTTP calls, no network dependency.
 | 3 | Acceptance statement text | Fixed in v1; org-configurable planned |
 | 4 | Multi-org switching UI | Stub in `OrgSelector`; API `POST /auth/switch-org` planned |
 | 5 | QES-tier identity verification | Out of scope for v1 |
+| 6 | Multi-recipient deals (DealRecipient v2) | `OfferRecipient.offerId @unique` dropped; DealRecipient becomes many-to-one; `AcceptanceRecord` and `Certificate` chain already keyed correctly |
 
 ---
 

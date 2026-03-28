@@ -144,7 +144,7 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
         {confirmRevoke ? (
           <Alert variant="warning">
             <p className="text-xs font-semibold mb-1">Revoke this deal?</p>
-            <p className="text-xs mb-2">The signing link will be invalidated immediately.</p>
+            <p className="text-xs mb-2">The deal link will be invalidated immediately.</p>
             <div className="flex gap-2">
               <Button
                 variant="danger"

@@ -113,7 +113,7 @@ function ValidState({
   return (
     <div className="rounded-2xl border-2 border-green-300 bg-gradient-to-b from-green-50 to-white overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="px-8 pt-10 pb-6 text-center">
+      <div className="px-8 pt-10 pb-8 text-center">
         <div
           className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center
                      ring-4 ring-green-200 shadow-lg shadow-green-200/60 mx-auto mb-5"
@@ -121,48 +121,53 @@ function ValidState({
         >
           <CheckCircle2 className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-green-800 mb-2">Certificate valid</h1>
-        <p className="text-sm text-green-700 max-w-xs mx-auto">
-          This certificate is authentic and has not been tampered with.
-        </p>
+        <h1 className="text-2xl font-bold text-green-800 mb-4">Certificate valid</h1>
+
+        {/* Plain-language summary */}
+        <div className="space-y-2 max-w-xs mx-auto">
+          <p className="text-sm text-green-800 font-medium">
+            This acceptance record has not been altered since it was issued.
+          </p>
+          <p className="text-sm text-green-700">
+            The deal was accepted and verified by OfferAccept.
+          </p>
+        </div>
       </div>
 
-      {/* Core fields */}
-      <div className="border-t border-green-200 divide-y divide-green-100 bg-white/60 mx-6 rounded-xl mb-6">
-        <HashRow label="Certificate ID" value={result.certificateId} />
-        <HashRow label="Stored hash" value={result.storedHash} />
-      </div>
-
-      {/* Integrity checks */}
-      <div className="mx-6 mb-6">
-        <CheckRow label="Certificate hash match" ok={result.certificateHashMatch} />
-        <CheckRow label="Document snapshot integrity" ok={result.snapshotIntegrity} />
-        <CheckRow label="Signing event chain" ok={result.eventChainIntegrity} />
-        {result.anomaliesDetected && (
-          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <p className="text-xs text-amber-800">
-              Anomalies detected in the signing record. Contact the issuing organisation for
-              clarification.
-            </p>
-          </div>
-        )}
-      </div>
+      {result.anomaliesDetected && (
+        <div className="mx-6 mb-5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-xs text-amber-800">
+            Anomalies detected in the acceptance record. Contact the issuing organisation for
+            clarification.
+          </p>
+        </div>
+      )}
 
       {/* Technical details toggle */}
       <div className="border-t border-green-200 px-6 py-3">
         <button
+          type="button"
           onClick={onToggleDetails}
           className="w-full flex items-center justify-between text-xs text-green-700 hover:text-green-900 transition-colors py-0.5"
         >
-          <span>Technical details</span>
+          <span>Show technical verification details</span>
           {showDetails
             ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
             : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
         </button>
         {showDetails && (
-          <div className="mt-3 space-y-2">
-            <TechRow label="Reconstructed hash" value={result.reconstructedHash} />
+          <div className="mt-4 space-y-4">
+            <div className="divide-y divide-green-100 bg-white/60 rounded-xl border border-green-200">
+              <HashRow label="Certificate ID" value={result.certificateId} />
+              <HashRow label="Certificate hash" value={result.storedHash} />
+            </div>
+            <div>
+              <CheckRow label="Certificate hash match" ok={result.certificateHashMatch} />
+              <CheckRow label="Document snapshot integrity" ok={result.snapshotIntegrity} />
+              <CheckRow label="Acceptance event chain" ok={result.eventChainIntegrity} />
+            </div>
+            <TechRow label="Verification hash" value={result.reconstructedHash} />
           </div>
         )}
       </div>
@@ -182,7 +187,7 @@ function InvalidState({
   return (
     <div className="rounded-2xl border-2 border-red-300 bg-gradient-to-b from-red-50 to-white overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="px-8 pt-10 pb-6 text-center">
+      <div className="px-8 pt-10 pb-8 text-center">
         <div
           className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center
                      ring-4 ring-red-200 shadow-lg shadow-red-200/60 mx-auto mb-5"
@@ -190,34 +195,40 @@ function InvalidState({
         >
           <XCircle className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-red-800 mb-2">Verification failed</h1>
-        <p className="text-sm text-red-700 max-w-xs mx-auto">
-          This certificate could not be verified. The record may have been tampered with.
-        </p>
-      </div>
+        <h1 className="text-2xl font-bold text-red-800 mb-4">Verification failed</h1>
 
-      {/* Integrity checks */}
-      <div className="mx-6 mb-6">
-        <CheckRow label="Certificate hash match" ok={result.certificateHashMatch} />
-        <CheckRow label="Document snapshot integrity" ok={result.snapshotIntegrity} />
-        <CheckRow label="Signing event chain" ok={result.eventChainIntegrity} />
+        {/* Plain-language summary */}
+        <div className="space-y-2 max-w-xs mx-auto">
+          <p className="text-sm text-red-800 font-medium">
+            This acceptance record could not be verified.
+          </p>
+          <p className="text-sm text-red-700">
+            The certificate may have been altered after it was issued. Do not rely on this record.
+          </p>
+        </div>
       </div>
 
       {/* Technical details toggle */}
       <div className="border-t border-red-200 px-6 py-3">
         <button
+          type="button"
           onClick={onToggleDetails}
           className="w-full flex items-center justify-between text-xs text-red-700 hover:text-red-900 transition-colors py-0.5"
         >
-          <span>Technical details</span>
+          <span>Show technical verification details</span>
           {showDetails
             ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
             : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
         </button>
         {showDetails && (
-          <div className="mt-3 space-y-2">
-            <TechRow label="Stored hash" value={result.storedHash} />
-            <TechRow label="Reconstructed hash" value={result.reconstructedHash} />
+          <div className="mt-4 space-y-4">
+            <div>
+              <CheckRow label="Certificate hash match" ok={result.certificateHashMatch} />
+              <CheckRow label="Document snapshot integrity" ok={result.snapshotIntegrity} />
+              <CheckRow label="Acceptance event chain" ok={result.eventChainIntegrity} />
+            </div>
+            <TechRow label="Certificate hash" value={result.storedHash} />
+            <TechRow label="Verification hash" value={result.reconstructedHash} />
           </div>
         )}
       </div>

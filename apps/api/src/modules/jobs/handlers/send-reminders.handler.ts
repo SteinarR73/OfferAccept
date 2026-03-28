@@ -174,7 +174,7 @@ export class SendRemindersHandler {
       const tokenExpiry = offer.expiresAt ?? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const { rawToken, tokenHash, tokenExpiresAt } = generateRecipientToken(tokenExpiry);
 
-      const signingUrl = `${webBaseUrl}/sign/${rawToken}`;
+      const signingUrl = `${webBaseUrl}/accept/${rawToken}`;
       const newCount   = (schedule.reminderCount + 1) as 1 | 2 | 3;
       const variant    = recipientStatusToVariant(recipient.status);
 
@@ -246,7 +246,7 @@ export class SendRemindersHandler {
         data: { tokenHash, tokenExpiresAt },
       });
 
-      void this.dealEventService.emit(offer.id, 'deal_reminder_sent', { reminderNumber: newCount, variant });
+      void this.dealEventService.emit(offer.id, 'deal.reminder_sent', { reminderNumber: newCount, variant });
       this.logger.log(JSON.stringify({
         event: 'reminder_sent',
         offerId: offer.id,

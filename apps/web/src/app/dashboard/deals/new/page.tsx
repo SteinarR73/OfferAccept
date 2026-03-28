@@ -52,7 +52,7 @@ export default function NewDealWizardPage() {
 
   const [step, setStep] = useState(1);
   const [state, setState] = useState<WizardState>({
-    dealName: params.get('name') ? '' : 'Agreement',
+    dealName: params.get('name') ? '' : 'Deal',
     selectedTemplateId: null,
     customerEmail: params.get('email') ?? '',
     customerName: params.get('name') ?? '',
@@ -179,7 +179,7 @@ export default function NewDealWizardPage() {
           All deals
         </button>
         <h1 className="text-xl font-semibold text-gray-900">New deal</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Send your first agreement in under 2 minutes.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Send your first deal in under 2 minutes.</p>
       </div>
 
       {/* ── Step indicator ─────────────────────────────────────────────────── */}
@@ -314,7 +314,7 @@ function StepDealName({
       <CardSection>
         <Input
           label="Deal name"
-          placeholder="e.g. Software Development Proposal — Q2 2026"
+          placeholder="e.g. Software Development Deal — Q2 2026"
           value={state.dealName}
           onChange={(e) => onChange({ dealName: e.target.value })}
           onKeyDown={(e) => { if (e.key === 'Enter' && state.dealName.trim()) onNext(); }}
@@ -352,7 +352,7 @@ function StepDocument({ offerId, state, onTemplateSelect, onUploaded, onUploadin
       <Card>
         <CardHeader
           title="Use a template"
-          description="Pick a pre-written agreement, or upload your own below."
+          description="Pick a pre-written template, or upload your own below."
           border
         />
         <CardSection>
@@ -415,7 +415,7 @@ function StepRecipient({
             }}
             required
             autoFocus
-            hint="A secure signing link will be sent here."
+            hint="A secure deal link will be sent here."
           />
           <Input
             label="Recipient name"
@@ -470,7 +470,7 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
         <p className="text-xs text-blue-700 font-medium">
-          Clicking &ldquo;Send deal&rdquo; delivers a secure signing link to your recipient immediately.
+          Clicking &ldquo;Send deal&rdquo; delivers a secure deal link to your recipient immediately.
         </p>
       </div>
     </div>

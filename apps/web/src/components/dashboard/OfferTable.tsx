@@ -448,7 +448,7 @@ function EmptyState({
           ? 'Try a different search term.'
           : hasOffers
           ? 'Try a different filter tab above.'
-          : 'Send your first agreement in under 2 minutes.'}
+          : 'Send your first deal in under 2 minutes.'}
       </p>
       {hasSearch && (
         <button

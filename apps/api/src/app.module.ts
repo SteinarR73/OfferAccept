@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod, APP_INTERCEPTOR } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CsrfOriginMiddleware } from './common/middleware/csrf-origin.middleware';
 import { validateEnv } from './config/env';
@@ -20,6 +20,8 @@ import { JobsModule } from './modules/jobs/job.module';
 import { EnterpriseHttpModule } from './modules/enterprise/enterprise-http.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { DealEventsModule } from './modules/deal-events/deal-events.module';
+import { TraceModule } from './common/trace/trace.module';
+import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 
 @Module({
   imports: [
@@ -45,6 +47,17 @@ import { DealEventsModule } from './modules/deal-events/deal-events.module';
     DealEventsModule,    // global: provides DealEventService everywhere
     EnterpriseHttpModule,
     AnalyticsModule,
+    TraceModule,    // global: provides TraceContext to all modules
+  ],
+  providers: [
+    // Register RequestIdInterceptor through DI so it can receive TraceContext.
+    // Using APP_INTERCEPTOR instead of app.useGlobalInterceptors(new X()) is required
+    // because the latter instantiates the class outside of NestJS's DI container,
+    // making constructor injection impossible.
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestIdInterceptor,
+    },
   ],
 })
 export class AppModule implements NestModule {

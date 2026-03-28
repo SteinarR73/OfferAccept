@@ -161,7 +161,7 @@ function TrustBanner({ sessionId }: { sessionId?: string }) {
   return (
     <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center justify-center gap-4 text-xs text-green-800">
       <span className="flex items-center gap-1">
-        🔒 Secure signing session
+        🔒 Secure acceptance session
       </span>
       {sessionId && (
         <span className="font-mono opacity-70 hidden sm:inline">ID: {sessionId.slice(0, 12)}…</span>
@@ -393,7 +393,7 @@ function OfferView({
       {ctx.documents.length > 0 && (
         <div className="mt-6">
           <h2 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
-            Documents you are signing ({ctx.documents.length})
+            Documents included in this deal ({ctx.documents.length})
           </h2>
           <ul className="space-y-2">
             {ctx.documents.map((d) => (

@@ -24,7 +24,7 @@ export function FirstDealEmptyState() {
         No deals yet
       </h2>
       <p className="text-sm text-[--color-text-secondary] max-w-xs mb-8">
-        Send your first agreement in under 2 minutes.
+        Send your first deal in under 2 minutes.
       </p>
 
       {/* Primary CTA */}

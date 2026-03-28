@@ -160,7 +160,7 @@ export function OfferEditor({ initial }: Props) {
               value={recipientEmail}
               onChange={(e) => setRecipientEmail(e.target.value)}
               disabled={!isDraft}
-              hint={isDraft ? 'A secure signing link will be delivered to this address.' : undefined}
+              hint={isDraft ? 'A secure deal link will be delivered to this address.' : undefined}
             />
           </div>
         </CardSection>

@@ -122,7 +122,7 @@ export default function DealDetailPage() {
       {/* ── Terminal status alerts ──────────────────────────────────────────── */}
       {isRevoked && (
         <Alert variant="warning">
-          This deal has been revoked. The signing link is no longer valid.
+          This deal has been revoked. The deal link is no longer valid.
         </Alert>
       )}
       {isExpired && (

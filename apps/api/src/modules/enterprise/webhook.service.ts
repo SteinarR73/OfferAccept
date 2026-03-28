@@ -134,10 +134,13 @@ export class WebhookService {
   // Finds all enabled endpoints subscribed to the given event and enqueues a
   // delivery job for each. Each job gets its own stable webhookEventId (UUID).
   // Best-effort: errors from individual enqueue calls are logged, not thrown.
+  // traceId is the X-Request-ID of the originating HTTP request; undefined when
+  // called from a background job with no request context.
   async dispatchEvent(
     organizationId: string,
     event: WebhookEvent,
     data: Record<string, unknown>,
+    traceId?: string,
   ): Promise<void> {
     const endpoints = await this.db.webhookEndpoint.findMany({
       where: { organizationId, enabled: true, events: { has: event } },
@@ -154,15 +157,23 @@ export class WebhookService {
           payload: data,
           attempt: 1,
           webhookEventId,
+          traceId,
         });
-        this.logger.log(
-          `Webhook dispatched: event=${event} endpoint=${endpoint.id} webhookEventId=${webhookEventId}`,
-        );
+        this.logger.log(JSON.stringify({
+          metric: 'webhook_dispatched',
+          traceId,
+          event,
+          endpointId: endpoint.id,
+          webhookEventId,
+        }));
       } catch (err) {
-        this.logger.error(
-          `Failed to enqueue webhook job: event=${event} endpoint=${endpoint.id}`,
-          err instanceof Error ? err.stack : String(err),
-        );
+        this.logger.error(JSON.stringify({
+          metric: 'webhook_enqueue_failed',
+          traceId,
+          event,
+          endpointId: endpoint.id,
+          error: err instanceof Error ? err.message : String(err),
+        }));
       }
     }
   }

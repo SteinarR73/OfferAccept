@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ToastProvider } from '../lib/toast';
@@ -23,6 +23,10 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#059669',
+};
+
 export const metadata: Metadata = {
   title: { default: 'OfferAccept', template: '%s | OfferAccept' },
   description: 'Secure deal management with tamper-proof acceptance certificates.',
@@ -30,7 +34,6 @@ export const metadata: Metadata = {
     siteName: 'OfferAccept',
     type: 'website',
   },
-  themeColor: '#059669',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

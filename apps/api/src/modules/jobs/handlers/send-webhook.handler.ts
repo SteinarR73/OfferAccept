@@ -50,7 +50,7 @@ export class SendWebhookHandler {
   }
 
   private async deliver(job: Job<SendWebhookPayload>): Promise<void> {
-    const { endpointId, event, payload, webhookEventId, attempt } = job.data;
+    const { endpointId, event, payload, webhookEventId, attempt, traceId } = job.data;
 
     // ── Replay guard ────────────────────────────────────────────────────────────
     // Skip if a successful delivery already exists for this logical event.
@@ -60,26 +60,37 @@ export class SendWebhookHandler {
       webhookEventId,
     );
     if (alreadyDelivered) {
-      this.logger.log(
-        `[replay_guard] Skipping already-delivered event: ` +
-        `event=${event} endpoint=${endpointId} webhookEventId=${webhookEventId}`,
-      );
+      this.logger.log(JSON.stringify({
+        metric: 'webhook_replay_skipped',
+        traceId,
+        event,
+        endpointId,
+        webhookEventId,
+      }));
       return;
     }
 
     // ── Load endpoint ───────────────────────────────────────────────────────────
     const endpoint = await this.webhookService.getEndpoint(endpointId);
     if (!endpoint) {
-      this.logger.warn(
-        `Webhook endpoint deleted — dropping job: endpoint=${endpointId} event=${event}`,
-      );
+      this.logger.warn(JSON.stringify({
+        metric: 'webhook_endpoint_deleted',
+        traceId,
+        event,
+        endpointId,
+        webhookEventId,
+      }));
       // Return without throwing: no point retrying a deleted endpoint.
       return;
     }
     if (!endpoint.enabled) {
-      this.logger.warn(
-        `Webhook endpoint disabled — dropping job: endpoint=${endpointId} event=${event}`,
-      );
+      this.logger.warn(JSON.stringify({
+        metric: 'webhook_endpoint_disabled',
+        traceId,
+        event,
+        endpointId,
+        webhookEventId,
+      }));
       return;
     }
 
@@ -93,10 +104,15 @@ export class SendWebhookHandler {
     //   - The delivery attempt is recorded so operators can investigate.
     const urlCheck = await this.webhookService.validateUrl(endpoint.url);
     if (!urlCheck.valid) {
-      this.logger.error(
-        `[ssrf_blocked] Webhook delivery blocked by SSRF protection: ` +
-        `endpoint=${endpointId} url=${endpoint.url} reason=${urlCheck.reason}`,
-      );
+      this.logger.error(JSON.stringify({
+        metric: 'webhook_ssrf_blocked',
+        traceId,
+        event,
+        endpointId,
+        webhookEventId,
+        url: endpoint.url,
+        reason: urlCheck.reason,
+      }));
       await this.webhookService.recordDeliveryAttempt({
         endpointId,
         webhookEventId,
@@ -146,10 +162,14 @@ export class SendWebhookHandler {
     } catch (err) {
       // Network error, timeout, or DNS failure — record as a failed attempt.
       responseBody = err instanceof Error ? err.message : String(err);
-      this.logger.warn(
-        `Webhook delivery network error: endpoint=${endpointId} event=${event} ` +
-        `webhookEventId=${webhookEventId} error=${responseBody}`,
-      );
+      this.logger.warn(JSON.stringify({
+        metric: 'webhook_network_error',
+        traceId,
+        event,
+        endpointId,
+        webhookEventId,
+        error: responseBody,
+      }));
     }
 
     // ── Record attempt ──────────────────────────────────────────────────────────
@@ -164,10 +184,14 @@ export class SendWebhookHandler {
     });
 
     if (success) {
-      this.logger.log(
-        `Webhook delivered: event=${event} endpoint=${endpointId} ` +
-        `webhookEventId=${webhookEventId} status=${httpStatus}`,
-      );
+      this.logger.log(JSON.stringify({
+        metric: 'webhook_delivered',
+        traceId,
+        event,
+        endpointId,
+        webhookEventId,
+        httpStatus,
+      }));
     } else {
       // Throw so pg-boss marks this job as failed and schedules a retry.
       throw new Error(

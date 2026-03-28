@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import type { Job } from 'pg-boss';
 import { CertificateService } from '../../certificates/certificate.service';
 import { JobService } from '../job.service';
@@ -50,6 +51,10 @@ export class ReconcileCertificatesHandler {
   async handle(jobs: Job<ReconcileCertificatesPayload>[]): Promise<void> {
     void jobs; // cron-triggered sweep — no per-job payload used
 
+    // Generate a traceId per sweep run so all log lines for this execution
+    // can be correlated in log aggregation (no HTTP request context available).
+    const traceId = randomUUID();
+
     const missing = await this.certificateService.findMissingCertificates(
       ReconcileCertificatesHandler.MISSING_THRESHOLD_MS,
     );
@@ -57,6 +62,7 @@ export class ReconcileCertificatesHandler {
     if (missing.length === 0) {
       this.logger.log(JSON.stringify({
         event: 'certificate_reconciliation_clean',
+        traceId,
         thresholdMinutes: ReconcileCertificatesHandler.MISSING_THRESHOLD_MS / 60_000,
       }));
       return;
@@ -66,6 +72,7 @@ export class ReconcileCertificatesHandler {
     // can trigger alerts if the count grows or persists across sweeps.
     this.logger.warn(JSON.stringify({
       event: 'certificate_reconciliation_backlog',
+      traceId,
       count: missing.length,
       oldestAcceptedAt: missing[0]?.acceptedAt.toISOString(),
       acceptanceRecordIds: missing.map((r) => r.id),
@@ -77,6 +84,7 @@ export class ReconcileCertificatesHandler {
       });
       this.logger.log(JSON.stringify({
         event: 'certificate_reconciliation_requeued',
+        traceId,
         acceptanceRecordId: record.id,
         acceptedAt: record.acceptedAt.toISOString(),
       }));

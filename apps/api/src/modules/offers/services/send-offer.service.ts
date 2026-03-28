@@ -238,7 +238,7 @@ export class SendOfferService {
 
     // ── Record delivery attempt and send email ────────────────────────────────
     const webBaseUrl = this.config.getOrThrow<string>('WEB_BASE_URL');
-    const signingUrl = `${webBaseUrl}/sign/${rawToken}`;
+    const signingUrl = `${webBaseUrl}/accept/${rawToken}`;
 
     // Create attempt record before the call so we have an ID to update.
     // tokenHash here matches what was set on OfferRecipient above.
@@ -282,7 +282,7 @@ export class SendOfferService {
         this.logger.warn(`Failed to create reminder schedule for offer ${offer.id}: ${e}`),
       );
 
-      void this.dealEventService.emit(offer.id, 'deal_sent', { deliveryAttemptId: attempt.id });
+      void this.dealEventService.emit(offer.id, 'deal.sent', { deliveryAttemptId: attempt.id });
       return {
         snapshotId: snapshot.id,
         sentAt: snapshot.frozenAt,
@@ -381,7 +381,7 @@ export class SendOfferService {
 
     // ── Record attempt and send email ─────────────────────────────────────────
     const webBaseUrl = this.config.getOrThrow<string>('WEB_BASE_URL');
-    const signingUrl = `${webBaseUrl}/sign/${rawToken}`;
+    const signingUrl = `${webBaseUrl}/accept/${rawToken}`;
 
     const attempt = await this.db.offerDeliveryAttempt.create({
       data: {
@@ -493,6 +493,6 @@ export class SendOfferService {
       this.logger.warn(`Failed to delete reminder schedule on revoke for offer ${offer.id}: ${e}`),
     );
 
-    void this.dealEventService.emit(offer.id, 'deal_revoked');
+    void this.dealEventService.emit(offer.id, 'deal.revoked');
   }
 }

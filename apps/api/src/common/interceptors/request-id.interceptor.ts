@@ -4,11 +4,14 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import * as crypto from 'node:crypto';
 import type { Request, Response } from 'express';
+import { TraceContext } from '../trace/trace.context';
 
 // ─── RequestIdInterceptor ──────────────────────────────────────────────────────
-// Attaches a unique X-Request-ID header to every response.
+// Attaches a unique X-Request-ID header to every response AND seeds TraceContext
+// so all async work within the request lifecycle can call traceContext.get().
 //
 // If the incoming request already carries an X-Request-ID header, that value is
 // echoed back (useful when API gateways / load balancers generate IDs). Otherwise
@@ -23,7 +26,9 @@ const SAFE_ID_PATTERN = /^[\x20-\x7E]{1,128}$/;
 
 @Injectable()
 export class RequestIdInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler) {
+  constructor(private readonly traceContext: TraceContext) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const http = context.switchToHttp();
     const req = http.getRequest<Request & { id?: string }>();
     const res = http.getResponse<Response>();
@@ -39,6 +44,12 @@ export class RequestIdInterceptor implements NestInterceptor {
     req.id = requestId;
     res.setHeader('X-Request-ID', requestId);
 
-    return next.handle();
+    // Wrap the downstream observable in an AsyncLocalStorage context so that
+    // any code called within this request can call traceContext.get().
+    return new Observable((subscriber) => {
+      this.traceContext.run(requestId, () => {
+        next.handle().subscribe(subscriber);
+      });
+    });
   }
 }

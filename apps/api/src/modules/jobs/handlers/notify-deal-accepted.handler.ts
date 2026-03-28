@@ -58,6 +58,7 @@ export class NotifyDealAcceptedHandler {
     this.logger.log(
       JSON.stringify({
         metric: 'notify_deal_accepted_start',
+        traceId: d.traceId,
         offerId: d.offerId,
         acceptanceRecordId: d.acceptanceRecordId,
         jobId: job.id,
@@ -87,6 +88,7 @@ export class NotifyDealAcceptedHandler {
       this.logger.log(
         JSON.stringify({
           metric: 'notify_deal_accepted_success',
+          traceId: d.traceId,
           offerId: d.offerId,
           acceptanceRecordId: d.acceptanceRecordId,
           jobId: job.id,
@@ -96,6 +98,7 @@ export class NotifyDealAcceptedHandler {
       this.logger.error(
         JSON.stringify({
           metric: 'notify_deal_accepted_failed',
+          traceId: d.traceId,
           offerId: d.offerId,
           acceptanceRecordId: d.acceptanceRecordId,
           jobId: job.id,

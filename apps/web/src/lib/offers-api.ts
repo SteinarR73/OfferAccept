@@ -391,16 +391,16 @@ export async function getAnalytics(): Promise<AnalyticsOverview> {
 }
 
 export type DealEventType =
-  | 'deal_created'
-  | 'deal_sent'
-  | 'deal_opened'
-  | 'otp_verified'
-  | 'deal_accepted'
-  | 'certificate_generated'
-  | 'deal_reminder_sent'
-  | 'deal_revoked'
-  | 'deal_expired'
-  | 'deal_declined';
+  | 'deal.created'
+  | 'deal.sent'
+  | 'deal.opened'
+  | 'otp.verified'
+  | 'deal.accepted'
+  | 'certificate.issued'
+  | 'deal.reminder_sent'
+  | 'deal.revoked'
+  | 'deal.expired'
+  | 'deal.declined';
 
 export interface RecentDealEvent {
   id: string;
@@ -500,4 +500,20 @@ export interface DealStatusResult {
 
 export async function getDealStatus(offerId: string): Promise<DealStatusResult> {
   return request<DealStatusResult>(`/offers/${offerId}/status`);
+}
+
+// ─── Password reset (unauthenticated) ─────────────────────────────────────────
+
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  return fetchOnce<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  return fetchOnce<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
 }

@@ -59,7 +59,7 @@ describe('Email secrets — ResendEmailAdapter does not log secrets', () => {
   });
 
   it('does not log the signing URL (raw token) when sending an offer link email', async () => {
-    const SECRET_URL = 'https://app.example.com/sign/oa_SECRETTOKEN123';
+    const SECRET_URL = 'https://app.example.com/accept/oa_SECRETTOKEN123';
     await adapter.sendOfferLink({
       to: 'bob@client.com',
       recipientName: 'Bob',
@@ -235,15 +235,15 @@ describe('DevEmailAdapter — development secrets handling', () => {
       recipientName: 'Bob',
       offerTitle: 'Test',
       senderName: 'Alice',
-      signingUrl: 'https://x.com/sign/oa_abc',
+      signingUrl: 'https://x.com/accept/oa_abc',
       expiresAt: null,
     });
-    expect(adapter.getLastOfferLink('bob@client.com')?.signingUrl).toBe('https://x.com/sign/oa_abc');
+    expect(adapter.getLastOfferLink('bob@client.com')?.signingUrl).toBe('https://x.com/accept/oa_abc');
   });
 
   it('reset() clears all stored items', async () => {
     await adapter.sendOtp({ to: 'a@b.com', recipientName: 'A', code: '111111', offerTitle: 'T', expiresAt: new Date() });
-    await adapter.sendOfferLink({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/sign/oa_x', expiresAt: null });
+    await adapter.sendOfferLink({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/accept/oa_x', expiresAt: null });
     await adapter.sendAcceptanceConfirmationToSender({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', acceptedAt: new Date(), certificateId: 'c1' });
     await adapter.sendAcceptanceConfirmationToRecipient({ to: 'a@b.com', recipientName: 'R', offerTitle: 'T', senderName: 'S', acceptedAt: new Date(), certificateId: 'c1' });
     await adapter.sendDeclineNotification({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', declinedAt: new Date() });

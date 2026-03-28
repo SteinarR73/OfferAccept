@@ -56,7 +56,7 @@ describe('Logging redaction — DevEmailAdapter', () => {
         to: 'alice@example.com',
         recipientName: 'Alice',
         offerTitle: 'Test Offer',
-        signingUrl: 'http://localhost:3000/sign/oa_supersecrettoken',
+        signingUrl: 'http://localhost:3000/accept/oa_supersecrettoken',
         senderName: 'Bob',
         expiresAt: null,
       });

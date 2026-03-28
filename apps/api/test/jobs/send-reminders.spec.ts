@@ -212,8 +212,8 @@ describe('SendRemindersHandler — success path', () => {
 
     await runSweep(handler);
 
-    expect(capturedSigningUrl).toMatch(/^https:\/\/app\.test\/sign\/oa_/);
-    const rawToken = capturedSigningUrl.replace('https://app.test/sign/', '');
+    expect(capturedSigningUrl).toMatch(/^https:\/\/app\.test\/accept\/oa_/);
+    const rawToken = capturedSigningUrl.replace('https://app.test/accept/', '');
     const expectedHash = createHash('sha256').update(rawToken, 'utf8').digest('hex');
 
     const updateArg = firstCallArg(db.offerRecipient.update);

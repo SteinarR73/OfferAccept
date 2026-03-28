@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Enforce strict mode for catching potential issues early
   reactStrictMode: true,
 
+  experimental: {
+    allowedDevOrigins: ['192.168.128.1'],
+  },
+
   // API calls from the browser are proxied through Next.js rewrites in
   // development. In production, the API sits on its own domain/subdomain.
   async rewrites() {

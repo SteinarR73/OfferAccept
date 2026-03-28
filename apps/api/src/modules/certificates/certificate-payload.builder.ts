@@ -150,6 +150,40 @@ export function computeCertificateHash(payload: CertificatePayload): {
   return { hash, canonical };
 }
 
+// ─── Canonical acceptance hash ─────────────────────────────────────────────────
+// A lightweight 5-field fingerprint of the acceptance act, independent of offer
+// content and certificate metadata. Allows a third party who knows only these
+// five values to verify authenticity without the full certificate payload.
+//
+// Input fields are always serialized in alphabetical key order:
+//   acceptedAt, dealId, ipAddress, recipientEmail, userAgent
+//
+// Null fields are included in the canonical form (not omitted), so a certificate
+// with no IP address hashes differently from one with an IP address.
+//
+// This hash is stored in AcceptanceCertificate.canonicalHash. It is nullable on
+// existing certificates that were issued before this field was introduced.
+
+export interface CanonicalAcceptanceInput {
+  acceptedAt: string;         // ISO 8601 UTC
+  dealId: string;             // AcceptanceCertificate.offerId
+  ipAddress: string | null;
+  recipientEmail: string;     // AcceptanceRecord.verifiedEmail
+  userAgent: string | null;
+}
+
+export function computeCanonicalAcceptanceHash(input: CanonicalAcceptanceInput): {
+  hash: string;
+  canonical: string;
+} {
+  // deepSortKeys guarantees alphabetical key order even if input was built in a
+  // different order. The five fields sort as: acceptedAt < dealId < ipAddress
+  // < recipientEmail < userAgent.
+  const canonical = JSON.stringify(deepSortKeys(input));
+  const hash = crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
+  return { hash, canonical };
+}
+
 // Deep-sorts all object keys alphabetically for deterministic serialization.
 // Arrays preserve element order.
 function deepSortKeys(value: unknown): unknown {

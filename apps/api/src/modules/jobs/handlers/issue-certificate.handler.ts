@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import type { Job } from 'pg-boss';
 import { CertificateService } from '../../certificates/certificate.service';
 import type { IssueCertificatePayload } from '../job.types';
@@ -46,8 +47,13 @@ export class IssueCertificateHandler {
       const attempt    = (raw.retrycount ?? 0) + 1;
       const retryLimit =  raw.retrylimit ?? 5;
 
+      // Cron-triggered job — no HTTP request context. Generate a fresh traceId
+      // so all log lines for this attempt can be correlated in log aggregation.
+      const traceId = randomUUID();
+
       this.logger.log(JSON.stringify({
         event: 'certificate_job_started',
+        traceId,
         jobId: job.id,
         acceptanceRecordId,
         attempt,
@@ -59,6 +65,7 @@ export class IssueCertificateHandler {
       if (attempt >= retryLimit) {
         this.logger.error(JSON.stringify({
           event: 'certificate_dlq_risk',
+          traceId,
           jobId: job.id,
           acceptanceRecordId,
           attempt,
@@ -74,6 +81,7 @@ export class IssueCertificateHandler {
         );
         this.logger.log(JSON.stringify({
           event: 'certificate_issued',
+          traceId,
           jobId: job.id,
           certId: certificateId,
           acceptanceRecordId,
@@ -81,7 +89,7 @@ export class IssueCertificateHandler {
         }));
       } catch (err) {
         this.logger.error(
-          JSON.stringify({ event: 'certificate_issuance_failed', jobId: job.id, acceptanceRecordId, attempt }),
+          JSON.stringify({ event: 'certificate_issuance_failed', traceId, jobId: job.id, acceptanceRecordId, attempt }),
           err instanceof Error ? err.stack : String(err),
         );
         // Re-throw so pg-boss marks this job as failed and schedules a retry.

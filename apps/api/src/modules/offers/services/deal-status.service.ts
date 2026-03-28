@@ -57,16 +57,16 @@ export interface DealStatusResult {
 // ─── Event type → computed status mapping ─────────────────────────────────────
 
 const EVENT_TO_STATUS: Record<DealEventType, DealComputedStatus> = {
-  deal_created:          'CREATED',
-  deal_sent:             'SENT',
-  deal_opened:           'OPENED',
-  otp_verified:          'OTP_VERIFIED',
-  deal_accepted:         'ACCEPTED',
-  certificate_generated: 'ACCEPTED',   // same phase as accepted
-  deal_reminder_sent:    'SENT',        // still in SENT phase
-  deal_revoked:          'REVOKED',
-  deal_expired:          'EXPIRED',
-  deal_declined:         'DECLINED',
+  'deal.created':        'CREATED',
+  'deal.sent':           'SENT',
+  'deal.opened':         'OPENED',
+  'otp.verified':        'OTP_VERIFIED',
+  'deal.accepted':       'ACCEPTED',
+  'certificate.issued':  'ACCEPTED',   // same phase as accepted
+  'deal.reminder_sent':  'SENT',        // still in SENT phase
+  'deal.revoked':        'REVOKED',
+  'deal.expired':        'EXPIRED',
+  'deal.declined':       'DECLINED',
 };
 
 // Status precedence — higher = more significant
@@ -136,9 +136,9 @@ export class DealStatusService {
   // ── Private helpers ──────────────────────────────────────────────────────────
 
   private computeRecipientActivity(eventTypes: DealEventType[]): RecipientActivity {
-    if (eventTypes.includes('deal_accepted'))  return 'accepted';
-    if (eventTypes.includes('otp_verified'))   return 'otp_verified';
-    if (eventTypes.includes('deal_opened'))    return 'opened';
+    if (eventTypes.includes('deal.accepted'))  return 'accepted';
+    if (eventTypes.includes('otp.verified'))   return 'otp_verified';
+    if (eventTypes.includes('deal.opened'))    return 'opened';
     return 'never_opened';
   }
 
@@ -149,9 +149,9 @@ export class DealStatusService {
   ): RecommendedAction {
     if (TERMINAL_STATUSES.has(status)) return 'NONE';
 
-    const sentAt = events.find(e => e.eventType === 'deal_sent')?.createdAt;
-    const openedAt = events.find(e => e.eventType === 'deal_opened')?.createdAt;
-    const otpVerifiedAt = events.find(e => e.eventType === 'otp_verified')?.createdAt;
+    const sentAt = events.find(e => e.eventType === 'deal.sent')?.createdAt;
+    const openedAt = events.find(e => e.eventType === 'deal.opened')?.createdAt;
+    const otpVerifiedAt = events.find(e => e.eventType === 'otp.verified')?.createdAt;
 
     const hoursSince = (date: Date) => (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
@@ -181,10 +181,10 @@ export class DealStatusService {
     now: Date,
   ): string[] {
     const insights: string[] = [];
-    const sentAt = events.find(e => e.eventType === 'deal_sent')?.createdAt;
-    const openedAt = events.find(e => e.eventType === 'deal_opened')?.createdAt;
-    const otpVerifiedAt = events.find(e => e.eventType === 'otp_verified')?.createdAt;
-    const reminderCount = events.filter(e => e.eventType === 'deal_reminder_sent').length;
+    const sentAt = events.find(e => e.eventType === 'deal.sent')?.createdAt;
+    const openedAt = events.find(e => e.eventType === 'deal.opened')?.createdAt;
+    const otpVerifiedAt = events.find(e => e.eventType === 'otp.verified')?.createdAt;
+    const reminderCount = events.filter(e => e.eventType === 'deal.reminder_sent').length;
 
     const hoursSince = (date: Date) => Math.round((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     const daysSince = (date: Date) => Math.round((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));

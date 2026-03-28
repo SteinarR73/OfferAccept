@@ -1,10 +1,22 @@
 import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
+
+// Generates an unguessable certificate ID.
+//
+// crypto.randomUUID() produces UUID v4: 128 random bits with 6 bits fixed for
+// version/variant markers, yielding 122 bits of effective CSPRNG entropy.
+// The 2^122 ID space makes enumeration attacks computationally infeasible.
+//
+// This function is the single place to swap the format (e.g., to nanoid or
+// UUIDv7) if requirements change, without touching call sites.
+function generateCertificateId(): string {
+  return randomUUID();
+}
 import {
   CertificatePayloadBuilder,
   CertificatePayload,
-  computeCertificateHash,
+  computeCanonicalAcceptanceHash,
 } from './certificate-payload.builder';
 import { SigningEventService } from '../signing/services/signing-event.service';
 import { computeSnapshotHash } from '../signing/domain/signing-event.builder';
@@ -39,6 +51,12 @@ export interface VerificationResult {
   certificateHashMatch: boolean;
   reconstructedHash: string;  // hash we recomputed from evidence
   storedHash: string;         // hash stored in AcceptanceCertificate row
+
+  // ── Canonical acceptance hash check ──────────────────────────────────────
+  // SHA-256 of the 5-field acceptance fingerprint: acceptedAt, dealId,
+  // ipAddress, recipientEmail, userAgent. Undefined for certificates issued
+  // before this field was introduced (backward compatibility).
+  canonicalHashMatch?: boolean;
 
   // ── Snapshot integrity ────────────────────────────────────────────────────
   // OfferSnapshot.contentHash is recomputed from raw OfferSnapshotDocument rows.
@@ -85,11 +103,33 @@ export class CertificateService {
       include: { snapshot: { select: { offerId: true } } },
     });
 
-    const certificateId = randomUUID();
+    const certificateId = generateCertificateId();
     const issuedAt = new Date();
 
     // ── Build payload (reads immutable evidence from DB) ──────────────────────
     const built = await this.builder.build(acceptanceRecordId, certificateId, issuedAt);
+
+    // ── Canonical acceptance hash (5-field fingerprint) ───────────────────────
+    // Re-loads the AcceptanceRecord fields needed for the canonical hash.
+    // These are already in scope from the builder's DB read but not returned
+    // in BuiltCertificate — load them here to keep the builder interface clean.
+    const fullRecord = await this.db.acceptanceRecord.findUniqueOrThrow({
+      where: { id: acceptanceRecordId },
+      select: {
+        verifiedEmail: true,
+        acceptedAt: true,
+        ipAddress: true,
+        userAgent: true,
+      },
+    });
+
+    const { hash: canonicalHash } = computeCanonicalAcceptanceHash({
+      acceptedAt:     fullRecord.acceptedAt.toISOString(),
+      dealId:         record.snapshot.offerId,
+      ipAddress:      fullRecord.ipAddress,
+      recipientEmail: fullRecord.verifiedEmail,
+      userAgent:      fullRecord.userAgent,
+    });
 
     // ── Persist certificate ────────────────────────────────────────────────────
     // Guard against the race between the idempotency check above and this create:
@@ -102,10 +142,11 @@ export class CertificateService {
           offerId: record.snapshot.offerId,
           acceptanceRecordId,
           certificateHash: built.certificateHash,
+          canonicalHash,
           issuedAt,
         },
       });
-      void this.dealEventService.emit(record.snapshot.offerId, 'certificate_generated', { certificateId: cert.id });
+      void this.dealEventService.emit(record.snapshot.offerId, 'certificate.issued', { certificateId: cert.id });
       return { certificateId: cert.id };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -122,36 +163,67 @@ export class CertificateService {
 
   // Verifies a stored certificate's full integrity.
   //
-  // Three independent checks:
-  //   1. Certificate hash: rebuild payload with stored issuedAt, recompute hash,
-  //      compare to stored certificateHash.
-  //   2. Snapshot integrity: recompute OfferSnapshot.contentHash from raw
-  //      OfferSnapshotDocument rows, compare to stored contentHash.
-  //   3. Signing event chain: verify every event's hash and previousEventHash
-  //      linkage for the associated signing session.
+  // Verification sequence (matches stated protocol):
+  //   1. Retrieve certificate — no JOIN; acceptance record not fetched here.
+  //   2. Retrieve acceptance record — explicit, independent DB read using the FK.
+  //   3. Recompute all hashes from the independently fetched evidence.
+  //   4. Compare each recomputed hash against its stored counterpart.
   //
-  // All checks use only immutable tables. Never reads Offer, User, or Organization.
+  // The stored hashes are never treated as authoritative. They are only the
+  // comparison target for values derived entirely from source evidence.
+  //
+  // Three independent recomputation checks:
+  //   A. Certificate hash: rebuild payload from AcceptanceRecord + OfferSnapshot +
+  //      OfferRecipient, recompute SHA-256, compare to AcceptanceCertificate.certificateHash.
+  //   B. Canonical acceptance hash: recompute 5-field fingerprint from AcceptanceRecord
+  //      (acceptedAt, dealId, ipAddress, recipientEmail, userAgent), compare to
+  //      AcceptanceCertificate.canonicalHash. Skipped for legacy certificates where
+  //      canonicalHash is null — the field did not exist at issuance time.
+  //   C. Snapshot content integrity: recompute OfferSnapshot.contentHash from raw
+  //      OfferSnapshotDocument rows, compare to OfferSnapshot.contentHash.
+  //   D. Signing event chain: verify every SigningEvent's hash and previousEventHash
+  //      linkage; a broken link indicates insertion, deletion, or modification.
+  //
+  // All reads use immutable tables only. Never reads Offer, User, or Organization.
   async verify(certificateId: string): Promise<VerificationResult> {
+    // ── Step 1: Retrieve certificate ──────────────────────────────────────────
+    // No JOIN — the acceptance record is fetched separately in step 2 so that
+    // the evidence used for hash recomputation comes from an independent read.
     const cert = await this.db.acceptanceCertificate.findUnique({
       where: { id: certificateId },
-      include: {
-        acceptanceRecord: {
-          select: { id: true, sessionId: true, snapshotId: true },
-        },
-      },
     });
 
     if (!cert) throw new NotFoundException('Certificate not found');
 
+    // ── Step 2: Retrieve acceptance record independently ──────────────────────
+    // Using the FK stored in the certificate row. Fetched as a separate query so
+    // the evidence is not co-located with the row that holds the stored hash.
+    const record = await this.db.acceptanceRecord.findUniqueOrThrow({
+      where: { id: cert.acceptanceRecordId },
+      select: {
+        id:            true,
+        sessionId:     true,
+        snapshotId:    true,
+        verifiedEmail: true,
+        acceptedAt:    true,
+        ipAddress:     true,
+        userAgent:     true,
+      },
+    });
+
     const anomalies: string[] = [];
 
-    // ── Check 1: Certificate hash ─────────────────────────────────────────────
+    // ── Step 3A: Recompute certificate hash from evidence ─────────────────────
+    // builder.build() performs its own independent reads (AcceptanceRecord,
+    // OfferRecipient, OfferSnapshot, OfferSnapshotDocuments). issuedAt is the
+    // value stored at issuance — required for deterministic reconstruction.
     const built = await this.builder.build(
-      cert.acceptanceRecordId,
+      record.id,
       certificateId,
-      cert.issuedAt,          // must use stored issuedAt — not new Date()
+      cert.issuedAt,
     );
 
+    // ── Step 4A: Compare recomputed certificate hash against stored hash ───────
     const reconstructedHash = built.certificateHash;
     const storedHash = cert.certificateHash;
     const certificateHashMatch = reconstructedHash === storedHash;
@@ -163,22 +235,47 @@ export class CertificateService {
       );
     }
 
-    // ── Check 2: Snapshot content integrity ───────────────────────────────────
-    // Load the snapshot with its document list from immutable tables.
-    // Recompute the content hash independently and compare to snapshot.contentHash.
+    // ── Step 3B / 4B: Canonical acceptance hash ───────────────────────────────
+    // Recompute from the independently fetched acceptance record (step 2).
+    // When canonicalHash is null the certificate predates this field; no stored
+    // value exists to compare against so the check does not apply.
+    let canonicalHashMatch: boolean | undefined;
+    if (cert.canonicalHash !== null) {
+      const { hash: recomputedCanonical } = computeCanonicalAcceptanceHash({
+        acceptedAt:     record.acceptedAt.toISOString(),
+        dealId:         cert.offerId,
+        ipAddress:      record.ipAddress,
+        recipientEmail: record.verifiedEmail,
+        userAgent:      record.userAgent,
+      });
+      canonicalHashMatch = recomputedCanonical === cert.canonicalHash;
+
+      if (!canonicalHashMatch) {
+        anomalies.push(
+          `Canonical acceptance hash mismatch: the 5-field acceptance fingerprint ` +
+          `(acceptedAt, dealId, ipAddress, recipientEmail, userAgent) does not match ` +
+          `the value stored at issuance. Core acceptance evidence may have been altered.`,
+        );
+      }
+    }
+
+    // ── Step 3C / 4C: Snapshot content integrity ──────────────────────────────
+    // Load snapshot and raw documents from immutable tables. Recompute the content
+    // hash from the documents; compare against the snapshot's stored contentHash.
+    // snapshotId comes from the independently fetched record (step 2).
     const snapshot = await this.db.offerSnapshot.findUniqueOrThrow({
-      where: { id: cert.acceptanceRecord.snapshotId },
+      where: { id: record.snapshotId },
       include: { documents: true },
     });
 
     const recomputedSnapshotHash = computeSnapshotHash({
-      title: snapshot.title,
-      message: snapshot.message,
+      title:      snapshot.title,
+      message:    snapshot.message,
       senderName: snapshot.senderName,
       senderEmail: snapshot.senderEmail,
-      expiresAt: snapshot.expiresAt?.toISOString() ?? null,
-      documents: snapshot.documents.map((d) => ({
-        filename: d.filename,
+      expiresAt:  snapshot.expiresAt?.toISOString() ?? null,
+      documents:  snapshot.documents.map((d) => ({
+        filename:   d.filename,
         sha256Hash: d.sha256Hash,
         storageKey: d.storageKey,
       })),
@@ -193,8 +290,9 @@ export class CertificateService {
       );
     }
 
-    // ── Check 3: Signing event chain ──────────────────────────────────────────
-    const chainResult = await this.eventService.verifyChain(cert.acceptanceRecord.sessionId);
+    // ── Step 3D / 4D: Signing event chain ─────────────────────────────────────
+    // sessionId comes from the independently fetched record (step 2).
+    const chainResult = await this.eventService.verifyChain(record.sessionId);
 
     if (!chainResult.valid) {
       anomalies.push(
@@ -203,12 +301,17 @@ export class CertificateService {
       );
     }
 
+    // canonicalHashMatch === undefined means the certificate predates this field;
+    // there is no stored value to compare against, so the check is N/A (not a failure).
+    const canonicalHashOk = canonicalHashMatch ?? true;
+
     return {
-      valid: certificateHashMatch && snapshotIntegrity && chainResult.valid,
+      valid: certificateHashMatch && canonicalHashOk && snapshotIntegrity && chainResult.valid,
       certificateId,
       certificateHashMatch,
       reconstructedHash,
       storedHash,
+      canonicalHashMatch,
       snapshotIntegrity,
       eventChainValid: chainResult.valid,
       brokenAtSequence: chainResult.brokenAtSequence,
@@ -218,7 +321,15 @@ export class CertificateService {
 
   // Returns the full certificate payload for the given certificate.
   // Used for JSON export / archiving / third-party independent verification.
-  // Does NOT recompute the hash.
+  //
+  // certificateHash in the response is the value recomputed by the builder from
+  // current evidence — not the raw value stored in AcceptanceCertificate. The builder
+  // always runs; the stored hash is never passed through as-is.
+  //
+  // A third party can independently verify by:
+  //   1. Receiving this response
+  //   2. Computing SHA-256(deepSortKeys(JSON.stringify(payload))) themselves
+  //   3. Comparing their result to certificateHash (== canonicalJson hashed)
   //
   // Access control (enforced at service level):
   //   - callerRole === 'INTERNAL_SUPPORT' → always allowed (cross-org support access)
@@ -262,7 +373,7 @@ export class CertificateService {
 
     return {
       certificateId,
-      certificateHash: cert.certificateHash,
+      certificateHash: built.certificateHash,  // recomputed from evidence — not the stored value
       issuedAt: cert.issuedAt.toISOString(),
       payload: built.payload,
       canonicalJson: built.canonicalJson,

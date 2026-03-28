@@ -3,6 +3,8 @@ import {
   CertificatePayloadBuilder,
   CertificatePayload,
   computeCertificateHash,
+  computeCanonicalAcceptanceHash,
+  CanonicalAcceptanceInput,
 } from '../../src/modules/certificates/certificate-payload.builder';
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────────
@@ -233,5 +235,93 @@ describe('CertificatePayloadBuilder.build()', () => {
     // Documents in payload should be sorted by storageKey (a before z)
     expect(result.payload.documents[0].filename).toBe('a.pdf');
     expect(result.payload.documents[1].filename).toBe('z.pdf');
+  });
+});
+
+// ─── computeCanonicalAcceptanceHash ───────────────────────────────────────────
+
+describe('computeCanonicalAcceptanceHash', () => {
+  function makeInput(overrides: Partial<CanonicalAcceptanceInput> = {}): CanonicalAcceptanceInput {
+    return {
+      acceptedAt:     '2024-06-01T11:59:00.000Z',
+      dealId:         'offer-abc-123',
+      ipAddress:      '1.2.3.4',
+      recipientEmail: 'bob@client.com',
+      userAgent:      'Mozilla/5.0',
+      ...overrides,
+    };
+  }
+
+  it('produces a 64-character hex SHA-256 hash', () => {
+    const { hash } = computeCanonicalAcceptanceHash(makeInput());
+    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('is deterministic — same input always produces the same hash', () => {
+    const input = makeInput();
+    expect(computeCanonicalAcceptanceHash(input).hash).toBe(
+      computeCanonicalAcceptanceHash(input).hash,
+    );
+  });
+
+  it('is key-order independent — input built in any order hashes identically', () => {
+    const canonical = computeCanonicalAcceptanceHash(makeInput());
+    const reversed = computeCanonicalAcceptanceHash({
+      userAgent:      'Mozilla/5.0',
+      recipientEmail: 'bob@client.com',
+      ipAddress:      '1.2.3.4',
+      dealId:         'offer-abc-123',
+      acceptedAt:     '2024-06-01T11:59:00.000Z',
+    });
+    expect(reversed.hash).toBe(canonical.hash);
+  });
+
+  it('canonical JSON has keys in alphabetical order', () => {
+    const { canonical } = computeCanonicalAcceptanceHash(makeInput());
+    const parsed = JSON.parse(canonical) as Record<string, unknown>;
+    const keys = Object.keys(parsed);
+    expect(keys).toEqual([...keys].sort());
+  });
+
+  it('canonical JSON contains exactly the 5 specified fields', () => {
+    const { canonical } = computeCanonicalAcceptanceHash(makeInput());
+    const parsed = JSON.parse(canonical) as Record<string, unknown>;
+    expect(Object.keys(parsed).sort()).toEqual(
+      ['acceptedAt', 'dealId', 'ipAddress', 'recipientEmail', 'userAgent'],
+    );
+  });
+
+  it('produces a different hash when any field changes', () => {
+    const base = computeCanonicalAcceptanceHash(makeInput()).hash;
+    const cases: Partial<CanonicalAcceptanceInput>[] = [
+      { acceptedAt: '2024-06-01T12:00:00.000Z' },
+      { dealId: 'offer-different' },
+      { ipAddress: '9.9.9.9' },
+      { recipientEmail: 'other@client.com' },
+      { userAgent: 'curl/7.0' },
+    ];
+    for (const override of cases) {
+      expect(computeCanonicalAcceptanceHash(makeInput(override)).hash).not.toBe(base);
+    }
+  });
+
+  it('includes null fields in the canonical form — null vs absent produces different hashes', () => {
+    const withNullIp    = computeCanonicalAcceptanceHash(makeInput({ ipAddress: null }));
+    const withNullAgent = computeCanonicalAcceptanceHash(makeInput({ userAgent: null }));
+    const withValues    = computeCanonicalAcceptanceHash(makeInput());
+
+    expect(withNullIp.hash).not.toBe(withValues.hash);
+    expect(withNullAgent.hash).not.toBe(withValues.hash);
+    // Both nulls together are also different from either null alone
+    expect(
+      computeCanonicalAcceptanceHash(makeInput({ ipAddress: null, userAgent: null })).hash,
+    ).not.toBe(withNullIp.hash);
+  });
+
+  it('encodes as UTF-8 — non-ASCII characters are handled correctly', () => {
+    const input = makeInput({ recipientEmail: 'tëst@münchen.de' });
+    const { hash, canonical } = computeCanonicalAcceptanceHash(input);
+    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(canonical).toContain('münchen');
   });
 });

@@ -95,7 +95,7 @@ export class ExpireOffersHandler {
     // Step 5: emit events + notify senders — best-effort, fired after transaction commits.
     // Each notification is independent; a failure on one does not prevent others.
     for (const offer of expiredOffers) {
-      void this.dealEventService.emit(offer.id, 'deal_expired');
+      void this.dealEventService.emit(offer.id, 'deal.expired');
       if (!offer.snapshot) continue; // no snapshot = offer was never sent; skip
       await this.notificationsService.onDealExpired(new DealExpiredEvent(
         offer.id,

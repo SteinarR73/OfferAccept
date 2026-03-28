@@ -95,7 +95,7 @@ export class OffersService {
       return created;
     });
 
-    void this.dealEventService.emit(offer.id, 'deal_created');
+    void this.dealEventService.emit(offer.id, 'deal.created');
     return offer;
   }
 
@@ -195,19 +195,19 @@ export class OffersService {
     const isDraft = !offer.snapshot;
 
     // 1. Created — always present
-    events.push({ event: 'deal_created', label: 'Deal created', timestamp: offer.createdAt.toISOString(), pending: false });
+    events.push({ event: 'deal.created', label: 'Deal created', timestamp: offer.createdAt.toISOString(), pending: false });
 
     if (isDraft) {
       // Show pending future steps for drafts
-      events.push({ event: 'deal_sent',     label: 'Deal sent',            timestamp: null, pending: true });
-      events.push({ event: 'deal_opened',   label: 'Opened by recipient',  timestamp: null, pending: true });
-      events.push({ event: 'otp_verified',  label: 'Identity verified',    timestamp: null, pending: true });
-      events.push({ event: 'deal_accepted', label: 'Deal accepted',        timestamp: null, pending: true });
+      events.push({ event: 'deal.sent',     label: 'Deal sent',            timestamp: null, pending: true });
+      events.push({ event: 'deal.opened',   label: 'Opened by recipient',  timestamp: null, pending: true });
+      events.push({ event: 'otp.verified',  label: 'Identity verified',    timestamp: null, pending: true });
+      events.push({ event: 'deal.accepted', label: 'Deal accepted',        timestamp: null, pending: true });
       return events;
     }
 
     // 2. Sent — snapshot.frozenAt is the authoritative sent timestamp
-    events.push({ event: 'deal_sent', label: 'Deal sent', timestamp: offer.snapshot!.frozenAt.toISOString(), pending: false });
+    events.push({ event: 'deal.sent', label: 'Deal sent', timestamp: offer.snapshot!.frozenAt.toISOString(), pending: false });
 
     // Fetch additional data in parallel
     const [acceptanceRecord, session, cert] = await Promise.all([
@@ -231,43 +231,43 @@ export class OffersService {
 
     // 3. Opened
     if (viewedAt) {
-      events.push({ event: 'deal_opened', label: 'Opened by recipient', timestamp: viewedAt.toISOString(), pending: false });
+      events.push({ event: 'deal.opened', label: 'Opened by recipient', timestamp: viewedAt.toISOString(), pending: false });
     } else if (status === 'SENT') {
-      events.push({ event: 'deal_opened', label: 'Opened by recipient', timestamp: null, pending: true });
+      events.push({ event: 'deal.opened', label: 'Opened by recipient', timestamp: null, pending: true });
     }
 
     if (status === 'ACCEPTED') {
       // 4. OTP verified
       events.push({
-        event: 'otp_verified',
+        event: 'otp.verified',
         label: 'Identity verified',
         timestamp: session?.otpVerifiedAt?.toISOString() ?? null,
         pending: !session?.otpVerifiedAt,
       });
       // 5. Accepted
       events.push({
-        event: 'deal_accepted',
+        event: 'deal.accepted',
         label: 'Deal accepted',
         timestamp: acceptanceRecord?.acceptedAt.toISOString() ?? null,
         pending: !acceptanceRecord,
       });
       // 6. Certificate
       events.push({
-        event: 'certificate_generated',
+        event: 'certificate.issued',
         label: 'Certificate generated',
         timestamp: cert?.issuedAt.toISOString() ?? null,
         pending: !cert,
       });
     } else if (status === 'DECLINED') {
-      events.push({ event: 'deal_declined', label: 'Deal declined', timestamp: offer.updatedAt.toISOString(), pending: false });
+      events.push({ event: 'deal.declined', label: 'Deal declined', timestamp: offer.updatedAt.toISOString(), pending: false });
     } else if (status === 'EXPIRED') {
-      events.push({ event: 'deal_expired', label: 'Deal expired', timestamp: offer.updatedAt.toISOString(), pending: false });
+      events.push({ event: 'deal.expired', label: 'Deal expired', timestamp: offer.updatedAt.toISOString(), pending: false });
     } else if (status === 'REVOKED') {
-      events.push({ event: 'deal_revoked', label: 'Deal revoked', timestamp: offer.updatedAt.toISOString(), pending: false });
+      events.push({ event: 'deal.revoked', label: 'Deal revoked', timestamp: offer.updatedAt.toISOString(), pending: false });
     } else if (status === 'SENT') {
       // Still waiting — show pending steps
-      events.push({ event: 'otp_verified',  label: 'Identity verified', timestamp: null, pending: true });
-      events.push({ event: 'deal_accepted', label: 'Deal accepted',     timestamp: null, pending: true });
+      events.push({ event: 'otp.verified',  label: 'Identity verified', timestamp: null, pending: true });
+      events.push({ event: 'deal.accepted', label: 'Deal accepted',     timestamp: null, pending: true });
     }
 
     return events;
@@ -290,11 +290,11 @@ export class OffersService {
     const hasEvent = (type: string) => recorded.some((e) => e.event === type);
 
     if (status === 'SENT') {
-      if (!hasEvent('deal_opened'))   recorded.push({ event: 'deal_opened',   label: 'Opened by recipient', timestamp: null, pending: true });
-      if (!hasEvent('otp_verified'))  recorded.push({ event: 'otp_verified',  label: 'Identity verified',   timestamp: null, pending: true });
-      if (!hasEvent('deal_accepted')) recorded.push({ event: 'deal_accepted', label: 'Deal accepted',        timestamp: null, pending: true });
-    } else if (status === 'ACCEPTED' && !hasEvent('certificate_generated')) {
-      recorded.push({ event: 'certificate_generated', label: 'Certificate generated', timestamp: null, pending: true });
+      if (!hasEvent('deal.opened'))   recorded.push({ event: 'deal.opened',   label: 'Opened by recipient', timestamp: null, pending: true });
+      if (!hasEvent('otp.verified'))  recorded.push({ event: 'otp.verified',  label: 'Identity verified',   timestamp: null, pending: true });
+      if (!hasEvent('deal.accepted')) recorded.push({ event: 'deal.accepted', label: 'Deal accepted',        timestamp: null, pending: true });
+    } else if (status === 'ACCEPTED' && !hasEvent('certificate.issued')) {
+      recorded.push({ event: 'certificate.issued', label: 'Certificate generated', timestamp: null, pending: true });
     }
 
     return recorded;

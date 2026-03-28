@@ -5,7 +5,6 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
-import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import type { Env } from './config/env';
 
 const logger = new Logger('Bootstrap');
@@ -54,10 +53,8 @@ async function bootstrap() {
 
   app.useGlobalFilters(new DomainExceptionFilter());
 
-  // ── X-Request-ID ─────────────────────────────────────────────────────────────
-  // Echo or generate a unique request ID on every response. Downstream services,
-  // logs, and clients can correlate requests using this header.
-  app.useGlobalInterceptors(new RequestIdInterceptor());
+  // RequestIdInterceptor is registered as an APP_INTERCEPTOR in AppModule so it
+  // can receive TraceContext via DI. No manual registration needed here.
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-// ─── Signing flow E2E ─────────────────────────────────────────────────────────
-// Tests the full recipient-side signing journey:
-//   /sign/:token  → OTP verification → acceptance → completion certificate
+// ─── Acceptance flow E2E ──────────────────────────────────────────────────────
+// Tests the full recipient-side acceptance journey:
+//   /accept/:token  → OTP verification → acceptance → completion certificate
 //
 // Prerequisites (must be running before this test suite):
 //   - API server at NEXT_PUBLIC_API_URL (default http://localhost:3001/api/v1)
 //   - Web server at BASE_URL (default http://localhost:3000)
 //
-// The test uses a SENT offer token seeded by the API's e2e test helpers or a
+// The test uses a SENT deal token seeded by the API's e2e test helpers or a
 // real token set via the PLAYWRIGHT_SIGN_TOKEN env var.
 //
 // If no token is provided the tests are skipped with an informative message.
@@ -20,32 +20,32 @@ const SIGN_TOKEN = process.env.PLAYWRIGHT_SIGN_TOKEN;
 test.beforeAll(() => {
   if (!SIGN_TOKEN) {
     console.warn(
-      '[E2E] PLAYWRIGHT_SIGN_TOKEN not set — signing flow tests skipped.\n' +
-        'Set PLAYWRIGHT_SIGN_TOKEN to a valid SENT offer token to run these tests.',
+      '[E2E] PLAYWRIGHT_SIGN_TOKEN not set — acceptance flow tests skipped.\n' +
+        'Set PLAYWRIGHT_SIGN_TOKEN to a valid SENT deal token to run these tests.',
     );
   }
 });
 
-// ─── Signing page — initial load ───────────────────────────────────────────────
+// ─── Acceptance page — initial load ───────────────────────────────────────────
 
-test('signing page loads and shows offer details', async ({ page }) => {
+test('acceptance page loads and shows deal details', async ({ page }) => {
   test.skip(!SIGN_TOKEN, 'PLAYWRIGHT_SIGN_TOKEN not set');
 
-  await page.goto(`/sign/${SIGN_TOKEN}`);
+  await page.goto(`/accept/${SIGN_TOKEN}`);
 
-  // Trust banner should be visible on every signing step
-  await expect(page.getByText('Secure signing session')).toBeVisible();
+  // Trust banner should be visible on every acceptance step
+  await expect(page.getByText('Secure acceptance session')).toBeVisible();
 
   // OTP entry form should render
   await expect(page.getByRole('heading', { name: /verify/i })).toBeVisible();
 });
 
-// ─── Signing page — OTP error state ───────────────────────────────────────────
+// ─── Acceptance page — OTP error state ────────────────────────────────────────
 
-test('signing page shows error on invalid OTP', async ({ page }) => {
+test('acceptance page shows error on invalid OTP', async ({ page }) => {
   test.skip(!SIGN_TOKEN, 'PLAYWRIGHT_SIGN_TOKEN not set');
 
-  await page.goto(`/sign/${SIGN_TOKEN}`);
+  await page.goto(`/accept/${SIGN_TOKEN}`);
 
   // Enter an obviously wrong OTP
   await page.getByRole('textbox').fill('000000');
@@ -55,10 +55,10 @@ test('signing page shows error on invalid OTP', async ({ page }) => {
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
 });
 
-// ─── Signing page — expired / not-found token ─────────────────────────────────
+// ─── Acceptance page — expired / not-found token ──────────────────────────────
 
-test('signing page handles invalid token gracefully', async ({ page }) => {
-  await page.goto('/sign/invalid-token-that-does-not-exist');
+test('acceptance page handles invalid token gracefully', async ({ page }) => {
+  await page.goto('/accept/invalid-token-that-does-not-exist');
 
   // Should not show a raw error — either an error card or redirect
   // The page must NOT display an unhandled exception stack trace

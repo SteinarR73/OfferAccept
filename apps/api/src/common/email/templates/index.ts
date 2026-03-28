@@ -134,13 +134,15 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
     ``,
     `  ${p.offerTitle}`,
     ``,
-    `To review and respond to this deal, open the link below:`,
+    `To review and accept or decline this deal, open the link below:`,
     ``,
     `  ${p.signingUrl}`,
     ``,
     `${expiryLine}`,
     ``,
-    `You will be asked to verify your email address before you can accept or decline.`,
+    `You will be asked to verify your email address before accepting.`,
+    `If you accept, OfferAccept will issue a tamper-proof acceptance certificate`,
+    `as a permanent record of your decision.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -152,11 +154,12 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
       <div style="font-size:13px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deal</div>
       <div style="font-size:18px;font-weight:600;color:#111827">${escapeHtml(p.offerTitle)}</div>
     </div>
-    <p style="margin:0 0 20px;color:#374151">To review and respond to this deal, click the button below. You will be asked to verify your email address first.</p>
+    <p style="margin:0 0 20px;color:#374151">To review and accept or decline this deal, click the button below. You will be asked to verify your email address first.</p>
     <p style="margin:0 0 20px">${button(p.signingUrl, 'Review deal')}</p>
     <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
     <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.signingUrl)}</p>
-    <p style="margin:0;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>`,
+    ${expiryLine ? `<p style="margin:0 0 16px;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>` : ''}
+    <p style="margin:0;font-size:13px;color:#6b7280">If you accept, OfferAccept will issue a tamper-proof acceptance certificate as a permanent record of your decision.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -177,7 +180,8 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
     `Accepted at: ${acceptedAtStr}`,
     `Certificate ID: ${p.certificateId}`,
     ``,
-    `The certificate ID can be used to verify the integrity of this acceptance.`,
+    `OfferAccept has created a tamper-proof acceptance certificate and acceptance record`,
+    `for this deal. Use the certificate ID to independently verify the acceptance at any time.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -186,7 +190,7 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
     <div style="border-left:4px solid #16a34a;padding:12px 16px;margin:0 0 24px;background:#f0fdf4;border-radius:0 6px 6px 0">
       <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Deal accepted</p>
-      <p style="margin:4px 0 0;color:#166534">${escapeHtml(p.recipientName)} has accepted your deal.</p>
+      <p style="margin:4px 0 0;color:#166534">${escapeHtml(p.recipientName)} has accepted your deal. An acceptance certificate has been issued.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
@@ -206,7 +210,7 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
         <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:12px;color:#374151">${escapeHtml(p.certificateId)}</td>
       </tr>
     </table>
-    <p style="margin:0;font-size:13px;color:#6b7280">The certificate ID can be used to verify the integrity of this acceptance at any time.</p>`,
+    <p style="margin:0;font-size:13px;color:#6b7280">OfferAccept has created a tamper-proof acceptance record for this deal. The certificate ID can be used to independently verify the acceptance at any time.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -216,19 +220,19 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
 // ─── 4. Acceptance confirmation to recipient ──────────────────────────────────
 
 export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRecipientParams): EmailTemplate {
-  const subject = `Your acceptance of "${p.offerTitle}" is confirmed`;
+  const subject = `Your acceptance of "${p.offerTitle}" is recorded`;
   const acceptedAtStr = formatDate(p.acceptedAt);
 
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `This confirms that you have accepted the deal "${p.offerTitle}" from ${p.senderName}.`,
+    `Your acceptance of the deal "${p.offerTitle}" from ${p.senderName} has been recorded.`,
     ``,
     `Accepted at: ${acceptedAtStr}`,
     `Certificate ID: ${p.certificateId}`,
     ``,
-    `Please keep this email for your records. The certificate ID is a tamper-evident`,
-    `reference to your acceptance.`,
+    `Please keep this email for your records. OfferAccept has created a tamper-proof`,
+    `acceptance certificate that can be independently verified using the certificate ID above.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -236,8 +240,8 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
     <div style="border-left:4px solid #16a34a;padding:12px 16px;margin:0 0 24px;background:#f0fdf4;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Acceptance confirmed</p>
-      <p style="margin:4px 0 0;color:#166534">You have accepted the deal from ${escapeHtml(p.senderName)}.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Acceptance recorded</p>
+      <p style="margin:4px 0 0;color:#166534">You have accepted the deal from ${escapeHtml(p.senderName)}. A certificate has been issued.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
@@ -253,7 +257,7 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
         <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:12px;color:#374151">${escapeHtml(p.certificateId)}</td>
       </tr>
     </table>
-    <p style="margin:0;font-size:13px;color:#6b7280">Please keep this email for your records. The certificate ID is a tamper-evident reference to your acceptance that can be independently verified.</p>`,
+    <p style="margin:0;font-size:13px;color:#6b7280">Please keep this email for your records. OfferAccept has created a tamper-proof acceptance certificate and acceptance record that can be independently verified using the certificate ID above.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -442,31 +446,31 @@ export function expiryNotificationEmail(p: ExpiryNotificationParams): EmailTempl
 }
 
 // ─── 10. Recipient reminder ───────────────────────────────────────────────────
-// Three copy variants depending on how far the recipient got in the signing flow.
+// Three copy variants depending on how far the recipient got in the acceptance flow.
 
 export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplate {
   const expiryLine = p.expiresAt
-    ? `This agreement expires on ${formatDate(p.expiresAt)}.`
+    ? `This deal expires on ${formatDate(p.expiresAt)}.`
     : '';
 
   const copy = {
     not_opened: {
-      subject: `Reminder: agreement waiting for your review`,
-      headline: 'Agreement waiting for your review',
-      body: 'You received an agreement that is waiting for your confirmation. Please review it at your earliest convenience.',
-      cta: 'Review agreement',
+      subject: `Reminder: deal waiting for your review`,
+      headline: 'Deal waiting for your review',
+      body: 'You received a deal that is waiting for your response. Please review it at your earliest convenience.',
+      cta: 'Review deal',
     },
     opened: {
-      subject: `Reminder: agreement awaiting your confirmation`,
-      headline: 'Agreement awaiting your confirmation',
-      body: 'You previously opened this agreement but have not yet confirmed it. Click the button below to pick up where you left off.',
-      cta: 'Continue to agreement',
+      subject: `Reminder: deal awaiting your acceptance`,
+      headline: 'Deal awaiting your acceptance',
+      body: 'You previously opened this deal but have not yet accepted it. Click the button below to pick up where you left off.',
+      cta: 'Open deal',
     },
     otp_started: {
-      subject: `Complete your agreement confirmation`,
-      headline: 'Complete your confirmation',
-      body: 'You started confirming this agreement but did not complete the process. Click below to finish — it only takes a moment.',
-      cta: 'Complete confirmation',
+      subject: `Complete your deal acceptance`,
+      headline: 'Complete your acceptance',
+      body: 'You started accepting this deal but did not complete the process. Click below to finish — it only takes a moment.',
+      cta: 'Complete acceptance',
     },
   }[p.variant];
 
@@ -477,16 +481,18 @@ export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplat
     ``,
     copy.body,
     ``,
-    `Agreement: ${p.offerTitle}`,
+    `Deal: ${p.offerTitle}`,
     `Sent by: ${p.senderName}`,
     ``,
-    `To review and confirm, open the link below:`,
+    `To review and accept this deal, open the link below:`,
     ``,
     `  ${p.signingUrl}`,
     ``,
     expiryLine,
     ``,
-    `You will be asked to verify your email address before confirming.`,
+    `You will be asked to verify your email address before accepting.`,
+    `When you accept, OfferAccept will issue a tamper-proof acceptance certificate`,
+    `as a permanent record.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].filter((l) => l !== undefined).join('\n');
@@ -498,14 +504,15 @@ export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplat
       <p style="margin:4px 0 0;color:#78350f;font-size:13px">${escapeHtml(copy.body)}</p>
     </div>
     <div style="border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:0 0 24px;background:#f9fafb">
-      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Agreement</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deal</div>
       <div style="font-size:17px;font-weight:600;color:#111827">${escapeHtml(p.offerTitle)}</div>
       <div style="font-size:13px;color:#6b7280;margin-top:4px">Sent by ${escapeHtml(p.senderName)}</div>
     </div>
     <p style="margin:0 0 24px">${button(p.signingUrl, copy.cta)}</p>
     <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
     <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.signingUrl)}</p>
-    ${expiryLine ? `<p style="margin:0;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>` : ''}`,
+    ${expiryLine ? `<p style="margin:0 0 16px;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>` : ''}
+    <p style="margin:0;font-size:13px;color:#6b7280">When you accept, OfferAccept will issue a tamper-proof acceptance certificate as a permanent record.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 

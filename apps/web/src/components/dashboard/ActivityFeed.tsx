@@ -27,7 +27,7 @@ const EVENT_LABEL: Record<DealEventType, string> = {
   deal_opened:           'Opened by recipient',
   otp_verified:          'Identity verified',
   deal_accepted:         'Deal accepted',
-  certificate_generated: 'Certificate generated',
+  certificate_generated: 'Certificate issued',
   deal_reminder_sent:    'Reminder sent',
   deal_revoked:          'Deal revoked',
   deal_expired:          'Deal expired',

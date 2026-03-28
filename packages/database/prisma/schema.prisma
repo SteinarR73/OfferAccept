@@ -656,10 +656,11 @@ model AcceptanceRecord {
 // It does not re-read Offer, User, or Organization at generation time.
 
 model AcceptanceCertificate {
-  id                 String   @id @default(cuid())
+  id                 String   @id @default(uuid(4))
   offerId            String   @unique  // for convenient dashboard lookups
   acceptanceRecordId String   @unique
-  certificateHash    String   // SHA-256 hex of canonical certificate content
+  certificateHash    String   // SHA-256 hex of canonical certificate content (full payload)
+  canonicalHash      String?  // SHA-256 hex of 5-field canonical acceptance fingerprint; null on legacy certificates
   pdfStorageKey      String?  // object storage key; null until PDF is generated
   issuedAt           DateTime @default(now())
 
@@ -926,28 +927,28 @@ model WebhookEndpoint {
 // analytics. Events are append-only; never updated or deleted.
 //
 // Event emission points:
-//   deal_created        → OffersService.create()
-//   deal_sent           → SendOfferService.send()
-//   deal_opened         → SigningFlowService.requestOtp() (first open only)
-//   otp_verified        → SigningFlowService.verifyOtp()
-//   deal_accepted       → SigningFlowService.accept()
-//   certificate_generated → CertificateService.generateForAcceptance()
-//   deal_reminder_sent  → SendRemindersHandler (per reminder sent)
-//   deal_revoked        → SendOfferService.revoke()
-//   deal_expired        → ExpireOffersHandler (per expired offer)
-//   deal_declined       → SigningFlowService.decline()
+//   deal.created        → OffersService.create()
+//   deal.sent           → SendOfferService.send()
+//   deal.opened         → SigningFlowService.requestOtp() (first open only)
+//   otp.verified        → SigningFlowService.verifyOtp()
+//   deal.accepted       → SigningFlowService.accept()
+//   certificate.issued  → CertificateService.generateForAcceptance()
+//   deal.reminder_sent  → SendRemindersHandler (per reminder sent)
+//   deal.revoked        → SendOfferService.revoke()
+//   deal.expired        → ExpireOffersHandler (per expired offer)
+//   deal.declined       → SigningFlowService.decline()
 
 enum DealEventType {
-  deal_created
-  deal_sent
-  deal_opened
-  otp_verified
-  deal_accepted
-  certificate_generated
-  deal_reminder_sent
-  deal_revoked
-  deal_expired
-  deal_declined
+  deal_created          @map("deal.created")
+  deal_sent             @map("deal.sent")
+  deal_opened           @map("deal.opened")
+  otp_verified          @map("otp.verified")
+  deal_accepted         @map("deal.accepted")
+  certificate_issued    @map("certificate.issued")
+  deal_reminder_sent    @map("deal.reminder_sent")
+  deal_revoked          @map("deal.revoked")
+  deal_expired          @map("deal.expired")
+  deal_declined         @map("deal.declined")
 }
 
 model DealEvent {

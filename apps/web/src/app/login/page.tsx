@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { login } from '../../lib/offers-api';
 import { markAuthenticated } from '../../lib/auth';
@@ -13,6 +13,8 @@ import { Alert } from '../../components/ui/Alert';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const passwordReset = searchParams.get('reset') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -46,10 +48,13 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <div className="px-6 pt-6 pb-2 text-center">
           <h1 className="text-lg font-semibold text-gray-900">Welcome back</h1>
-          <p className="mt-1 text-sm text-[--color-text-muted]">Secure offer letter management</p>
+          <p className="mt-1 text-sm text-[--color-text-muted]">Secure deal management</p>
         </div>
 
         <CardSection border={false} className="px-6 pb-2">
+          {passwordReset && (
+            <Alert variant="success" className="mb-4">Password updated. Sign in with your new password.</Alert>
+          )}
           {error && (
             <Alert variant="error" className="mb-4">{error}</Alert>
           )}

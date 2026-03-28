@@ -87,7 +87,7 @@ describe('Email templates', () => {
       recipientName: 'Bob Client',
       offerTitle: 'Web Redesign Proposal',
       senderName: 'Alice Sender',
-      signingUrl: 'https://app.offeraccept.com/sign/oa_abc123',
+      signingUrl: 'https://app.offeraccept.com/accept/oa_abc123',
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     };
 
@@ -99,12 +99,12 @@ describe('Email templates', () => {
 
     it('text body contains the signing URL', () => {
       const { text } = offerLinkEmail(params);
-      expect(text).toContain('https://app.offeraccept.com/sign/oa_abc123');
+      expect(text).toContain('https://app.offeraccept.com/accept/oa_abc123');
     });
 
     it('HTML body contains the signing URL as an href', () => {
       const { html } = offerLinkEmail(params);
-      expect(html).toContain('href="https://app.offeraccept.com/sign/oa_abc123"');
+      expect(html).toContain('href="https://app.offeraccept.com/accept/oa_abc123"');
     });
 
     it('HTML body also shows the URL as visible text for copy-paste', () => {
@@ -244,7 +244,7 @@ describe('Email templates', () => {
     it('every template produces a non-empty subject, text, and HTML', () => {
       const templates = [
         otpEmail({ to: 'a@b.com', recipientName: 'A', code: '123456', offerTitle: 'T', expiresAt: new Date(Date.now() + 60_000) }),
-        offerLinkEmail({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/sign/oa_test', expiresAt: null }),
+        offerLinkEmail({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/accept/oa_test', expiresAt: null }),
         acceptanceConfirmationSenderEmail({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', acceptedAt: new Date(), certificateId: 'c1' }),
         acceptanceConfirmationRecipientEmail({ to: 'a@b.com', recipientName: 'R', offerTitle: 'T', senderName: 'S', acceptedAt: new Date(), certificateId: 'c1' }),
         declineNotificationEmail({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', declinedAt: new Date() }),
@@ -260,7 +260,7 @@ describe('Email templates', () => {
     it('every HTML template contains the OfferAccept brand name', () => {
       const templates = [
         otpEmail({ to: 'a@b.com', recipientName: 'A', code: '123456', offerTitle: 'T', expiresAt: new Date(Date.now() + 60_000) }),
-        offerLinkEmail({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/sign/oa_test', expiresAt: null }),
+        offerLinkEmail({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/accept/oa_test', expiresAt: null }),
         acceptanceConfirmationSenderEmail({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', acceptedAt: new Date(), certificateId: 'c1' }),
         acceptanceConfirmationRecipientEmail({ to: 'a@b.com', recipientName: 'R', offerTitle: 'T', senderName: 'S', acceptedAt: new Date(), certificateId: 'c1' }),
         declineNotificationEmail({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', declinedAt: new Date() }),

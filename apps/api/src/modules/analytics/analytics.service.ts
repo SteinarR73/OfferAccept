@@ -7,7 +7,7 @@ import { PrismaClient } from '@prisma/client';
 // All queries are scoped to orgId — cross-org data is never exposed.
 //
 // Data sources used:
-//   DealEvent (deal_sent, deal_accepted, deal_declined, deal_expired, deal_revoked)
+//   DealEvent (deal.sent, deal.accepted, deal.declined, deal.expired, deal.revoked)
 //   — the canonical append-only lifecycle log defined in schema.prisma.
 //
 // Design decision: DealEvent is the single source of truth for all analytics
@@ -19,7 +19,7 @@ import { PrismaClient } from '@prisma/client';
 
 export interface AnalyticsOverview {
   // Deal counts by lifecycle state
-  dealsSent: number;       // distinct deals that have a deal_sent event
+  dealsSent: number;       // distinct deals that have a deal.sent event
   dealsAccepted: number;
   dealsPending: number;    // sent and not yet in a terminal state
   dealsDeclined: number;
@@ -68,11 +68,11 @@ export class AnalyticsService {
   async getOverview(orgId: string): Promise<AnalyticsOverview> {
     // ── 1. Status counts from DealEvent ──────────────────────────────────────
     const [sentSet, acceptedSet, declinedSet, expiredSet, revokedSet] = await Promise.all([
-      dealIdsWithEvent(this.db, orgId, 'deal_sent'),
-      dealIdsWithEvent(this.db, orgId, 'deal_accepted'),
-      dealIdsWithEvent(this.db, orgId, 'deal_declined'),
-      dealIdsWithEvent(this.db, orgId, 'deal_expired'),
-      dealIdsWithEvent(this.db, orgId, 'deal_revoked'),
+      dealIdsWithEvent(this.db, orgId, 'deal.sent'),
+      dealIdsWithEvent(this.db, orgId, 'deal.accepted'),
+      dealIdsWithEvent(this.db, orgId, 'deal.declined'),
+      dealIdsWithEvent(this.db, orgId, 'deal.expired'),
+      dealIdsWithEvent(this.db, orgId, 'deal.revoked'),
     ]);
 
     const terminalSet = new Set([...acceptedSet, ...declinedSet, ...expiredSet, ...revokedSet]);
@@ -85,7 +85,7 @@ export class AnalyticsService {
     const dealsPending  = [...sentSet].filter((id) => !terminalSet.has(id)).length;
 
     // ── 2. Acceptance timing from DealEvent ───────────────────────────────────
-    // Use the first deal_sent and the deal_accepted event for each accepted deal.
+    // Use the first deal.sent and the deal.accepted event for each accepted deal.
     const acceptedIds = [...acceptedSet];
     if (acceptedIds.length === 0) {
       return {
@@ -97,12 +97,12 @@ export class AnalyticsService {
 
     const [sentTimings, acceptedTimings] = await Promise.all([
       this.db.dealEvent.findMany({
-        where: { dealId: { in: acceptedIds }, eventType: 'deal_sent' },
+        where: { dealId: { in: acceptedIds }, eventType: 'deal.sent' },
         select: { dealId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.db.dealEvent.findMany({
-        where: { dealId: { in: acceptedIds }, eventType: 'deal_accepted' },
+        where: { dealId: { in: acceptedIds }, eventType: 'deal.accepted' },
         select: { dealId: true, createdAt: true },
       }),
     ]);

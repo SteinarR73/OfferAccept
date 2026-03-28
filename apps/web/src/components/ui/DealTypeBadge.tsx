@@ -9,9 +9,9 @@ import { cn } from '@/lib/cn';
 export type DealType = 'proposal' | 'quote' | 'offer' | 'onboarding';
 
 const DEAL_TYPE_META: Record<DealType, { label: string; classes: string }> = {
-  proposal:   { label: 'Proposal',   classes: 'bg-blue-100   text-blue-700'   },
+  proposal:   { label: 'Deal',       classes: 'bg-blue-100   text-blue-700'   },
   quote:      { label: 'Quote',      classes: 'bg-purple-100 text-purple-700' },
-  offer:      { label: 'Offer',      classes: 'bg-gray-100   text-gray-600'   },
+  offer:      { label: 'Deal',       classes: 'bg-gray-100   text-gray-600'   },
   onboarding: { label: 'Onboarding', classes: 'bg-green-100  text-green-700'  },
 };
 

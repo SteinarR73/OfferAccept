@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'OfferAccept — Deal acceptance and agreement confirmation',
+  title: 'OfferAccept — Send deals. Record acceptance.',
   description:
     'Send deals, collect OTP-verified acceptance, and receive tamper-proof acceptance certificates. Not an e-signature tool.',
 };
@@ -93,7 +93,7 @@ function Hero() {
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
           <span className="flex-1 ml-2 h-5 bg-white rounded text-[10px] text-gray-400 flex items-center px-3">
-            offeraccept.com/sign/oa_abc123…
+            offeraccept.com/accept/oa_abc123…
           </span>
         </div>
         <div className="bg-white px-6 py-5">
@@ -105,7 +105,7 @@ function Hero() {
             </div>
           </div>
           <div className="space-y-2 mb-4">
-            {['Offer letter.pdf', 'Compensation summary.pdf'].map((name) => (
+            {['Deal summary.pdf', 'Compensation summary.pdf'].map((name) => (
               <div key={name} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100">
                 <span className="w-6 h-6 rounded bg-red-100 text-red-600 text-[9px] font-bold flex items-center justify-center">PDF</span>
                 <span className="text-xs text-gray-700">{name}</span>
@@ -253,9 +253,9 @@ function CertificatePreview() {
 
           {/* Footer */}
           <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-            <a href="#" className="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors">
+            <span className="text-xs text-blue-600 font-medium">
               Verify this certificate →
-            </a>
+            </span>
             <span className="text-[10px] text-gray-400">tamper-evident · cryptographically sealed</span>
           </div>
         </div>
@@ -294,10 +294,14 @@ function LandingFooter() {
       <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
         <p className="text-xs text-gray-400">© 2026 OfferAccept. All rights reserved.</p>
         <nav className="flex items-center gap-4" aria-label="Footer navigation">
-          {['Privacy', 'Terms', 'Contact'].map((item) => (
-            <a key={item} href="#" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-              {item}
-            </a>
+          {[
+            { label: 'Privacy', href: '/privacy' },
+            { label: 'Terms', href: '/terms' },
+            { label: 'Contact', href: '/contact' },
+          ].map(({ label, href }) => (
+            <Link key={label} href={href} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              {label}
+            </Link>
           ))}
         </nav>
       </div>
