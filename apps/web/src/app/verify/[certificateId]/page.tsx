@@ -144,6 +144,9 @@ function ValidState({
         </div>
       )}
 
+      {/* Verification method explanation */}
+      <VerificationExplanation tint="green" />
+
       {/* Technical details toggle */}
       <div className="border-t border-green-200 px-6 py-3">
         <button
@@ -208,6 +211,9 @@ function InvalidState({
         </div>
       </div>
 
+      {/* Verification method explanation */}
+      <VerificationExplanation tint="red" />
+
       {/* Technical details toggle */}
       <div className="border-t border-red-200 px-6 py-3">
         <button
@@ -232,6 +238,26 @@ function InvalidState({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Shared explanation of how verification works — rendered in both ValidState and
+// InvalidState above the technical toggle, below the plain-language summary.
+function VerificationExplanation({ tint }: { tint: 'green' | 'red' }) {
+  const colors =
+    tint === 'green'
+      ? 'border-green-200 bg-green-50/40 text-green-800'
+      : 'border-red-200 bg-red-50/40 text-red-800';
+
+  return (
+    <div className={`mx-6 mb-5 rounded-lg border px-4 py-3 ${colors}`}>
+      <p className="text-xs leading-relaxed">
+        Verification works by recomputing the SHA-256 hash of the stored acceptance record.
+      </p>
+      <p className="text-xs leading-relaxed mt-1">
+        If the recomputed hash matches the certificate hash, the record has not been altered.
+      </p>
     </div>
   );
 }

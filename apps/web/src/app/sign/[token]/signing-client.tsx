@@ -374,6 +374,15 @@ function OfferView({
 }) {
   return (
     <div>
+      {/* ── Platform introduction — shown to first-time recipients ─────────── */}
+      <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        <p className="text-xs text-gray-600 leading-relaxed">
+          You are viewing a deal sent via <span className="font-semibold text-gray-900">OfferAccept</span>.{' '}
+          OfferAccept records verified deal acceptances and produces a certificate that proves
+          the acceptance occurred.
+        </p>
+      </div>
+
       <p className="text-sm text-[--color-text-muted] mb-1">
         Deal from <span className="font-medium text-gray-700">{ctx.senderName}</span>
       </p>
@@ -547,6 +556,10 @@ function AcceptanceView({
         By clicking <strong>I Accept</strong>, you agree to the following:
       </p>
 
+      <p className="text-xs text-gray-500 mb-2">
+        This statement was provided by{' '}
+        <span className="font-medium text-gray-700">{ctx.senderName}</span>.
+      </p>
       <div className="border-l-4 border-blue-500 bg-blue-50 px-5 py-4 rounded-r-xl mb-6">
         <p className="text-sm text-gray-800 italic leading-relaxed">{ctx.acceptanceStatement}</p>
       </div>
