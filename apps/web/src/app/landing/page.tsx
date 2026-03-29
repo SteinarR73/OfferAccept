@@ -38,12 +38,20 @@ function LandingNav() {
           </span>
           OfferAccept
         </div>
-        <Link
-          href="/login"
-          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded px-1"
-        >
-          Sign in →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/login"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded px-1"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/login?mode=signup"
+            className="text-sm font-medium text-white bg-[--color-accent] hover:bg-[--color-accent-hover] transition-colors px-3 py-1.5 rounded-lg focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2"
+          >
+            Get started →
+          </Link>
+        </div>
       </div>
     </header>
   );
@@ -64,14 +72,18 @@ function Hero() {
         <span className="text-[--color-accent]">Instantly.</span>
       </h1>
 
-      <p className="text-lg text-gray-500 max-w-xl mx-auto mb-8 leading-relaxed">
+      <p className="text-lg text-gray-500 max-w-xl mx-auto mb-4 leading-relaxed">
         OfferAccept collects verifiable deal acceptance via a secure email link —
-        no account required for recipients. Every acceptance produces a tamper-proof certificate.
+        no account required for recipients. Every acceptance produces a tamper-evident certificate.
+      </p>
+
+      <p className="text-sm text-gray-400 max-w-md mx-auto mb-8">
+        OfferAccept creates a tamper-evident record of acceptance. It is not an electronic signature platform.
       </p>
 
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <Link
-          href="/login"
+          href="/login?mode=signup"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[--color-accent] text-white text-sm font-medium hover:bg-[--color-accent-hover] transition-colors shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2"
         >
           Start for free
@@ -88,7 +100,7 @@ function Hero() {
       </div>
 
       {/* Simple browser-mockup illustration */}
-      <div className="mt-14 max-w-2xl mx-auto rounded-xl border border-gray-200 shadow-md overflow-hidden">
+      <div className="mt-14 max-w-2xl mx-auto rounded-xl border border-gray-200 shadow-md overflow-hidden" aria-hidden="true">
         <div className="bg-gray-100 flex items-center gap-1.5 px-4 py-2.5">
           <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
@@ -114,7 +126,7 @@ function Hero() {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-9 rounded-lg bg-[--color-accent] flex items-center justify-center text-xs text-white font-medium">Accept deal</div>
+            <div className="flex-1 h-9 rounded-lg bg-[--color-accent] flex items-center justify-center text-xs text-white font-medium">Review &amp; accept</div>
             <div className="flex-1 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500">Decline</div>
           </div>
         </div>
@@ -126,10 +138,10 @@ function Hero() {
 // ─── Trust strip ─────────────────────────────────────────────────────────────
 
 const TRUST = [
-  { label: '256-bit encryption', desc: 'End-to-end secure' },
-  { label: 'Tamper-proof certs', desc: 'SHA-256 hash chain' },
-  { label: 'OTP-verified identity', desc: 'Recipient accepted' },
-  { label: '15-min access tokens', desc: 'Time-limited links' },
+  { label: 'TLS encryption', desc: 'Encrypted in transit' },
+  { label: 'Tamper-evident certificates', desc: 'SHA-256 hash chain' },
+  { label: 'OTP-verified email', desc: 'Recipient email confirmed' },
+  { label: 'Time-limited signing links', desc: 'Signing links expire automatically.' },
 ];
 
 function TrustStrip() {
@@ -168,7 +180,7 @@ const STEPS = [
   {
     n: '3',
     title: 'Get it accepted',
-    desc: 'Recipient verifies identity via OTP, reviews documents, and confirms. Certificate issued immediately.',
+    desc: 'Recipient verifies identity via OTP, reviews documents, and accepts. Certificate issued immediately.',
   },
 ];
 
@@ -324,8 +336,14 @@ function PricingBand() {
       <div className="max-w-2xl mx-auto px-6 text-center">
         <h2 className="text-2xl font-bold text-white mb-2">Start free — 3 deals per month</h2>
         <p className="text-blue-200 text-sm mb-6">No credit card required. Upgrade any time as you grow.</p>
+        <p className="text-blue-100 text-sm mb-6">
+          Need more?{' '}
+          <Link href="/contact" className="underline underline-offset-2 hover:text-white transition-colors">
+            See paid plans →
+          </Link>
+        </p>
         <Link
-          href="/login"
+          href="/login?mode=signup"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-blue-600 font-semibold text-sm hover:bg-blue-50 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600"
         >
           Get started for free

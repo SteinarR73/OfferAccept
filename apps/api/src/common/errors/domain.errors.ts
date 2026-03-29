@@ -169,7 +169,10 @@ export class OfferNotSentError extends DomainError {
 }
 
 export class OfferAlreadyAcceptedError extends DomainError {
-  constructor() {
+  constructor(
+    public readonly acceptedAt?: Date,
+    public readonly certificateId?: string,
+  ) {
     super('This deal has already been accepted.');
   }
 }

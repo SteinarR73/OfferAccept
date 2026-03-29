@@ -185,7 +185,10 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return this.make(HttpStatus.GONE, err.message, 'OFFER_EXPIRED');
     }
     if (err instanceof OfferAlreadyAcceptedError) {
-      return this.make(HttpStatus.GONE, err.message, 'OFFER_ALREADY_ACCEPTED');
+      return this.make(HttpStatus.GONE, err.message, 'OFFER_ALREADY_ACCEPTED', {
+        acceptedAt: err.acceptedAt?.toISOString(),
+        certificateId: err.certificateId,
+      });
     }
 
     // ── 422 Unprocessable — valid request but wrong business state ─────────────

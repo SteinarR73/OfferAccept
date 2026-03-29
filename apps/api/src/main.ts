@@ -1,3 +1,5 @@
+// Sentry must be initialised before any other imports so it can instrument modules.
+import './instrument';
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

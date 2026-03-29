@@ -21,9 +21,12 @@ export class NotificationsService {
 
   // ── Deal accepted ──────────────────────────────────────────────────────────
   // Sends two emails:
-  //   1. Sender   — "Your deal was accepted" with certificate ID + CTA
-  //   2. Recipient — "Your acceptance is confirmed" with certificate ID
+  //   1. Sender   — "Your deal was accepted" with certificate ID + verify link
+  //   2. Recipient — "Your acceptance is confirmed" with certificate ID + verify link
   async onDealAccepted(event: DealAcceptedEvent): Promise<void> {
+    const appBaseUrl = process.env['APP_URL'] ?? 'https://app.offeraccept.com';
+    const verifyUrl = `${appBaseUrl}/verify/${encodeURIComponent(event.certificateId)}`;
+
     try {
       await this.emailPort.sendAcceptanceConfirmationToSender({
         to: event.senderEmail,
@@ -33,6 +36,8 @@ export class NotificationsService {
         recipientEmail: event.recipientEmail,
         acceptedAt: event.acceptedAt,
         certificateId: event.certificateId,
+        certificateHash: event.certificateHash,
+        verifyUrl: event.verifyUrl || verifyUrl,
       });
       await this.emailPort.sendAcceptanceConfirmationToRecipient({
         to: event.recipientEmail,
@@ -41,6 +46,8 @@ export class NotificationsService {
         senderName: event.senderName,
         acceptedAt: event.acceptedAt,
         certificateId: event.certificateId,
+        certificateHash: event.certificateHash,
+        verifyUrl: event.verifyUrl || verifyUrl,
       });
     } catch (err) {
       this.logger.error(
@@ -51,7 +58,9 @@ export class NotificationsService {
   }
 
   // ── Deal declined ──────────────────────────────────────────────────────────
-  // Sends one email to the sender: "Your deal was declined"
+  // Sends two emails:
+  //   1. Sender    — "Your deal was declined"
+  //   2. Recipient — "You declined a deal via OfferAccept"
   async onDealDeclined(event: DealDeclinedEvent): Promise<void> {
     try {
       await this.emailPort.sendDeclineNotification({
@@ -62,9 +71,16 @@ export class NotificationsService {
         recipientEmail: event.recipientEmail,
         declinedAt: event.declinedAt,
       });
+      await this.emailPort.sendDeclineConfirmationToRecipient({
+        to: event.recipientEmail,
+        recipientName: event.recipientName,
+        offerTitle: event.offerTitle,
+        senderName: event.senderName,
+        declinedAt: event.declinedAt,
+      });
     } catch (err) {
       this.logger.error(
-        `Failed to send decline notification for offer ${event.offerId}: ` +
+        `Failed to send decline notifications for offer ${event.offerId}: ` +
         `${err instanceof Error ? err.message : String(err)}`,
       );
     }

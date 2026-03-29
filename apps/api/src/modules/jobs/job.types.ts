@@ -98,6 +98,11 @@ export interface NotifyDealAcceptedPayload {
   // Empty string when certificate generation failed (rare).
   // The email templates handle an empty certificateId gracefully.
   certificateId: string;
+  // SHA-256 hex hash of the certificate payload — included in confirmation emails
+  // so recipients retain cryptographic proof even if the platform is unavailable.
+  certificateHash: string;
+  // Full URL to the certificate verify page, e.g. https://app.offeraccept.com/verify/{id}
+  verifyUrl: string;
   // X-Request-ID of the originating HTTP request — carried for log correlation.
   // Undefined for jobs enqueued outside a request context.
   traceId?: string;

@@ -49,6 +49,10 @@ const envSchema = z
     // See docs/email.md for production configuration guidance.
     EMAIL_PROVIDER: z.enum(['dev', 'resend']).default('dev'),
     RESEND_API_KEY: z.string().optional(),
+    // Sentry DSN for error monitoring. Optional — Sentry is disabled when absent.
+    SENTRY_DSN: z.string().optional(),
+    // Application version reported to Sentry (e.g. git SHA or semver).
+    APP_VERSION: z.string().optional(),
     // Storage provider — 'dev' uses in-memory DevStorageAdapter (safe default for local/test).
     // 's3' uses AWS S3; requires AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME.
     STORAGE_PROVIDER: z.enum(['dev', 's3']).default('dev'),

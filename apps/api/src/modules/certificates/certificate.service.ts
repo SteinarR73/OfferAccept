@@ -87,14 +87,14 @@ export class CertificateService {
   // Idempotent: if a certificate already exists for this record, returns it.
   // The `issuedAt` timestamp is set here, stored in the DB, and passed into the
   // builder so the hash is reproducible from the stored timestamp alone.
-  async generateForAcceptance(acceptanceRecordId: string): Promise<{ certificateId: string }> {
+  async generateForAcceptance(acceptanceRecordId: string): Promise<{ certificateId: string; certificateHash: string }> {
     // ── Idempotency guard ──────────────────────────────────────────────────────
     const existing = await this.db.acceptanceCertificate.findUnique({
       where: { acceptanceRecordId },
-      select: { id: true },
+      select: { id: true, certificateHash: true },
     });
     if (existing) {
-      return { certificateId: existing.id };
+      return { certificateId: existing.id, certificateHash: existing.certificateHash };
     }
 
     // ── Gather offerId for the FK ──────────────────────────────────────────────
@@ -147,15 +147,15 @@ export class CertificateService {
         },
       });
       void this.dealEventService.emit(record.snapshot.offerId, 'certificate.issued', { certificateId: cert.id });
-      return { certificateId: cert.id };
+      return { certificateId: cert.id, certificateHash: built.certificateHash };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        // Another process won the race — return their certificate ID.
+        // Another process won the race — return their certificate ID and hash.
         const winner = await this.db.acceptanceCertificate.findUniqueOrThrow({
           where: { acceptanceRecordId },
-          select: { id: true },
+          select: { id: true, certificateHash: true },
         });
-        return { certificateId: winner.id };
+        return { certificateId: winner.id, certificateHash: winner.certificateHash };
       }
       throw err;
     }

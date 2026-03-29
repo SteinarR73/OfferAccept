@@ -16,6 +16,7 @@ import type {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  DeclineConfirmationRecipientParams,
   ExpiryNotificationParams,
   RecipientReminderParams,
   ExpiryWarningParams,
@@ -53,7 +54,7 @@ function layout(body: string, footerNote: string): string {
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1f2937">
 <div style="max-width:580px;margin:40px auto;padding:0 16px">
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-    <div style="background:#1d4ed8;padding:20px 28px">
+    <div style="background:#15803d;padding:20px 28px">
       <span style="color:#fff;font-weight:700;font-size:18px;letter-spacing:-0.3px">OfferAccept</span>
     </div>
     <div style="padding:28px">
@@ -69,7 +70,7 @@ function layout(body: string, footerNote: string): string {
 }
 
 function button(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px">${escapeHtml(label)}</a>`;
+  return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:#15803d;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px">${escapeHtml(label)}</a>`;
 }
 
 const FOOTER_PRIVACY = 'This is an automated message from OfferAccept. Do not reply to this email.';
@@ -177,11 +178,14 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
     ``,
     `${p.recipientName} (${p.recipientEmail}) has accepted your deal "${p.offerTitle}".`,
     ``,
-    `Accepted at: ${acceptedAtStr}`,
-    `Certificate ID: ${p.certificateId}`,
+    `Accepted at:     ${acceptedAtStr}`,
+    `Certificate ID:  ${p.certificateId}`,
+    `Certificate hash: ${p.certificateHash}`,
     ``,
-    `OfferAccept has created a tamper-proof acceptance certificate and acceptance record`,
-    `for this deal. Use the certificate ID to independently verify the acceptance at any time.`,
+    `Keep this email as proof. Even if the platform is unavailable, the hash above`,
+    `lets you verify the acceptance record independently.`,
+    ``,
+    `Verify online: ${p.verifyUrl}`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -205,12 +209,17 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
         <td style="padding:10px 0;color:#6b7280">Accepted at</td>
         <td style="padding:10px 0">${escapeHtml(acceptedAtStr)}</td>
       </tr>
-      <tr>
+      <tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:10px 0;color:#6b7280">Certificate ID</td>
         <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:12px;color:#374151">${escapeHtml(p.certificateId)}</td>
       </tr>
+      <tr>
+        <td style="padding:10px 0;color:#6b7280;vertical-align:top">Certificate hash</td>
+        <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:11px;color:#374151;word-break:break-all">${escapeHtml(p.certificateHash)}</td>
+      </tr>
     </table>
-    <p style="margin:0;font-size:13px;color:#6b7280">OfferAccept has created a tamper-proof acceptance record for this deal. The certificate ID can be used to independently verify the acceptance at any time.</p>`,
+    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af">Keep this email as proof. The hash above lets you verify the acceptance record independently.</p>
+    <p style="margin:0 0 16px"><a href="${escapeHtml(p.verifyUrl)}" style="color:#15803d;font-size:13px;font-weight:600;text-decoration:underline">Verify this certificate →</a></p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -228,11 +237,14 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
     ``,
     `Your acceptance of the deal "${p.offerTitle}" from ${p.senderName} has been recorded.`,
     ``,
-    `Accepted at: ${acceptedAtStr}`,
-    `Certificate ID: ${p.certificateId}`,
+    `Accepted at:     ${acceptedAtStr}`,
+    `Certificate ID:  ${p.certificateId}`,
+    `Certificate hash: ${p.certificateHash}`,
     ``,
-    `Please keep this email for your records. OfferAccept has created a tamper-proof`,
-    `acceptance certificate that can be independently verified using the certificate ID above.`,
+    `Keep this email for your records. The hash above lets you verify the acceptance`,
+    `record independently even if the platform is unavailable.`,
+    ``,
+    `Verify online: ${p.verifyUrl}`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -252,12 +264,17 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
         <td style="padding:10px 0;color:#6b7280">Accepted at</td>
         <td style="padding:10px 0">${escapeHtml(acceptedAtStr)}</td>
       </tr>
-      <tr>
+      <tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:10px 0;color:#6b7280">Certificate ID</td>
         <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:12px;color:#374151">${escapeHtml(p.certificateId)}</td>
       </tr>
+      <tr>
+        <td style="padding:10px 0;color:#6b7280;vertical-align:top">Certificate hash</td>
+        <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:11px;color:#374151;word-break:break-all">${escapeHtml(p.certificateHash)}</td>
+      </tr>
     </table>
-    <p style="margin:0;font-size:13px;color:#6b7280">Please keep this email for your records. OfferAccept has created a tamper-proof acceptance certificate and acceptance record that can be independently verified using the certificate ID above.</p>`,
+    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af">Keep this email for your records. The hash above lets you verify the acceptance record independently.</p>
+    <p style="margin:0 0 16px"><a href="${escapeHtml(p.verifyUrl)}" style="color:#15803d;font-size:13px;font-weight:600;text-decoration:underline">Verify this certificate →</a></p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -554,6 +571,53 @@ export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
       </tr>
     </table>
     <p style="margin:0;font-size:13px;color:#6b7280">If the recipient needs more time, you can resend the deal link from your dashboard to give them a fresh link before expiry.</p>`,
+    `${FOOTER_PRIVACY}`,
+  );
+
+  return { subject, text, html };
+}
+
+// ─── 5a. Decline confirmation to recipient ────────────────────────────────────
+
+export function declineConfirmationRecipientEmail(p: DeclineConfirmationRecipientParams): EmailTemplate {
+  const subject = `You declined a deal via OfferAccept`;
+  const declinedAtStr = formatDate(p.declinedAt);
+
+  const text = [
+    `Hi ${p.recipientName},`,
+    ``,
+    `You declined the deal "${p.offerTitle}" sent by ${p.senderName}.`,
+    ``,
+    `Declined at: ${declinedAtStr}`,
+    ``,
+    `You declined this deal. No acceptance record was created.`,
+    ``,
+    `If you declined by mistake, please contact the sender directly.`,
+    ``,
+    `${FOOTER_PRIVACY}`,
+  ].join('\n');
+
+  const html = layout(
+    `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
+    <div style="border-left:4px solid #6b7280;padding:12px 16px;margin:0 0 24px;background:#f9fafb;border-radius:0 6px 6px 0">
+      <p style="margin:0;font-size:16px;font-weight:600;color:#374151">Deal declined</p>
+      <p style="margin:4px 0 0;color:#6b7280">You declined this deal. No acceptance record was created.</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:10px 0;color:#6b7280">Sent by</td>
+        <td style="padding:10px 0">${escapeHtml(p.senderName)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 0;color:#6b7280">Declined at</td>
+        <td style="padding:10px 0">${escapeHtml(declinedAtStr)}</td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#6b7280">If you declined by mistake, please contact the sender directly.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 

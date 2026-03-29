@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   CheckCircle2,
   XCircle,
@@ -18,11 +19,14 @@ import { Spinner } from '@/components/ui/Spinner';
 // Accessible without authentication. Calls GET /certificates/:id/verify.
 // Shows valid/invalid/not-found states with hash details.
 
+const VERIFY_TIMEOUT_MS = 5_000;
+
 type PageState =
   | { phase: 'loading' }
   | { phase: 'valid'; result: CertificateVerification }
   | { phase: 'invalid'; result: CertificateVerification }
   | { phase: 'not-found' }
+  | { phase: 'timeout' }
   | { phase: 'error'; message: string };
 
 export default function CertificateVerifyPage() {
@@ -30,14 +34,22 @@ export default function CertificateVerifyPage() {
   const [state, setState] = useState<PageState>({ phase: 'loading' });
   const [showDetails, setShowDetails] = useState(false);
 
-  useEffect(() => {
+  function runVerification() {
     if (!certificateId) return;
-    verifyCertificate(certificateId)
+    setState({ phase: 'loading' });
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('__timeout__')), VERIFY_TIMEOUT_MS),
+    );
+
+    Promise.race([verifyCertificate(certificateId), timeout])
       .then((result) => {
         setState({ phase: result.valid ? 'valid' : 'invalid', result });
       })
       .catch((err: unknown) => {
-        if (err instanceof Error && 'status' in err && (err as { status: number }).status === 404) {
+        if (err instanceof Error && err.message === '__timeout__') {
+          setState({ phase: 'timeout' });
+        } else if (err instanceof Error && 'status' in err && (err as { status: number }).status === 404) {
           setState({ phase: 'not-found' });
         } else {
           setState({
@@ -46,6 +58,11 @@ export default function CertificateVerifyPage() {
           });
         }
       });
+  }
+
+  useEffect(() => {
+    runVerification();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [certificateId]);
 
   return (
@@ -77,7 +94,8 @@ export default function CertificateVerifyPage() {
             />
           )}
           {state.phase === 'not-found' && <NotFoundState certificateId={certificateId} />}
-          {state.phase === 'error' && <ErrorState message={state.message} />}
+          {state.phase === 'timeout' && <TimeoutState onRetry={runVerification} />}
+          {state.phase === 'error' && <ErrorState message={state.message} onRetry={runVerification} />}
         </div>
       </main>
 
@@ -129,7 +147,7 @@ function ValidState({
             This acceptance record has not been altered since it was issued.
           </p>
           <p className="text-sm text-green-700">
-            The deal was accepted and verified by OfferAccept.
+            The certificate hash matches the acceptance record. No alterations have been detected.
           </p>
         </div>
       </div>
@@ -211,6 +229,17 @@ function InvalidState({
         </div>
       </div>
 
+      {/* Contact message */}
+      <div className="mx-6 mb-5 rounded-lg border border-red-200 bg-red-50/40 px-4 py-3">
+        <p className="text-xs text-red-800">
+          If you believe this result is incorrect, contact{' '}
+          <a href="mailto:support@offeraccept.com" className="font-medium underline hover:text-red-900">
+            support@offeraccept.com
+          </a>
+          .
+        </p>
+      </div>
+
       {/* Verification method explanation */}
       <VerificationExplanation tint="red" />
 
@@ -277,21 +306,40 @@ function NotFoundState({ certificateId }: { certificateId: string }) {
         <code className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">{certificateId}</code>.
         Double-check the link you were given.
       </p>
-      <Button variant="secondary" size="sm" onClick={() => history.back()}>
-        Go back
+      <Link
+        href="/verify"
+        className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-[--color-border] bg-white text-sm font-medium text-[--color-text-primary] hover:bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2"
+      >
+        Try another Certificate ID
+      </Link>
+      <p className="mt-3 text-xs text-[--color-text-muted]">
+        Enter the certificate ID again to check a different record.
+      </p>
+    </div>
+  );
+}
+
+function TimeoutState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-2xl border border-amber-300 bg-amber-50 p-10 text-center shadow-sm">
+      <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-4" aria-hidden="true" />
+      <h1 className="text-xl font-bold text-amber-900 mb-2">Verification is taking longer than expected</h1>
+      <p className="text-sm text-amber-800 max-w-xs mx-auto mb-6">Please try again.</p>
+      <Button variant="secondary" size="sm" onClick={onRetry}>
+        Retry
       </Button>
     </div>
   );
 }
 
-function ErrorState({ message }: { message: string }) {
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="rounded-2xl border border-amber-300 bg-amber-50 p-10 text-center shadow-sm">
       <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-4" aria-hidden="true" />
       <h1 className="text-xl font-bold text-amber-900 mb-2">Verification unavailable</h1>
       <p className="text-sm text-amber-800 max-w-xs mx-auto mb-1">{message}</p>
       <p className="text-xs text-amber-700 mb-6">Please try again in a moment.</p>
-      <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+      <Button variant="secondary" size="sm" onClick={onRetry}>
         Retry
       </Button>
     </div>

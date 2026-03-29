@@ -34,7 +34,7 @@ type Phase =
   | { name: 'loading' }
   | { name: 'invalid_link' }
   | { name: 'offer_expired'; expiresAt: string | null }
-  | { name: 'already_terminal'; reason: string }
+  | { name: 'already_terminal'; reason: string; acceptedAt?: string; certificateId?: string }
   | { name: 'offer_view'; ctx: OfferContext; declineError?: string }
   // prevOtp is set when this is a resend request from the OTP screen.
   // It lets OTP_SEND_FAILED return to otp_entry (with the still-valid old OTP)
@@ -50,7 +50,7 @@ type Phase =
 
 type Action =
   | { type: 'CONTEXT_LOADED'; ctx: OfferContext }
-  | { type: 'LOAD_FAILED'; code: string; expiresAt?: string }
+  | { type: 'LOAD_FAILED'; code: string; expiresAt?: string; detail?: Record<string, unknown> }
   | { type: 'CONTINUE_TO_OTP' }
   | { type: 'OTP_SENT'; otp: OtpResult }
   | { type: 'OTP_SEND_FAILED'; message: string }
@@ -74,7 +74,12 @@ export function reducer(state: Phase, action: Action): Phase {
       if (action.code === 'OFFER_EXPIRED')
         return { name: 'offer_expired', expiresAt: action.expiresAt ?? null };
       if (action.code === 'OFFER_ALREADY_ACCEPTED' || action.code === 'INVALID_STATE_TRANSITION')
-        return { name: 'already_terminal', reason: action.code };
+        return {
+          name: 'already_terminal',
+          reason: action.code,
+          acceptedAt: action.detail?.['acceptedAt'] as string | undefined,
+          certificateId: action.detail?.['certificateId'] as string | undefined,
+        };
       return { name: 'invalid_link' };
 
     case 'CONTINUE_TO_OTP':
@@ -160,7 +165,7 @@ function TrustBanner({ sessionId }: { sessionId?: string }) {
   return (
     <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center justify-center gap-4 text-xs text-green-800">
       <span className="flex items-center gap-1">
-        🔒 Secure acceptance session
+        <span aria-hidden="true">🔒</span> Secure acceptance session
       </span>
       {sessionId && (
         <span className="font-mono opacity-70 hidden sm:inline">ID: {sessionId.slice(0, 12)}…</span>
@@ -180,7 +185,7 @@ export function SigningClient({ token }: { token: string }) {
     signingApi.getContext(token).then(
       (ctx) => dispatch({ type: 'CONTEXT_LOADED', ctx }),
       (err: ApiError) =>
-        dispatch({ type: 'LOAD_FAILED', code: err.code, expiresAt: undefined }),
+        dispatch({ type: 'LOAD_FAILED', code: err.code, expiresAt: undefined, detail: err.detail }),
     );
   }, [token]);
 
@@ -290,11 +295,33 @@ export function SigningClient({ token }: { token: string }) {
 
         {phase.name === 'already_terminal' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-            <CheckCircle className="w-12 h-12 text-blue-400 mb-4" aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-gray-900">Deal closed</h1>
-            <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
-              This deal has already been responded to.
-            </p>
+            {phase.reason === 'OFFER_ALREADY_ACCEPTED' ? (
+              <>
+                <CheckCircle className="w-12 h-12 text-green-500 mb-4" aria-hidden="true" />
+                <h1 className="text-xl font-semibold text-gray-900">Deal accepted</h1>
+                <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+                  {phase.acceptedAt
+                    ? `This deal was accepted on ${new Date(phase.acceptedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
+                    : 'This deal has already been accepted.'}
+                </p>
+                {phase.certificateId && (
+                  <a
+                    href={`/verify/${encodeURIComponent(phase.certificateId)}`}
+                    className="mt-4 text-sm font-medium text-[--color-accent] hover:underline"
+                  >
+                    View acceptance certificate →
+                  </a>
+                )}
+              </>
+            ) : (
+              <>
+                <Shield className="w-12 h-12 text-gray-400 mb-4" aria-hidden="true" />
+                <h1 className="text-xl font-semibold text-gray-900">Deal closed</h1>
+                <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+                  This deal has already been responded to.
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -340,7 +367,7 @@ export function SigningClient({ token }: { token: string }) {
         )}
 
         {phase.name === 'accepting' && (
-          <SpinnerPage label="Processing…" />
+          <SpinnerPage label="Recording your acceptance…" />
         )}
 
         {phase.name === 'completed' && (
@@ -394,7 +421,7 @@ function OfferView({
 
       {ctx.expiresAt && (
         <p className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 inline-block">
-          ⏰ Expires {new Date(ctx.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          <span aria-hidden="true">⏰</span> Expires {new Date(ctx.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
       )}
 
@@ -486,6 +513,7 @@ function OtpEntry({
             <p className="text-sm text-amber-700 mt-1">
               Codes are valid for 10 minutes.{' '}
               <button
+                type="button"
                 onClick={onResend}
                 className="font-semibold underline underline-offset-2 hover:text-amber-900"
               >
@@ -527,6 +555,7 @@ function OtpEntry({
       {!expired && (
         <CardFooter>
           <button
+            type="button"
             onClick={onResend}
             className="text-sm text-[--color-accent] hover:underline"
           >
@@ -574,10 +603,14 @@ function AcceptanceView({
         >
           I Accept
         </Button>
-        <Button variant="ghost" size="md" onClick={onDecline} className="text-gray-500">
+        <Button variant="ghost" size="md" onClick={onDecline} className="text-gray-500" aria-label="Decline this deal">
           Decline
         </Button>
       </div>
+
+      <p className="mt-4 text-xs text-[--color-text-muted] leading-relaxed max-w-sm">
+        This records your acceptance but is not an electronic signature under applicable law.
+      </p>
     </div>
   );
 }
@@ -687,7 +720,7 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
 
       {/* ── Trust footer ────────────────────────────────────────────────────── */}
       <p className="text-xs text-[--color-text-muted]">
-        🔒 Verified with OTP · SHA-256 sealed · Audit trail preserved
+        <span aria-hidden="true">🔒</span> Verified with OTP · SHA-256 sealed · Audit trail preserved
       </p>
     </div>
   );

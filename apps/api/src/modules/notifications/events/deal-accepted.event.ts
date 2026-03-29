@@ -12,5 +12,7 @@ export class DealAcceptedEvent {
     public readonly recipientName: string,
     public readonly acceptedAt: Date,
     public readonly certificateId: string,
+    public readonly certificateHash: string = '',
+    public readonly verifyUrl: string = '',
   ) {}
 }

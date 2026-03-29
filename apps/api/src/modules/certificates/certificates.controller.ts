@@ -5,6 +5,7 @@ import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { CertificateService } from './certificate.service';
+import { CertificatePdfService } from './certificate-pdf.service';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 import { TraceContext } from '../../common/trace/trace.context';
 
@@ -37,6 +38,7 @@ export class CertificatesController {
 
   constructor(
     private readonly certificates: CertificateService,
+    private readonly pdfService: CertificatePdfService,
     private readonly rateLimiter: RateLimitService,
     private readonly traceContext: TraceContext,
     config: ConfigService,
@@ -127,5 +129,35 @@ export class CertificatesController {
   async exportCertificate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     const result = await this.certificates.exportPayload(id, user.orgId, user.role);
     return { ...result, verificationUrl: `${this.webBaseUrl}/verify/${id}` };
+  }
+
+  // Returns a PDF version of the acceptance certificate for archival.
+  // Suitable for document management systems and email archives.
+  // Access is scoped to the owning organization. INTERNAL_SUPPORT may access any.
+  //
+  // The PDF is NOT an electronic signature document — it clearly identifies itself
+  // as an acceptance record. No signature graphics are included.
+  @Get(':id/pdf')
+  @UseGuards(JwtAuthGuard)
+  async downloadPdf(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Res() res: Response,
+  ): Promise<void> {
+    const exported = await this.certificates.exportPayload(id, user.orgId, user.role);
+
+    const pdfBytes = await this.pdfService.generate({
+      certificateId: exported.certificateId,
+      certificateHash: exported.certificateHash,
+      issuedAt: exported.issuedAt,
+      payload: exported.payload,
+    });
+
+    const filename = `certificate-${exported.certificateId}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBytes.byteLength);
+    res.end(Buffer.from(pdfBytes));
   }
 }

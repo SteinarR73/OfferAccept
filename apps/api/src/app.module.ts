@@ -22,6 +22,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { DealEventsModule } from './modules/deal-events/deal-events.module';
 import { TraceModule } from './common/trace/trace.module';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
+import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
 @Module({
   imports: [
@@ -57,6 +58,10 @@ import { RequestIdInterceptor } from './common/interceptors/request-id.intercept
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestIdInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SentryInterceptor,
     },
   ],
 })

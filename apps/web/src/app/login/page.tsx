@@ -100,7 +100,7 @@ export default function LoginPage() {
 
       <p className="mt-5 text-xs text-[--color-text-muted]">
         Don&apos;t have an account?{' '}
-        <Link href="/landing" className="text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
           Learn more
         </Link>
       </p>

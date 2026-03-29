@@ -26,6 +26,11 @@ const CONTACTS = [
     email: 'privacy@offeraccept.com',
     desc: 'Data requests, privacy questions, or legal notices.',
   },
+  {
+    label: 'Security',
+    email: 'security@offeraccept.com',
+    desc: 'Responsible disclosure of vulnerabilities or security concerns.',
+  },
 ];
 
 export default function ContactPage() {
@@ -33,13 +38,13 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/landing" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
             <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
           </Link>
-          <Link href="/landing" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+          <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
             ← Back
           </Link>
         </div>

@@ -244,8 +244,8 @@ describe('DevEmailAdapter — development secrets handling', () => {
   it('reset() clears all stored items', async () => {
     await adapter.sendOtp({ to: 'a@b.com', recipientName: 'A', code: '111111', offerTitle: 'T', expiresAt: new Date() });
     await adapter.sendOfferLink({ to: 'a@b.com', recipientName: 'A', offerTitle: 'T', senderName: 'S', signingUrl: 'https://x.com/accept/oa_x', expiresAt: null });
-    await adapter.sendAcceptanceConfirmationToSender({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', acceptedAt: new Date(), certificateId: 'c1' });
-    await adapter.sendAcceptanceConfirmationToRecipient({ to: 'a@b.com', recipientName: 'R', offerTitle: 'T', senderName: 'S', acceptedAt: new Date(), certificateId: 'c1' });
+    await adapter.sendAcceptanceConfirmationToSender({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', acceptedAt: new Date(), certificateId: 'c1', certificateHash: 'h', verifyUrl: 'https://x.com/verify/c1' });
+    await adapter.sendAcceptanceConfirmationToRecipient({ to: 'a@b.com', recipientName: 'R', offerTitle: 'T', senderName: 'S', acceptedAt: new Date(), certificateId: 'c1', certificateHash: 'h', verifyUrl: 'https://x.com/verify/c1' });
     await adapter.sendDeclineNotification({ to: 'a@b.com', senderName: 'S', offerTitle: 'T', recipientName: 'R', recipientEmail: 'r@b.com', declinedAt: new Date() });
 
     adapter.reset();
@@ -266,6 +266,8 @@ describe('DevEmailAdapter — development secrets handling', () => {
       recipientEmail: 'bob@client.com',
       acceptedAt: new Date(),
       certificateId: 'cert-xyz',
+      certificateHash: 'a'.repeat(64),
+      verifyUrl: 'https://app.offeraccept.com/verify/cert-xyz',
     });
     const sent = adapter.getLastAcceptanceSenderEmail('alice@co.com');
     expect(sent?.certificateId).toBe('cert-xyz');

@@ -6,6 +6,7 @@ import {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  DeclineConfirmationRecipientParams,
   ExpiryNotificationParams,
   RecipientReminderParams,
   ExpiryWarningParams,
@@ -20,6 +21,7 @@ import {
   acceptanceConfirmationSenderEmail,
   acceptanceConfirmationRecipientEmail,
   declineNotificationEmail,
+  declineConfirmationRecipientEmail,
   expiryNotificationEmail,
   recipientReminderEmail,
   expiryWarningEmail,
@@ -101,6 +103,12 @@ export class ResendEmailAdapter implements EmailPort {
     const template = declineNotificationEmail(params);
     this.logger.log(`Sending decline notification to sender ${params.to} for offer "${params.offerTitle}"`);
     await this.send('decline_notification', params.to, template.subject, template.html, template.text);
+  }
+
+  async sendDeclineConfirmationToRecipient(params: DeclineConfirmationRecipientParams): Promise<void> {
+    const template = declineConfirmationRecipientEmail(params);
+    this.logger.log(`Sending decline confirmation to recipient ${params.to} for offer "${params.offerTitle}"`);
+    await this.send('decline_confirmation_recipient', params.to, template.subject, template.html, template.text);
   }
 
   async sendExpiryNotification(params: ExpiryNotificationParams): Promise<void> {

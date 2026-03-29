@@ -34,6 +34,8 @@ export interface AcceptanceConfirmationSenderParams {
   recipientEmail: string;
   acceptedAt: Date;
   certificateId: string;
+  certificateHash: string;  // SHA-256 hex of certificate payload — never recompute, use stored value
+  verifyUrl: string;    // full URL to /verify/{certificateId}
 }
 
 export interface AcceptanceConfirmationRecipientParams {
@@ -43,6 +45,8 @@ export interface AcceptanceConfirmationRecipientParams {
   senderName: string;
   acceptedAt: Date;
   certificateId: string;
+  certificateHash: string;  // SHA-256 hex of certificate payload — never recompute, use stored value
+  verifyUrl: string;    // full URL to /verify/{certificateId}
 }
 
 export interface DeclineNotificationParams {
@@ -51,6 +55,14 @@ export interface DeclineNotificationParams {
   offerTitle: string;
   recipientName: string;
   recipientEmail: string;
+  declinedAt: Date;
+}
+
+export interface DeclineConfirmationRecipientParams {
+  to: string;           // recipient's email
+  recipientName: string;
+  offerTitle: string;
+  senderName: string;
   declinedAt: Date;
 }
 
@@ -126,6 +138,7 @@ export interface EmailPort {
   sendAcceptanceConfirmationToSender(params: AcceptanceConfirmationSenderParams): Promise<void>;
   sendAcceptanceConfirmationToRecipient(params: AcceptanceConfirmationRecipientParams): Promise<void>;
   sendDeclineNotification(params: DeclineNotificationParams): Promise<void>;
+  sendDeclineConfirmationToRecipient(params: DeclineConfirmationRecipientParams): Promise<void>;
   sendExpiryNotification(params: ExpiryNotificationParams): Promise<void>;
   sendRecipientReminder(params: RecipientReminderParams): Promise<void>;
   sendExpiryWarning(params: ExpiryWarningParams): Promise<void>;

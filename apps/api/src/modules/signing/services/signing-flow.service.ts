@@ -13,6 +13,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { DealDeclinedEvent } from '../../notifications/events/deal-declined.event';
 import {
   InvalidStateTransitionError,
+  OfferAlreadyAcceptedError,
   OfferExpiredError,
   OtpChallengeMismatchError,
   SessionExpiredError,
@@ -99,8 +100,20 @@ export class SigningFlowService {
 
     const offer = await this.db.offer.findUniqueOrThrow({ where: { id: recipient.offerId } });
 
+    if (offer.status === 'ACCEPTED') {
+      // Surface acceptance details so the recipient can see their acceptance confirmation.
+      const cert = await this.db.acceptanceCertificate.findFirst({
+        where: { offerId: offer.id },
+        select: { id: true, acceptanceRecord: { select: { acceptedAt: true } } },
+      });
+      throw new OfferAlreadyAcceptedError(
+        cert?.acceptanceRecord?.acceptedAt,
+        cert?.id,
+      );
+    }
+
     if (offer.status !== 'SENT') {
-      // Expired, accepted, declined, or revoked — same error to avoid state leakage
+      // Declined, revoked, expired — intentionally opaque to avoid state leakage
       throw new TokenInvalidError();
     }
 
@@ -223,9 +236,14 @@ export class SigningFlowService {
     const result = await this.acceptanceService.accept(session, challengeId, context);
     void this.dealEventService.emit(result.offerId, 'deal.accepted');
 
-    const { certificateId } = await this.certificateService.generateForAcceptance(
+    const { certificateId, certificateHash } = await this.certificateService.generateForAcceptance(
       result.acceptanceRecord.id,
     );
+
+    const appBaseUrl = process.env['APP_URL'] ?? 'https://app.offeraccept.com';
+    const verifyUrl = certificateId
+      ? `${appBaseUrl}/verify/${encodeURIComponent(certificateId)}`
+      : '';
 
     const traceId = this.traceContext.get();
 
@@ -244,6 +262,8 @@ export class SigningFlowService {
         recipientName: result.recipientName,
         acceptedAt: result.acceptanceRecord.acceptedAt.toISOString(),
         certificateId: certificateId ?? '',
+        certificateHash: certificateHash ?? '',
+        verifyUrl,
         traceId,
       },
       { singletonKey: `notify-deal-accepted:${result.acceptanceRecord.id}` },

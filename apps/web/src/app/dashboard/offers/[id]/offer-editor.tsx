@@ -121,8 +121,9 @@ export function OfferEditor({ initial }: Props) {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               disabled={!isDraft}
-              hint="Optional personalised message displayed to the recipient."
+              hint="This statement will be shown to the recipient before they accept the deal. Maximum 2,000 characters."
               rows={4}
+              maxLength={2000}
             />
             <Input
               label="Expiry date"

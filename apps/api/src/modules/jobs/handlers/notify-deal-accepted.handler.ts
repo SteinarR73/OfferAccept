@@ -39,6 +39,33 @@ import { EMAIL_PORT, EmailPort } from '../../../common/email/email.port';
 //   notify_deal_accepted_success — both emails delivered successfully
 //   notify_deal_accepted_failed  — at least one email failed; job will retry
 
+// Retries a single email send up to `maxAttempts` times with exponential backoff.
+// Throws the last error if all attempts fail — caller (pg-boss job) handles re-queuing.
+async function withEmailRetry<T>(
+  fn: () => Promise<T>,
+  logger: import('@nestjs/common').LoggerService,
+  label: string,
+  maxAttempts = 3,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts) {
+        const delayMs = 200 * Math.pow(2, attempt - 1); // 200 ms, 400 ms
+        logger.warn?.(
+          `[email_retry] ${label} attempt ${attempt}/${maxAttempts} failed — retrying in ${delayMs} ms`,
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+  logger.error?.(`[email_delivery_failed] ${label} failed after ${maxAttempts} attempts`);
+  throw lastErr;
+}
+
 @Injectable()
 export class NotifyDealAcceptedHandler {
   private readonly logger = new Logger(NotifyDealAcceptedHandler.name);
@@ -66,24 +93,36 @@ export class NotifyDealAcceptedHandler {
     );
 
     try {
-      await this.emailPort.sendAcceptanceConfirmationToSender({
-        to: d.senderEmail,
-        senderName: d.senderName,
-        offerTitle: d.offerTitle,
-        recipientName: d.recipientName,
-        recipientEmail: d.recipientEmail,
-        acceptedAt,
-        certificateId: d.certificateId,
-      });
+      await withEmailRetry(
+        () => this.emailPort.sendAcceptanceConfirmationToSender({
+          to: d.senderEmail,
+          senderName: d.senderName,
+          offerTitle: d.offerTitle,
+          recipientName: d.recipientName,
+          recipientEmail: d.recipientEmail,
+          acceptedAt,
+          certificateId: d.certificateId,
+          certificateHash: d.certificateHash,
+          verifyUrl: d.verifyUrl,
+        }),
+        this.logger,
+        `sender_email:${d.offerId}`,
+      );
 
-      await this.emailPort.sendAcceptanceConfirmationToRecipient({
-        to: d.recipientEmail,
-        recipientName: d.recipientName,
-        offerTitle: d.offerTitle,
-        senderName: d.senderName,
-        acceptedAt,
-        certificateId: d.certificateId,
-      });
+      await withEmailRetry(
+        () => this.emailPort.sendAcceptanceConfirmationToRecipient({
+          to: d.recipientEmail,
+          recipientName: d.recipientName,
+          offerTitle: d.offerTitle,
+          senderName: d.senderName,
+          acceptedAt,
+          certificateId: d.certificateId,
+          certificateHash: d.certificateHash,
+          verifyUrl: d.verifyUrl,
+        }),
+        this.logger,
+        `recipient_email:${d.offerId}`,
+      );
 
       this.logger.log(
         JSON.stringify({

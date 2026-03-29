@@ -10,13 +10,13 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/landing" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
             <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
           </Link>
-          <Link href="/landing" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+          <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
             ← Back
           </Link>
         </div>
@@ -62,6 +62,37 @@ export default function PrivacyPage() {
               All data is encrypted in transit (TLS) and at rest. Acceptance tokens are short-lived
               and hashed before storage. Certificates are cryptographically sealed with a SHA-256
               hash chain.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">GDPR (EEA residents)</h2>
+            <p className="mb-2">
+              <strong>Data Controller:</strong> OfferAccept, Inc., incorporated in Delaware, United States.
+              Contact: <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">privacy@offeraccept.com</a>.
+            </p>
+            <p className="mb-2">
+              <strong>Legal Basis:</strong> We process your personal data on the basis of contract
+              performance (operating your account and delivering the service) and legitimate interests
+              (security, fraud prevention, service improvement). Where required by law, we will seek
+              your consent.
+            </p>
+            <p className="mb-2">
+              <strong>Your rights:</strong> Under the GDPR you have the right to access, rectify, or
+              erase your personal data; to restrict or object to processing; and to data portability.
+              You also have the right to lodge a complaint with your local supervisory authority.
+              Submit requests to{' '}
+              <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
+                privacy@offeraccept.com
+              </a>
+              . We will respond within 30 days.
+            </p>
+            <p>
+              <strong>International transfers:</strong> OfferAccept operates from the United States.
+              If you are in the EEA, your data is transferred to and processed in the US. We rely on
+              Standard Contractual Clauses (SCCs) as the transfer mechanism. A Data Processing
+              Agreement (DPA) is available on request — see our{' '}
+              <a href="/legal/dpa" className="text-blue-600 hover:text-blue-700">DPA page</a>.
             </p>
           </section>
 

@@ -25,7 +25,7 @@ export class CreateOfferDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(10_000)
+  @MaxLength(2_000)
   message?: string;
 
   @IsOptional()

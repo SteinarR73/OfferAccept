@@ -33,6 +33,8 @@ const BASE_PAYLOAD: NotifyDealAcceptedPayload = {
   recipientName:      'Bob',
   acceptedAt:         ACCEPTED_AT_ISO,
   certificateId:      CERTIFICATE_ID,
+  certificateHash:    'a'.repeat(64),
+  verifyUrl:          `https://app.offeraccept.com/verify/${CERTIFICATE_ID}`,
 };
 
 function makeJob(data: NotifyDealAcceptedPayload = BASE_PAYLOAD): Job<NotifyDealAcceptedPayload> {

@@ -10,13 +10,13 @@ export default function TermsPage() {
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/landing" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
             <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
           </Link>
-          <Link href="/landing" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+          <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
             ← Back
           </Link>
         </div>
@@ -74,6 +74,18 @@ export default function TermsPage() {
             <p>
               We may update these terms from time to time. Continued use of the service after
               notice of changes constitutes acceptance of the revised terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Governing law and jurisdiction</h2>
+            <p>
+              These terms are governed by and construed in accordance with the laws of the State of
+              Delaware, United States, without regard to its conflict of law provisions. Any dispute
+              arising out of or relating to these terms or the service shall be subject to the
+              exclusive jurisdiction of the state and federal courts located in Delaware. If you
+              access the service from outside the United States, you are responsible for compliance
+              with applicable local laws.
             </p>
           </section>
 

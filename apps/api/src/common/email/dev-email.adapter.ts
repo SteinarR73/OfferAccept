@@ -6,6 +6,7 @@ import {
   AcceptanceConfirmationSenderParams,
   AcceptanceConfirmationRecipientParams,
   DeclineNotificationParams,
+  DeclineConfirmationRecipientParams,
   ExpiryNotificationParams,
   RecipientReminderParams,
   ExpiryWarningParams,
@@ -51,6 +52,8 @@ export interface SentAcceptanceConfirmationSender {
   recipientEmail: string;
   acceptedAt: Date;
   certificateId: string;
+  certificateHash: string;
+  verifyUrl: string;
   sentAt: Date;
 }
 
@@ -61,6 +64,8 @@ export interface SentAcceptanceConfirmationRecipient {
   senderName: string;
   acceptedAt: Date;
   certificateId: string;
+  certificateHash: string;
+  verifyUrl: string;
   sentAt: Date;
 }
 
@@ -70,6 +75,15 @@ export interface SentDeclineNotification {
   offerTitle: string;
   recipientName: string;
   recipientEmail: string;
+  declinedAt: Date;
+  sentAt: Date;
+}
+
+export interface SentDeclineConfirmationRecipient {
+  to: string;
+  recipientName: string;
+  offerTitle: string;
+  senderName: string;
   declinedAt: Date;
   sentAt: Date;
 }
@@ -108,6 +122,7 @@ export class DevEmailAdapter implements EmailPort {
   private readonly sentAcceptanceSender: SentAcceptanceConfirmationSender[] = [];
   private readonly sentAcceptanceRecipient: SentAcceptanceConfirmationRecipient[] = [];
   private readonly sentDeclines: SentDeclineNotification[] = [];
+  private readonly sentDeclineConfirmationsRecipient: SentDeclineConfirmationRecipient[] = [];
   private readonly sentExpiries: SentExpiryNotification[] = [];
   private readonly sentReminders: SentRecipientReminder[] = [];
   private readonly sentExpiryWarnings: SentExpiryWarning[] = [];
@@ -151,6 +166,8 @@ export class DevEmailAdapter implements EmailPort {
       recipientEmail: params.recipientEmail,
       acceptedAt: params.acceptedAt,
       certificateId: params.certificateId,
+      certificateHash: params.certificateHash,
+      verifyUrl: params.verifyUrl,
       sentAt: new Date(),
     });
     this.logger.log(
@@ -167,6 +184,8 @@ export class DevEmailAdapter implements EmailPort {
       senderName: params.senderName,
       acceptedAt: params.acceptedAt,
       certificateId: params.certificateId,
+      certificateHash: params.certificateHash,
+      verifyUrl: params.verifyUrl,
       sentAt: new Date(),
     });
     this.logger.log(
@@ -188,6 +207,21 @@ export class DevEmailAdapter implements EmailPort {
     this.logger.log(
       `[DEV EMAIL] Decline → sender ${params.to}: "${params.offerTitle}" ` +
       `declined by ${params.recipientName}`,
+    );
+  }
+
+  async sendDeclineConfirmationToRecipient(params: DeclineConfirmationRecipientParams): Promise<void> {
+    this.sentDeclineConfirmationsRecipient.push({
+      to: params.to,
+      recipientName: params.recipientName,
+      offerTitle: params.offerTitle,
+      senderName: params.senderName,
+      declinedAt: params.declinedAt,
+      sentAt: new Date(),
+    });
+    this.logger.log(
+      `[DEV EMAIL] Decline confirmation → recipient ${params.to}: "${params.offerTitle}" ` +
+      `declined (sent by ${params.senderName})`,
     );
   }
 
@@ -300,6 +334,13 @@ export class DevEmailAdapter implements EmailPort {
     return records[0] ?? null;
   }
 
+  getLastDeclineConfirmationRecipient(email: string): SentDeclineConfirmationRecipient | null {
+    const records = this.sentDeclineConfirmationsRecipient
+      .filter((r) => r.to === email)
+      .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    return records[0] ?? null;
+  }
+
   getLastExpiryNotification(email: string): SentExpiryNotification | null {
     const records = this.sentExpiries
       .filter((r) => r.to === email)
@@ -361,6 +402,7 @@ export class DevEmailAdapter implements EmailPort {
     this.sentAcceptanceSender.length = 0;
     this.sentAcceptanceRecipient.length = 0;
     this.sentDeclines.length = 0;
+    this.sentDeclineConfirmationsRecipient.length = 0;
     this.sentExpiries.length = 0;
     this.sentReminders.length = 0;
     this.sentExpiryWarnings.length = 0;
