@@ -1,0 +1,117 @@
+/*
+ * OfferAccept Design Tokens
+ *
+ * Single source of truth for all visual primitives.
+ * Imported by globals.css; consumed via CSS custom properties.
+ *
+ * Sections:
+ *   1. Brand palette (Trust Green)
+ *   2. Semantic state colors
+ *   3. Surface & text
+ *   4. Layout chrome
+ *   5. Spacing scale
+ *   6. Typography scale
+ *   7. Shape & elevation
+ */
+
+:root {
+
+  /* ── 1. Brand palette ───────────────────────────────────────────── */
+  --color-accent:        #059669;   /* emerald-600 — primary CTA */
+  --color-accent-hover:  #047857;   /* emerald-700 */
+  --color-accent-light:  #ecfdf5;   /* emerald-50  */
+  --color-accent-text:   #065f46;   /* emerald-900 */
+
+  /* ── 2. Semantic state colors ──────────────────────────────────── */
+
+  /* Success */
+  --color-success:        #059669;
+  --color-success-light:  #ecfdf5;
+  --color-success-border: #a7f3d0;   /* emerald-200 */
+  --color-success-text:   #065f46;   /* emerald-900 */
+
+  /* Warning */
+  --color-warning:        #d97706;   /* amber-600 */
+  --color-warning-light:  #fffbeb;   /* amber-50  */
+  --color-warning-border: #fde68a;   /* amber-200 */
+  --color-warning-text:   #92400e;   /* amber-800 */
+
+  /* Error / Danger */
+  --color-error:          #dc2626;   /* red-600   */
+  --color-error-light:    #fef2f2;   /* red-50    */
+  --color-error-border:   #fecaca;   /* red-200   */
+  --color-error-text:     #991b1b;   /* red-800   */
+
+  /* Info */
+  --color-info:           #2563eb;   /* blue-600  */
+  --color-info-light:     #eff6ff;   /* blue-50   */
+  --color-info-border:    #bfdbfe;   /* blue-200  */
+  --color-info-text:      #1d4ed8;   /* blue-700  */
+
+  /* ── 3. Surface & text ─────────────────────────────────────────── */
+  --color-surface:          #ffffff;
+  --color-bg:               #f8fafc;
+  --color-border:           #e2e8f0;   /* slate-200 */
+  --color-border-subtle:    #f1f5f9;   /* slate-100 */
+  --color-text-primary:     #0f172a;   /* slate-950 */
+  --color-text-secondary:   #475569;   /* slate-600 */
+  --color-text-muted:       #94a3b8;   /* slate-400 */
+
+  /* ── 4. Layout chrome ──────────────────────────────────────────── */
+  --sidebar-width:               15rem;
+  --header-height:               4rem;
+  --color-sidebar-bg:            #0f172a;
+  --color-sidebar-text:          #94a3b8;
+  --color-sidebar-active-bg:     rgba(5, 150, 105, 0.12);
+  --color-sidebar-active-text:   #34d399;   /* emerald-400 */
+
+  /* ── 5. Spacing scale ──────────────────────────────────────────── */
+  --space-xs:   0.25rem;   /*  4px */
+  --space-sm:   0.5rem;    /*  8px */
+  --space-md:   1rem;      /* 16px */
+  --space-lg:   1.5rem;    /* 24px */
+  --space-xl:   2rem;      /* 32px */
+  --space-2xl:  3rem;      /* 48px */
+  --space-3xl:  4rem;      /* 64px */
+
+  /* Numeric aliases (backward-compatible) */
+  --space-1:   0.25rem;
+  --space-2:   0.5rem;
+  --space-3:   0.75rem;
+  --space-4:   1rem;
+  --space-6:   1.5rem;
+  --space-8:   2rem;
+  --space-12:  3rem;
+  --space-16:  4rem;
+
+  /* ── 6. Typography scale ───────────────────────────────────────── */
+  --font-size-xs:   0.75rem;    /* 12px */
+  --font-size-sm:   0.875rem;   /* 14px */
+  --font-size-md:   1rem;       /* 16px */
+  --font-size-lg:   1.125rem;   /* 18px */
+  --font-size-xl:   1.25rem;    /* 20px */
+  --font-size-2xl:  1.5rem;     /* 24px */
+  --font-size-3xl:  1.875rem;   /* 30px */
+
+  --font-weight-normal:    400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
+
+  --line-height-tight:    1.25;
+  --line-height-snug:     1.375;
+  --line-height-normal:   1.5;
+  --line-height-relaxed:  1.625;
+
+  /* ── 7. Shape & elevation ──────────────────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-full: 9999px;
+
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+}

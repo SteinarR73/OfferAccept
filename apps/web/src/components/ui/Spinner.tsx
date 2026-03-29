@@ -18,7 +18,7 @@ export function Spinner({ size = 'md', className, label = 'Loading' }: SpinnerPr
     <span role="status" className="inline-flex items-center justify-center">
       <span
         className={cn(
-          'rounded-full border-blue-200 border-t-blue-600 animate-spin',
+          'rounded-full border-[--color-accent-light] border-t-[--color-accent] animate-spin',
           SIZE[size],
           className,
         )}
