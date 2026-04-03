@@ -395,6 +395,16 @@ export class CertificateService {
   //
   // Used by ReconcileCertificatesHandler to detect and recover from silent
   // certificate generation failures. Only reads two immutable tables.
+  // Returns minimal certificate stubs for all org certificates.
+  // Used by the bulk-export endpoint — full payload is loaded per-cert inside the loop.
+  async listOrgCertificates(orgId: string): Promise<Array<{ id: string }>> {
+    return this.db.acceptanceCertificate.findMany({
+      where: { offer: { organizationId: orgId } },
+      select: { id: true },
+      orderBy: { issuedAt: 'asc' },
+    });
+  }
+
   async findMissingCertificates(
     thresholdMs: number,
   ): Promise<Array<{ id: string; acceptedAt: Date }>> {

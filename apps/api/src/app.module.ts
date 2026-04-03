@@ -21,6 +21,7 @@ import { EnterpriseHttpModule } from './modules/enterprise/enterprise-http.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { DealEventsModule } from './modules/deal-events/deal-events.module';
 import { TraceModule } from './common/trace/trace.module';
+import { AccountModule } from './modules/account/account.module';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
@@ -49,6 +50,7 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
     EnterpriseHttpModule,
     AnalyticsModule,
     TraceModule,    // global: provides TraceContext to all modules
+    AccountModule,
   ],
   providers: [
     // Register RequestIdInterceptor through DI so it can receive TraceContext.

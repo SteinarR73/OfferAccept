@@ -1,5 +1,6 @@
 import { Controller, Get, Logger, Param, UseGuards, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as archiver from 'archiver';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
@@ -44,6 +45,97 @@ export class CertificatesController {
     config: ConfigService,
   ) {
     this.webBaseUrl = config.getOrThrow<string>('WEB_BASE_URL');
+  }
+
+  // Streams a ZIP archive containing all certificate PDFs for the caller's organization.
+  //
+  // IMPORTANT: This route must be defined BEFORE @Get(':id') so that the literal
+  // path segment 'bulk-export' is not captured as an :id parameter.
+  //
+  // Each PDF is named `certificate-{id}.pdf`. The ZIP also includes a
+  // `manifest.json` listing all certificates with their metadata.
+  // Certificates are processed sequentially to avoid memory pressure.
+  //
+  // Rate limited to 3 exports per hour per organization.
+  // Access is scoped to the caller's organization.
+  @Get('bulk-export')
+  @UseGuards(JwtAuthGuard)
+  async bulkExport(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const ip = extractClientIp(req);
+    await this.rateLimiter.check('bulk_cert_export', `${user.orgId}:${ip}`);
+
+    // Load all certificate IDs for this org — only metadata, no payload yet
+    const certs = await this.certificates.listOrgCertificates(user.orgId);
+
+    const filename = `certificates-${user.orgId}-${Date.now()}.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    const archive = archiver.default('zip', { zlib: { level: 6 } });
+    archive.pipe(res);
+
+    // Manifest array — populated as each certificate is processed
+    const manifest: Array<{
+      certificateId: string;
+      certificateHash: string;
+      issuedAt: string;
+      dealTitle: string;
+      recipientEmail: string;
+    }> = [];
+
+    for (const cert of certs) {
+      try {
+        const exported = await this.certificates.exportPayload(
+          cert.id,
+          user.orgId,
+          user.role,
+        );
+        const pdfBytes = await this.pdfService.generate({
+          certificateId: exported.certificateId,
+          certificateHash: exported.certificateHash,
+          issuedAt: exported.issuedAt,
+          payload: exported.payload,
+        });
+
+        archive.append(Buffer.from(pdfBytes), {
+          name: `certificate-${cert.id}.pdf`,
+        });
+
+        manifest.push({
+          certificateId:  exported.certificateId,
+          certificateHash: exported.certificateHash,
+          issuedAt:       exported.issuedAt,
+          dealTitle:      exported.payload.offer.title,
+          recipientEmail: exported.payload.recipient.verifiedEmail,
+        });
+      } catch (err) {
+        this.logger.warn(JSON.stringify({
+          event: 'bulk_export_cert_skip',
+          certificateId: cert.id,
+          reason: err instanceof Error ? err.message : String(err),
+        }));
+      }
+    }
+
+    // Add manifest as the last file in the archive
+    archive.append(
+      Buffer.from(JSON.stringify({ exportedAt: new Date().toISOString(), certificates: manifest }, null, 2), 'utf-8'),
+      { name: 'manifest.json' },
+    );
+
+    this.logger.log(JSON.stringify({
+      event: 'bulk_cert_export',
+      orgId: user.orgId,
+      traceId: this.traceContext.get(),
+      certificateCount: manifest.length,
+      skippedCount: certs.length - manifest.length,
+    }));
+
+    await archive.finalize();
   }
 
   // Returns certificate metadata for authenticated callers (sender, support).

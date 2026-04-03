@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Download } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Data Processing Agreement — OfferAccept',
@@ -23,8 +24,24 @@ export default function DpaPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Data Processing Agreement</h1>
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 2026</p>
+        <div className="flex items-start justify-between gap-4 mb-2">
+          <h1 className="text-2xl font-bold text-gray-900">Data Processing Agreement</h1>
+          <a
+            href="/legal/dpa?format=pdf"
+            download="offeraccept-dpa-v1.0.pdf"
+            className="flex items-center gap-1.5 text-xs font-medium text-[--color-accent] hover:text-[--color-accent-hover] border border-[--color-accent] rounded-lg px-3 py-1.5 flex-shrink-0 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" aria-hidden="true" />
+            Download PDF
+          </a>
+        </div>
+        <p className="text-sm text-gray-500 mb-2">DPA Version 1.0 — effective March 2026</p>
+        <p className="text-xs text-gray-400 mb-8">
+          For a countersigned copy, email{' '}
+          <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
+            privacy@offeraccept.com
+          </a>
+        </p>
 
         <div className="space-y-6 text-sm text-gray-700 leading-relaxed">
           <section>
