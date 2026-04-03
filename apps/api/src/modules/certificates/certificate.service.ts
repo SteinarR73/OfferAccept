@@ -97,11 +97,18 @@ export class CertificateService {
       return { certificateId: existing.id, certificateHash: existing.certificateHash };
     }
 
-    // ── Gather offerId for the FK ──────────────────────────────────────────────
+    // ── Gather offerId and snapshotId for the FKs ────────────────────────────
     const record = await this.db.acceptanceRecord.findUniqueOrThrow({
       where: { id: acceptanceRecordId },
       include: { snapshot: { select: { offerId: true } } },
     });
+
+    // Runtime guard: snapshotId must be present on every AcceptanceRecord.
+    // This should be structurally impossible given the schema, but an explicit
+    // check prevents a silent NULL propagation into the certificate row.
+    if (!record.snapshotId) {
+      throw new Error(`AcceptanceRecord ${acceptanceRecordId} is missing snapshotId — cannot generate certificate`);
+    }
 
     const certificateId = generateCertificateId();
     const issuedAt = new Date();
@@ -143,6 +150,7 @@ export class CertificateService {
           acceptanceRecordId,
           certificateHash: built.certificateHash,
           canonicalHash,
+          snapshotId: record.snapshotId,
           issuedAt,
         },
       });

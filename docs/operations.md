@@ -558,3 +558,76 @@ The API emits structured JSON to stdout via NestJS Logger. To wire up alerting:
 - Multi-region or availability-zone failover
 - Certificate archival / long-term storage policy
 - Automated compliance reporting
+
+---
+
+## 7. Certificate Snapshot Backfill Verification
+
+After running migration `20260404_backfill_certificate_snapshotId`, verify that
+all `AcceptanceCertificate` rows have a populated `snapshotId` before running
+the hardening migration `20260405_certificate_snapshot_not_null`.
+
+### Step 1 — Confirm no NULL rows remain
+
+```sql
+SELECT COUNT(*)
+FROM acceptance_certificates
+WHERE "snapshotId" IS NULL;
+```
+
+**Expected result:** `0`
+
+If the count is non-zero, re-run the backfill UPDATE manually and investigate
+whether any `AcceptanceRecord` rows are missing `snapshotId` (which would
+indicate a data integrity problem pre-dating the hardening patch):
+
+```sql
+SELECT ac.id, ac."acceptanceRecordId"
+FROM acceptance_certificates ac
+JOIN acceptance_records ar ON ar.id = ac."acceptanceRecordId"
+WHERE ar."snapshotId" IS NULL;
+```
+
+### Step 2 — Confirm FK integrity (no dangling references)
+
+```sql
+SELECT ac.id
+FROM acceptance_certificates ac
+LEFT JOIN offer_snapshots os ON os.id = ac."snapshotId"
+WHERE ac."snapshotId" IS NOT NULL
+  AND os.id IS NULL;
+```
+
+**Expected result:** `0 rows`
+
+A non-zero result means a certificate references a snapshot that does not exist,
+which is a critical integrity violation. Escalate immediately — do not run the
+NOT NULL migration until this is resolved.
+
+### Step 3 — Run the NOT NULL hardening migration
+
+Only after both checks return zero:
+
+```bash
+npx prisma migrate deploy
+```
+
+This applies `20260405_certificate_snapshot_not_null`, which runs:
+
+```sql
+ALTER TABLE acceptance_certificates ALTER COLUMN "snapshotId" SET NOT NULL;
+```
+
+After the migration succeeds, update the Prisma schema field from:
+
+```prisma
+snapshotId String? @unique
+```
+
+to:
+
+```prisma
+snapshotId String  @unique
+```
+
+and generate a companion migration (`npx prisma migrate dev --name certificate_snapshot_notnull_schema`).
