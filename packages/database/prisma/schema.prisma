@@ -94,6 +94,7 @@ model Invite {
   tokenHash      String    @unique
   expiresAt      DateTime
   invitedById    String              // userId of the inviter
+  invitedBy      User      @relation(fields: [invitedById], references: [id])
   acceptedAt     DateTime?
   revokedAt      DateTime?
   createdAt      DateTime  @default(now())
@@ -174,6 +175,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   memberships             Membership[]
+  invitesSent             Invite[]
   erasureRequests         ErasureRequest[]
 
   @@index([organizationId])
@@ -271,6 +273,7 @@ model Offer {
   certificate       AcceptanceCertificate?
   deliveryAttempts  OfferDeliveryAttempt[]
 
+  signingSession    SigningSession[]
   reminderSchedule  ReminderSchedule?
   dealEvents        DealEvent[]
 
@@ -330,10 +333,11 @@ model OfferSnapshot {
   // No updatedAt — this record is immutable after creation
   frozenAt     DateTime  @default(now())
 
-  offer     Offer                  @relation(fields: [offerId], references: [id])
-  documents OfferSnapshotDocument[]
-  sessions  SigningSession[]
-  records   AcceptanceRecord[]
+  offer       Offer                   @relation(fields: [offerId], references: [id])
+  documents   OfferSnapshotDocument[]
+  sessions    SigningSession[]
+  records     AcceptanceRecord[]
+  certificate AcceptanceCertificate?
 
   @@map("offer_snapshots")
 }
@@ -408,7 +412,7 @@ model OfferRecipient {
   sessions      SigningSession[]
   otpChallenges SigningOtpChallenge[]
 
-  @@index([tokenHash])
+  @@index([offerId, version])
   @@map("offer_recipients")
 }
 
@@ -441,6 +445,7 @@ model SigningSession {
   recipientId   String
   // Denormalized for queries — always consistent with recipient.offerId
   offerId       String
+  offer         Offer         @relation(fields: [offerId], references: [id])
   // Which snapshot was presented in this session — immutable after creation
   snapshotId    String
   // Network context at session creation
@@ -589,6 +594,7 @@ model SigningEvent {
   @@unique([sessionId, sequenceNumber])
   @@index([sessionId])
   @@index([timestamp])
+  @@index([sessionId, timestamp])
   @@map("signing_events")
 }
 
@@ -657,16 +663,21 @@ model AcceptanceRecord {
 // It does not re-read Offer, User, or Organization at generation time.
 
 model AcceptanceCertificate {
-  id                 String   @id @default(uuid(4))
+  id                 String   @id @default(uuid())
   offerId            String   @unique  // for convenient dashboard lookups
   acceptanceRecordId String   @unique
   certificateHash    String   // SHA-256 hex of canonical certificate content (full payload)
   canonicalHash      String?  // SHA-256 hex of 5-field canonical acceptance fingerprint; null on legacy certificates
   pdfStorageKey      String?  // object storage key; null until PDF is generated
+  // FK to the OfferSnapshot used when this certificate was generated.
+  // Nullable for legacy certificates issued before this field was added.
+  // @unique: one certificate per snapshot (follows from AcceptanceRecord.snapshotId @unique).
+  snapshotId         String?  @unique
   issuedAt           DateTime @default(now())
 
-  offer           Offer           @relation(fields: [offerId], references: [id])
-  acceptanceRecord AcceptanceRecord @relation(fields: [acceptanceRecordId], references: [id])
+  offer            Offer             @relation(fields: [offerId], references: [id])
+  acceptanceRecord AcceptanceRecord  @relation(fields: [acceptanceRecordId], references: [id])
+  snapshot         OfferSnapshot?    @relation(fields: [snapshotId], references: [id])
 
   @@map("acceptance_certificates")
 }
@@ -716,6 +727,7 @@ model OfferDeliveryAttempt {
 
   @@index([offerId])
   @@index([attemptedAt])
+  @@index([tokenHash])
   @@map("offer_delivery_attempts")
 }
 
