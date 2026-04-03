@@ -170,7 +170,7 @@ export class SigningFlowService {
         where: { id: recipient.id },
         data: { status: 'VIEWED', viewedAt: new Date() },
       });
-      void this.dealEventService.emit(offer.id, 'deal.opened');
+      void this.dealEventService.emit(offer.id, 'deal_opened');
     }
 
     // Resume existing non-expired session or create a fresh one
@@ -209,7 +209,7 @@ export class SigningFlowService {
 
     // Atomic: validates challenge binding, verifies code, advances all state in one tx.
     const result = await this.otpService.verifyAndAdvanceSession(challengeId, recipient.id, rawCode, ctx);
-    void this.dealEventService.emit(recipient.offerId, 'otp.verified');
+    void this.dealEventService.emit(recipient.offerId, 'otp_verified');
     return result;
   }
 
@@ -234,7 +234,7 @@ export class SigningFlowService {
     const session = await this.getSessionFromVerifiedChallenge(challengeId, recipient.id);
 
     const result = await this.acceptanceService.accept(session, challengeId, context);
-    void this.dealEventService.emit(result.offerId, 'deal.accepted');
+    void this.dealEventService.emit(result.offerId, 'deal_accepted');
 
     const { certificateId, certificateHash } = await this.certificateService.generateForAcceptance(
       result.acceptanceRecord.id,
@@ -291,7 +291,7 @@ export class SigningFlowService {
       // deal.accepted: emitted immediately after acceptance is committed.
       await this.webhookService.dispatchEvent(
         result.organizationId,
-        'deal.accepted',
+        'deal_accepted',
         {
           offerId: result.offerId,
           organizationId: result.organizationId,
@@ -307,7 +307,7 @@ export class SigningFlowService {
       if (certificateId) {
         await this.webhookService.dispatchEvent(
           result.organizationId,
-          'certificate.issued',
+          'certificate_issued',
           {
             offerId: result.offerId,
             organizationId: result.organizationId,
@@ -342,7 +342,7 @@ export class SigningFlowService {
       : await this.sessionService.findResumable(recipient.id);
     if (!session) throw new SessionExpiredError();
     await this.acceptanceService.decline(session, ctx);
-    void this.dealEventService.emit(session.offerId, 'deal.declined');
+    void this.dealEventService.emit(session.offerId, 'deal_declined');
 
     // Cancel reminder schedule — best-effort.
     await this.db.reminderSchedule.deleteMany({ where: { offerId: session.offerId } }).catch((e: unknown) =>

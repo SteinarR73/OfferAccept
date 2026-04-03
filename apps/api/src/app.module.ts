@@ -1,4 +1,5 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod, APP_INTERCEPTOR } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { CsrfOriginMiddleware } from './common/middleware/csrf-origin.middleware';
 import { validateEnv } from './config/env';

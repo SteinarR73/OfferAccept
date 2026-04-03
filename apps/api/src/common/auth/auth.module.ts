@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { JwtModule, JwtService } from '@nestjs/jwt';
+import { JwtModule, JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -13,11 +13,14 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 @Module({
   imports: [
     JwtModule.registerAsync({
-      useFactory: (config: ConfigService) => ({
+      useFactory: (config: ConfigService): JwtModuleOptions => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
         // JWT_ACCESS_TTL controls the short-lived access token lifetime (default: 15m).
         // This replaces the old JWT_EXPIRY (7d) default which was too long.
-        signOptions: { expiresIn: config.get<string>('JWT_ACCESS_TTL', '15m') },
+        // Cast required: @types/jsonwebtoken@9 narrows expiresIn to StringValue | number,
+        // but ConfigService.get() returns plain string. Runtime value is always a valid
+        // ms duration string (e.g. "15m", "1h").
+        signOptions: { expiresIn: config.get('JWT_ACCESS_TTL', '15m') as unknown as number },
       }),
       inject: [ConfigService],
     }),

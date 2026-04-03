@@ -282,7 +282,7 @@ export class SendOfferService {
         this.logger.warn(`Failed to create reminder schedule for offer ${offer.id}: ${e}`),
       );
 
-      void this.dealEventService.emit(offer.id, 'deal.sent', { deliveryAttemptId: attempt.id });
+      void this.dealEventService.emit(offer.id, 'deal_sent', { deliveryAttemptId: attempt.id });
       return {
         snapshotId: snapshot.id,
         sentAt: snapshot.frozenAt,
@@ -493,6 +493,6 @@ export class SendOfferService {
       this.logger.warn(`Failed to delete reminder schedule on revoke for offer ${offer.id}: ${e}`),
     );
 
-    void this.dealEventService.emit(offer.id, 'deal.revoked');
+    void this.dealEventService.emit(offer.id, 'deal_revoked');
   }
 }

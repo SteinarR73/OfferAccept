@@ -28,7 +28,7 @@ function makeEndpoint(overrides: Record<string, unknown> = {}) {
     organizationId: 'org_1',
     url: 'https://customer.example.com/hooks',
     secret: crypto.randomBytes(32).toString('hex'),
-    events: ['deal.accepted'],
+    events: ['deal_accepted'],
     enabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -132,7 +132,7 @@ describe('WebhookService', () => {
       const result = await service.createEndpoint({
         organizationId: 'org_1',
         url: 'https://example.com/hooks',
-        events: ['deal.accepted'],
+        events: ['deal_accepted'],
       });
 
       // Secret must be non-empty and long enough for HMAC use
@@ -183,20 +183,20 @@ describe('WebhookService', () => {
 
   describe('dispatchEvent()', () => {
     it('enqueues one send-webhook job per matching endpoint', async () => {
-      const endpoint = makeEndpoint({ events: ['deal.accepted'] });
+      const endpoint = makeEndpoint({ events: ['deal_accepted'] });
       const db = buildFakePrisma(endpoint);
       db.webhookEndpoint.findMany = jest.fn<() => Promise<typeof endpoint[]>>().mockResolvedValue([endpoint]);
       const jobService = buildFakeJobService();
       const service = await buildWebhookService(db, jobService);
 
-      await service.dispatchEvent('org_1', 'deal.accepted', { offerId: 'offer_1' });
+      await service.dispatchEvent('org_1', 'deal_accepted', { offerId: 'offer_1' });
 
       expect(jobService.send).toHaveBeenCalledTimes(1);
       expect(jobService.send).toHaveBeenCalledWith(
         'send-webhook',
         expect.objectContaining({
           endpointId: endpoint.id,
-          event: 'deal.accepted',
+          event: 'deal_accepted',
           webhookEventId: expect.stringMatching(/^[0-9a-f-]{36}$/), // UUID format
         }),
       );
@@ -208,19 +208,19 @@ describe('WebhookService', () => {
       const jobService = buildFakeJobService();
       const service = await buildWebhookService(db, jobService);
 
-      await service.dispatchEvent('org_1', 'deal.accepted', {});
+      await service.dispatchEvent('org_1', 'deal_accepted', {});
       expect(jobService.send).not.toHaveBeenCalled();
     });
 
     it('enqueues separate jobs with distinct webhookEventIds for multiple endpoints', async () => {
-      const ep1 = makeEndpoint({ id: 'ep_1', events: ['deal.accepted'] });
-      const ep2 = makeEndpoint({ id: 'ep_2', events: ['deal.accepted'] });
+      const ep1 = makeEndpoint({ id: 'ep_1', events: ['deal_accepted'] });
+      const ep2 = makeEndpoint({ id: 'ep_2', events: ['deal_accepted'] });
       const db = buildFakePrisma(ep1);
       db.webhookEndpoint.findMany = jest.fn<() => Promise<typeof ep1[]>>().mockResolvedValue([ep1, ep2]);
       const jobService = buildFakeJobService();
       const service = await buildWebhookService(db, jobService);
 
-      await service.dispatchEvent('org_1', 'deal.accepted', {});
+      await service.dispatchEvent('org_1', 'deal_accepted', {});
 
       expect(jobService.send).toHaveBeenCalledTimes(2);
       const [call1, call2] = jobService.send.mock.calls as unknown as Array<[string, SendWebhookPayload]>;
@@ -274,7 +274,7 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
       name: 'send-webhook',
       data: {
         endpointId: 'ep_1',
-        event: 'deal.accepted',
+        event: 'deal_accepted',
         payload: { offerId: 'offer_1' },
         attempt: 1,
         webhookEventId: crypto.randomUUID(),
@@ -456,14 +456,14 @@ describe('SendWebhookHandler — replay protection + HMAC', () => {
 
     const parsed = JSON.parse(capturedBody!) as Record<string, unknown>;
     expect(parsed.id).toBe(webhookEventId);
-    expect(parsed.event).toBe('deal.accepted');
+    expect(parsed.event).toBe('deal_accepted');
     expect(parsed.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO 8601
     expect(parsed.data).toEqual({ offerId: 'o1' });
   });
 
   it('ALL_WEBHOOK_EVENTS contains exactly deal.accepted and certificate.issued', () => {
-    expect(ALL_WEBHOOK_EVENTS).toContain('deal.accepted');
-    expect(ALL_WEBHOOK_EVENTS).toContain('certificate.issued');
+    expect(ALL_WEBHOOK_EVENTS).toContain('deal_accepted');
+    expect(ALL_WEBHOOK_EVENTS).toContain('certificate_issued');
     expect(ALL_WEBHOOK_EVENTS).toHaveLength(2);
   });
 

@@ -246,7 +246,7 @@ export class SendRemindersHandler {
         data: { tokenHash, tokenExpiresAt },
       });
 
-      void this.dealEventService.emit(offer.id, 'deal.reminder_sent', { reminderNumber: newCount, variant });
+      void this.dealEventService.emit(offer.id, 'deal_reminder_sent', { reminderNumber: newCount, variant });
       this.logger.log(JSON.stringify({
         event: 'reminder_sent',
         offerId: offer.id,

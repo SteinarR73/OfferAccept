@@ -9,22 +9,22 @@ import { PrismaClient, Prisma } from '@prisma/client';
 // Event emission must never break the main lifecycle action (send, accept, etc.).
 //
 // Usage pattern (in any service):
-//   void this.dealEventService.emit(offerId, 'deal.created');
+//   void this.dealEventService.emit(offerId, 'deal_created');
 //
 // Since DealEventsModule is @Global(), services can inject DealEventService
 // without their own module importing DealEventsModule.
 
 export type DealEventType =
-  | 'deal.created'
-  | 'deal.sent'
-  | 'deal.opened'
-  | 'otp.verified'
-  | 'deal.accepted'
-  | 'certificate.issued'
-  | 'deal.reminder_sent'
-  | 'deal.revoked'
-  | 'deal.expired'
-  | 'deal.declined';
+  | 'deal_created'
+  | 'deal_sent'
+  | 'deal_opened'
+  | 'otp_verified'
+  | 'deal_accepted'
+  | 'certificate_issued'
+  | 'deal_reminder_sent'
+  | 'deal_revoked'
+  | 'deal_expired'
+  | 'deal_declined';
 
 export interface RecentDealEvent {
   id: string;
@@ -36,16 +36,16 @@ export interface RecentDealEvent {
 }
 
 const EVENT_LABELS: Record<DealEventType, string> = {
-  'deal.created':         'Deal created',
-  'deal.sent':            'Deal sent',
-  'deal.opened':          'Opened by recipient',
-  'otp.verified':         'Identity verified',
-  'deal.accepted':        'Deal accepted',
-  'certificate.issued':   'Certificate issued',
-  'deal.reminder_sent':   'Reminder sent',
-  'deal.revoked':         'Deal revoked',
-  'deal.expired':         'Deal expired',
-  'deal.declined':        'Deal declined',
+  'deal_created':         'Deal created',
+  'deal_sent':            'Deal sent',
+  'deal_opened':          'Opened by recipient',
+  'otp_verified':         'Identity verified',
+  'deal_accepted':        'Deal accepted',
+  'certificate_issued':   'Certificate issued',
+  'deal_reminder_sent':   'Reminder sent',
+  'deal_revoked':         'Deal revoked',
+  'deal_expired':         'Deal expired',
+  'deal_declined':        'Deal declined',
 };
 
 @Injectable()

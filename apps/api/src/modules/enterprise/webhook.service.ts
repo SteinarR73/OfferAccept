@@ -33,7 +33,7 @@ import {
 //   The body includes the webhookEventId so customers can independently verify
 //   idempotency. signPayload() is also used by SendWebhookHandler.
 
-export const ALL_WEBHOOK_EVENTS = ['deal.accepted', 'certificate.issued'] as const;
+export const ALL_WEBHOOK_EVENTS = ['deal_accepted', 'certificate_issued'] as const;
 export type WebhookEvent = (typeof ALL_WEBHOOK_EVENTS)[number];
 
 @Injectable()

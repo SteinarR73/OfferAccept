@@ -28,7 +28,7 @@ export interface AcceptanceInsights {
   stalled: { dealId: string; dealTitle: string; hoursSinceLastEvent: number }[];
 }
 
-const TERMINAL: DealEventType[] = ['deal.accepted', 'deal.declined', 'deal.revoked', 'deal.expired'];
+const TERMINAL: DealEventType[] = ['deal_accepted', 'deal_declined', 'deal_revoked', 'deal_expired'];
 const H24 = 24 * 60 * 60 * 1000;
 const H48 = 48 * 60 * 60 * 1000;
 
@@ -92,8 +92,8 @@ export class AcceptanceInsightsService {
       const hoursSinceLast = (now - lastTs) / 3_600_000;
       const isTerminal = TERMINAL.some((t) => types.has(t));
 
-      const sentEvent  = events.find((e) => e.type === 'deal.sent');
-      const acceptedEvent = events.find((e) => e.type === 'deal.accepted');
+      const sentEvent  = events.find((e) => e.type === 'deal_sent');
+      const acceptedEvent = events.find((e) => e.type === 'deal_accepted');
 
       // ── Insight 1 & 2: Acceptance timing + reminder rate ─────────────────
       if (acceptedEvent && sentEvent) {
@@ -103,15 +103,15 @@ export class AcceptanceInsightsService {
 
         // Reminder sent before acceptance?
         const hadReminder = events.some(
-          (e) => e.type === 'deal.reminder_sent' && e.ts < acceptedEvent.ts,
+          (e) => e.type === 'deal_reminder_sent' && e.ts < acceptedEvent.ts,
         );
         if (hadReminder) acceptedWithReminder++;
       }
 
       // ── Insight 3: Opened but not accepted, idle > 24 h ──────────────────
       if (
-        types.has('deal.opened') &&
-        !types.has('deal.accepted') &&
+        types.has('deal_opened') &&
+        !types.has('deal_accepted') &&
         !isTerminal &&
         hoursSinceLast > 24
       ) {
@@ -120,8 +120,8 @@ export class AcceptanceInsightsService {
 
       // ── Insight 4: Sent but never opened, age > 24 h ─────────────────────
       if (
-        types.has('deal.sent') &&
-        !types.has('deal.opened') &&
+        types.has('deal_sent') &&
+        !types.has('deal_opened') &&
         !isTerminal &&
         sentEvent &&
         now - sentEvent.ts > H24
@@ -135,8 +135,8 @@ export class AcceptanceInsightsService {
 
       // ── Insight 5: Stalled — opened, no activity > 48 h, not terminal ────
       if (
-        types.has('deal.opened') &&
-        !types.has('deal.accepted') &&
+        types.has('deal_opened') &&
+        !types.has('deal_accepted') &&
         !isTerminal &&
         now - lastTs > H48
       ) {

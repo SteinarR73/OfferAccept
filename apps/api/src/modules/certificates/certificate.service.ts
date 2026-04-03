@@ -154,7 +154,7 @@ export class CertificateService {
           issuedAt,
         },
       });
-      void this.dealEventService.emit(record.snapshot.offerId, 'certificate.issued', { certificateId: cert.id });
+      void this.dealEventService.emit(record.snapshot.offerId, 'certificate_issued', { certificateId: cert.id });
       return { certificateId: cert.id, certificateHash: built.certificateHash };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {

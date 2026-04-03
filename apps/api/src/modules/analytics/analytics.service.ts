@@ -68,11 +68,11 @@ export class AnalyticsService {
   async getOverview(orgId: string): Promise<AnalyticsOverview> {
     // ── 1. Status counts from DealEvent ──────────────────────────────────────
     const [sentSet, acceptedSet, declinedSet, expiredSet, revokedSet] = await Promise.all([
-      dealIdsWithEvent(this.db, orgId, 'deal.sent'),
-      dealIdsWithEvent(this.db, orgId, 'deal.accepted'),
-      dealIdsWithEvent(this.db, orgId, 'deal.declined'),
-      dealIdsWithEvent(this.db, orgId, 'deal.expired'),
-      dealIdsWithEvent(this.db, orgId, 'deal.revoked'),
+      dealIdsWithEvent(this.db, orgId, 'deal_sent'),
+      dealIdsWithEvent(this.db, orgId, 'deal_accepted'),
+      dealIdsWithEvent(this.db, orgId, 'deal_declined'),
+      dealIdsWithEvent(this.db, orgId, 'deal_expired'),
+      dealIdsWithEvent(this.db, orgId, 'deal_revoked'),
     ]);
 
     const terminalSet = new Set([...acceptedSet, ...declinedSet, ...expiredSet, ...revokedSet]);
@@ -97,12 +97,12 @@ export class AnalyticsService {
 
     const [sentTimings, acceptedTimings] = await Promise.all([
       this.db.dealEvent.findMany({
-        where: { dealId: { in: acceptedIds }, eventType: 'deal.sent' },
+        where: { dealId: { in: acceptedIds }, eventType: 'deal_sent' },
         select: { dealId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.db.dealEvent.findMany({
-        where: { dealId: { in: acceptedIds }, eventType: 'deal.accepted' },
+        where: { dealId: { in: acceptedIds }, eventType: 'deal_accepted' },
         select: { dealId: true, createdAt: true },
       }),
     ]);
