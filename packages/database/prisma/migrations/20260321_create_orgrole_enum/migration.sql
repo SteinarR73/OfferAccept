@@ -1,0 +1,6 @@
+CREATE TYPE "OrgRole" AS ENUM (
+  'OWNER',
+  'ADMIN',
+  'MEMBER',
+  'VIEWER'
+);
