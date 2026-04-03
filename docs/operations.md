@@ -518,11 +518,29 @@ The API emits structured JSON to stdout via NestJS Logger. To wire up alerting:
    - HTTP 5xx response rate > 1% over a 5-minute window.
    - HTTP 429 rate > 10 per minute on `/signing/` paths.
 
-2. **Error tracking (recommended — Sentry or equivalent):**
-   Add `@sentry/nestjs` and configure a `SentryExceptionFilter` or
-   global exception filter to capture unhandled exceptions. Set
-   `SENTRY_DSN` as an environment variable. This gives stack traces,
-   context, and alert grouping without changing application logging.
+2. **Error tracking (Sentry — configured in production):**
+   Both the API (`apps/api/src/instrument.ts`) and the web frontend
+   (`apps/web/sentry.*.config.ts`) are instrumented with Sentry.
+   Set `SENTRY_DSN` (API) and `NEXT_PUBLIC_SENTRY_DSN` (web) in your
+   environment. All unhandled exceptions and API errors are captured
+   automatically with `requestId`, `endpoint`, and `organizationId` tags.
+
+   **Alert baselines — configure these in the Sentry UI before launch:**
+
+   | Alert name | Condition | Notify |
+   |---|---|---|
+   | Certificate generation failed | `certificate_generation_failed` event count > 1 in any 5-minute window | On-call |
+   | Email delivery exhausted | `email_delivery_failed` event count > 10 in any 5-minute window | On-call |
+   | OTP rate limit spike | `otp_rate_limit_exceeded` event count > 10 in any 5-minute window | On-call + security channel |
+   | API error rate elevated | HTTP 5xx count > 5% of total requests over 5 minutes | On-call |
+   | Unhandled exception | Any `level:fatal` event | Immediate page |
+
+   To create these in Sentry: **Alerts → Create Alert → Metric Alert → Custom
+   metric**. Select the project, set the metric to `event.count`, and add a
+   filter on the event `message` or tag (e.g., tag `flow:signing` for OTP alerts).
+
+   Minimum notification channel: email to `ops@offeraccept.com`.
+   Recommended: PagerDuty or Slack `#incidents` for on-call alerts.
 
 3. **Critical audit log alerting:**
    The `SupportAuditService` emits all support actions as structured JSON

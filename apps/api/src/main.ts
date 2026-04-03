@@ -40,9 +40,9 @@ async function bootstrap() {
       hsts: {
         maxAge: 31536000,       // 1 year
         includeSubDomains: true,
-        // preload: true signals intent to be on the HSTS preload list.
-        // ACTION REQUIRED before production: register the domain at https://hstspreload.org/
-        preload: true,
+        // preload intentionally omitted until the domain is registered at
+        // https://hstspreload.org/ and TLS has been stable for 30+ days.
+        // Once registered, add: preload: true
       },
     }),
   );

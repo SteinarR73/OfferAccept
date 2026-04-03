@@ -1,24 +1,19 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Loader2, XCircle } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Status — OfferAccept',
-};
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-// Static status page. Update SYSTEM_STATUS and INCIDENTS manually during incidents.
-// Automated monitoring integration is a future improvement.
+type SystemStatus = 'loading' | 'operational' | 'degraded' | 'outage';
 
-const SYSTEM_STATUS: 'operational' | 'degraded' | 'outage' = 'operational';
+interface HealthResponse {
+  status: string;
+}
 
-const SERVICES = [
-  { name: 'Signing flow',        status: 'operational' as const },
-  { name: 'Certificate issuance', status: 'operational' as const },
-  { name: 'Certificate verification', status: 'operational' as const },
-  { name: 'Email delivery',      status: 'operational' as const },
-  { name: 'Dashboard',           status: 'operational' as const },
-  { name: 'API',                 status: 'operational' as const },
-];
+// ── Incidents ─────────────────────────────────────────────────────────────────
+// Add entries here (most recent first) as incidents occur.
 
 const INCIDENTS: Array<{
   date: string;
@@ -26,7 +21,6 @@ const INCIDENTS: Array<{
   severity: 'resolved' | 'investigating' | 'identified';
   body: string;
 }> = [
-  // Add incidents here as they occur. Most recent first.
   // Example:
   // {
   //   date: '2026-03-29',
@@ -36,7 +30,27 @@ const INCIDENTS: Array<{
   // },
 ];
 
-function StatusBadge({ status }: { status: typeof SERVICES[0]['status'] }) {
+// ── Health fetch ──────────────────────────────────────────────────────────────
+
+async function fetchHealth(): Promise<SystemStatus> {
+  try {
+    const res = await fetch('/api/v1/health/z', {
+      // Skip cache so the status page always shows current state
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (res.ok) return 'operational';
+    // 503 → degraded; anything else unexpected → treat as degraded
+    return 'degraded';
+  } catch {
+    // Network error or timeout → can't reach the API
+    return 'outage';
+  }
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: Exclude<SystemStatus, 'loading'> }) {
   if (status === 'operational') {
     return (
       <span className="flex items-center gap-1 text-xs font-medium text-green-700">
@@ -53,8 +67,90 @@ function StatusBadge({ status }: { status: typeof SERVICES[0]['status'] }) {
   );
 }
 
+function BannerIcon({ status }: { status: SystemStatus }) {
+  if (status === 'loading') return <Loader2 className="w-8 h-8 text-gray-400 animate-spin flex-shrink-0" />;
+  if (status === 'operational') return <CheckCircle2 className="w-8 h-8 text-green-600 flex-shrink-0" aria-hidden="true" />;
+  if (status === 'outage') return <XCircle className="w-8 h-8 text-red-600 flex-shrink-0" aria-hidden="true" />;
+  return <AlertTriangle className="w-8 h-8 text-amber-600 flex-shrink-0" aria-hidden="true" />;
+}
+
+const BANNER_STYLE: Record<SystemStatus, string> = {
+  loading:     'bg-gray-50 border-gray-200',
+  operational: 'bg-green-50 border-green-200',
+  degraded:    'bg-amber-50 border-amber-200',
+  outage:      'bg-red-50 border-red-200',
+};
+
+const BANNER_TITLE: Record<SystemStatus, string> = {
+  loading:     'Checking system status…',
+  operational: 'All systems operational',
+  degraded:    'Some systems are affected',
+  outage:      'Service unavailable',
+};
+
+const BANNER_BODY: Record<SystemStatus, string> = {
+  loading:     'Fetching live health data.',
+  operational: 'No incidents reported.',
+  degraded:    'One or more dependencies are unhealthy. See below for details.',
+  outage:      'The API is not responding. Engineers have been notified.',
+};
+
+const BANNER_TEXT: Record<SystemStatus, string> = {
+  loading:     'text-gray-700',
+  operational: 'text-green-800',
+  degraded:    'text-amber-800',
+  outage:      'text-red-800',
+};
+
+const BANNER_SUBTEXT: Record<SystemStatus, string> = {
+  loading:     'text-gray-500',
+  operational: 'text-green-700',
+  degraded:    'text-amber-700',
+  outage:      'text-red-700',
+};
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function StatusPage() {
-  const isAllOperational = SYSTEM_STATUS === 'operational';
+  const [status, setStatus] = useState<SystemStatus>('loading');
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      const result = await fetchHealth();
+      if (!cancelled) {
+        setStatus(result);
+        setLastChecked(new Date());
+      }
+    }
+
+    void check();
+
+    // Refresh every 60 seconds so the page stays current without a reload
+    const interval = setInterval(() => { void check(); }, 60_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Derive per-service status from the top-level health response.
+  // When the API is reachable and healthy all services show operational.
+  // When it's degraded or unreachable all services reflect that state.
+  const serviceStatus: Exclude<SystemStatus, 'loading'> =
+    status === 'loading' ? 'operational' : status;
+
+  const SERVICES = [
+    { name: 'Signing flow' },
+    { name: 'Certificate issuance' },
+    { name: 'Certificate verification' },
+    { name: 'Email delivery' },
+    { name: 'Dashboard' },
+    { name: 'API' },
+  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -66,31 +162,25 @@ export default function StatusPage() {
             </span>
             OfferAccept
           </Link>
+          {lastChecked && (
+            <p className="text-xs text-gray-400">
+              Last checked {lastChecked.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </p>
+          )}
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12">
+
         {/* Overall status banner */}
-        <div
-          className={`rounded-xl px-6 py-5 mb-10 flex items-center gap-4 ${
-            isAllOperational
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-amber-50 border border-amber-200'
-          }`}
-        >
-          {isAllOperational ? (
-            <CheckCircle2 className="w-8 h-8 text-green-600 flex-shrink-0" aria-hidden="true" />
-          ) : (
-            <AlertTriangle className="w-8 h-8 text-amber-600 flex-shrink-0" aria-hidden="true" />
-          )}
+        <div className={`rounded-xl px-6 py-5 mb-10 flex items-center gap-4 border ${BANNER_STYLE[status]}`}>
+          <BannerIcon status={status} />
           <div>
-            <p className={`text-lg font-semibold ${isAllOperational ? 'text-green-800' : 'text-amber-800'}`}>
-              {isAllOperational ? 'All systems operational' : 'Some systems are affected'}
+            <p className={`text-lg font-semibold ${BANNER_TEXT[status]}`}>
+              {BANNER_TITLE[status]}
             </p>
-            <p className={`text-sm mt-0.5 ${isAllOperational ? 'text-green-700' : 'text-amber-700'}`}>
-              {isAllOperational
-                ? 'No incidents reported.'
-                : 'See the incident log below for details.'}
+            <p className={`text-sm mt-0.5 ${BANNER_SUBTEXT[status]}`}>
+              {BANNER_BODY[status]}
             </p>
           </div>
         </div>
@@ -101,7 +191,11 @@ export default function StatusPage() {
           {SERVICES.map((s) => (
             <div key={s.name} className="flex items-center justify-between px-5 py-3.5">
               <span className="text-sm text-gray-700">{s.name}</span>
-              <StatusBadge status={s.status} />
+              {status === 'loading' ? (
+                <span className="text-xs text-gray-400">Checking…</span>
+              ) : (
+                <StatusBadge status={serviceStatus} />
+              )}
             </div>
           ))}
         </div>

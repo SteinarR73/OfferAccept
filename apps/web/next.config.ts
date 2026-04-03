@@ -8,6 +8,41 @@ try {
   withSentryConfig = (config) => config;
 }
 
+// ── Content Security Policy ───────────────────────────────────────────────────
+// Applied to all routes via the headers() hook.
+//
+// Notes:
+//   script-src 'unsafe-inline': Next.js 15 App Router injects inline scripts
+//     for RSC payload and router state. Required for hydration to work without
+//     per-request nonces. Nonce-based CSP is a future improvement.
+//
+//   style-src 'unsafe-inline': Tailwind CSS v4 and Next.js inject <style> blocks
+//     at runtime. Cannot be removed without a nonce strategy.
+//
+//   connect-src includes sentry.io: Sentry browser SDK reports errors there.
+//     Set NEXT_PUBLIC_SENTRY_DSN to the ingest URL — same domain will be covered.
+//
+//   font-src 'self': next/font/google downloads and self-hosts fonts at build
+//     time. All font files are served from the same origin in production.
+//
+//   img-src data:: Next.js and various UI libraries use data: URIs for
+//     placeholder images and SVG icons.
+//
+//   frame-ancestors 'none': prevents the app from being embedded in iframes,
+//     closing clickjacking vectors.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  // 'self' covers proxied API calls (/api/*). Sentry ingest for browser SDK.
+  "connect-src 'self' https://*.ingest.sentry.io",
+  "font-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
@@ -15,6 +50,20 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: ['192.168.128.1'],
     // Required by Next.js 15 for the instrumentation hook
     instrumentationHook: true,
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: CSP,
+          },
+        ],
+      },
+    ];
   },
 
   async rewrites() {
