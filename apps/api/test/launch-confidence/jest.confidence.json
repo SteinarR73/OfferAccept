@@ -1,0 +1,19 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "../..",
+  "testEnvironment": "node",
+  "testMatch": ["**/test/launch-confidence/**/*.spec.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", {
+      "tsconfig": "<rootDir>/tsconfig.json"
+    }]
+  },
+  "moduleNameMapper": {
+    "^pg-boss$": "<rootDir>/test/__mocks__/pg-boss.ts",
+    "^@offeraccept/database$": "<rootDir>/../../packages/database/src/index.ts",
+    "^@offeraccept/types$": "<rootDir>/../../packages/types/src/index.ts"
+  },
+  "testTimeout": 60000,
+  "verbose": true,
+  "forceExit": true
+}
