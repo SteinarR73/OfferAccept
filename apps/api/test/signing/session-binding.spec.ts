@@ -14,6 +14,8 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { JobService } from '../../src/modules/jobs/job.service';
+import { TraceContext } from '../../src/common/trace/trace.context';
 
 // ─── Session binding tests ────────────────────────────────────────────────────
 //
@@ -166,6 +168,8 @@ async function buildService(
         useValue: { dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) },
       },
       { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
+      { provide: JobService, useValue: { send: jest.fn<() => Promise<string>>().mockResolvedValue('job-1'), sendOnce: jest.fn<() => Promise<string | null>>().mockResolvedValue('job-1') } },
+      { provide: TraceContext, useValue: { get: jest.fn<() => string | undefined>().mockReturnValue(undefined), run: jest.fn((_, fn: () => unknown) => fn()) } },
     ],
   }).compile();
 

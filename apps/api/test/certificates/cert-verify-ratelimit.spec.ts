@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CertificatesController } from '../../src/modules/certificates/certificates.controller';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
+import { CertificatePdfService } from '../../src/modules/certificates/certificate-pdf.service';
+import { TraceContext } from '../../src/common/trace/trace.context';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
 
 // ─── Certificate verify — rate limit headers tests ─────────────────────────────
@@ -62,6 +64,8 @@ async function buildController() {
     controllers: [CertificatesController],
     providers: [
       { provide: CertificateService, useValue: certSvcMock },
+      { provide: CertificatePdfService, useValue: { generate: jest.fn() } },
+      { provide: TraceContext, useValue: { get: jest.fn<() => string | undefined>().mockReturnValue(undefined), run: jest.fn((_, fn: () => unknown) => fn()) } },
       { provide: RateLimitService, useValue: rateLimiterMock },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
       { provide: ConfigService, useValue: { getOrThrow: (_key: string) => 'https://app.test' } },

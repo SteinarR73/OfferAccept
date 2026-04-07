@@ -56,6 +56,9 @@ export function createMockDb() {
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
+      // Cross-session recipient lockout check in SigningOtpService.issue()
+      aggregate: jest.fn<() => Promise<{ _sum: { attemptCount: number | null } }>>()
+        .mockResolvedValue({ _sum: { attemptCount: 0 } }),
     },
     acceptanceRecord: {
       create: jest.fn(),

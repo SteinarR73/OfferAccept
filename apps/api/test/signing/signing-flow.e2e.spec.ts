@@ -32,6 +32,7 @@ import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { DatabaseModule } from '../../src/modules/database/database.module';
+import { TraceModule } from '../../src/common/trace/trace.module';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import {
@@ -80,6 +81,7 @@ describe('Public Signing Flow (e2e)', () => {
           })],
         }),
         DatabaseModule,
+        TraceModule,
         AuthModule,
         RateLimitModule,
         EmailModule,

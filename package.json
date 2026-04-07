@@ -33,6 +33,14 @@
   "pnpm": {
     "overrides": {
       "rxjs": "7.8.2"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "@sentry/cli",
+      "prisma",
+      "sharp"
+    ]
   }
 }

@@ -96,13 +96,15 @@ describe('NotifyDealAcceptedHandler', () => {
 
       expect(emailPort.sendAcceptanceConfirmationToSender).toHaveBeenCalledTimes(1);
       expect(emailPort.sendAcceptanceConfirmationToSender).toHaveBeenCalledWith({
-        to:            BASE_PAYLOAD.senderEmail,
-        senderName:    BASE_PAYLOAD.senderName,
-        offerTitle:    BASE_PAYLOAD.offerTitle,
-        recipientName: BASE_PAYLOAD.recipientName,
+        to:             BASE_PAYLOAD.senderEmail,
+        senderName:     BASE_PAYLOAD.senderName,
+        offerTitle:     BASE_PAYLOAD.offerTitle,
+        recipientName:  BASE_PAYLOAD.recipientName,
         recipientEmail: BASE_PAYLOAD.recipientEmail,
-        acceptedAt:    ACCEPTED_AT_DATE,
-        certificateId: CERTIFICATE_ID,
+        acceptedAt:     ACCEPTED_AT_DATE,
+        certificateId:  CERTIFICATE_ID,
+        certificateHash: BASE_PAYLOAD.certificateHash,
+        verifyUrl:      BASE_PAYLOAD.verifyUrl,
       });
     });
 
@@ -112,12 +114,14 @@ describe('NotifyDealAcceptedHandler', () => {
 
       expect(emailPort.sendAcceptanceConfirmationToRecipient).toHaveBeenCalledTimes(1);
       expect(emailPort.sendAcceptanceConfirmationToRecipient).toHaveBeenCalledWith({
-        to:            BASE_PAYLOAD.recipientEmail,
-        recipientName: BASE_PAYLOAD.recipientName,
-        offerTitle:    BASE_PAYLOAD.offerTitle,
-        senderName:    BASE_PAYLOAD.senderName,
-        acceptedAt:    ACCEPTED_AT_DATE,
-        certificateId: CERTIFICATE_ID,
+        to:             BASE_PAYLOAD.recipientEmail,
+        recipientName:  BASE_PAYLOAD.recipientName,
+        offerTitle:     BASE_PAYLOAD.offerTitle,
+        senderName:     BASE_PAYLOAD.senderName,
+        acceptedAt:     ACCEPTED_AT_DATE,
+        certificateId:  CERTIFICATE_ID,
+        certificateHash: BASE_PAYLOAD.certificateHash,
+        verifyUrl:      BASE_PAYLOAD.verifyUrl,
       });
     });
 
@@ -150,14 +154,14 @@ describe('NotifyDealAcceptedHandler', () => {
   describe('email delivery failure — re-throw for pg-boss retry', () => {
     it('re-throws when sendAcceptanceConfirmationToSender fails', async () => {
       const { handler, emailPort } = await buildHandler();
-      emailPort.sendAcceptanceConfirmationToSender.mockRejectedValueOnce(new Error('Resend 503'));
+      emailPort.sendAcceptanceConfirmationToSender.mockRejectedValue(new Error('Resend 503'));
 
       await expect(handler.handle([makeJob()])).rejects.toThrow('Resend 503');
     });
 
     it('does NOT call sendAcceptanceConfirmationToRecipient when sender email fails', async () => {
       const { handler, emailPort } = await buildHandler();
-      emailPort.sendAcceptanceConfirmationToSender.mockRejectedValueOnce(new Error('sender fail'));
+      emailPort.sendAcceptanceConfirmationToSender.mockRejectedValue(new Error('sender fail'));
 
       await expect(handler.handle([makeJob()])).rejects.toThrow();
       expect(emailPort.sendAcceptanceConfirmationToRecipient).not.toHaveBeenCalled();
@@ -165,21 +169,22 @@ describe('NotifyDealAcceptedHandler', () => {
 
     it('re-throws when sendAcceptanceConfirmationToRecipient fails', async () => {
       const { handler, emailPort } = await buildHandler();
-      emailPort.sendAcceptanceConfirmationToRecipient.mockRejectedValueOnce(new Error('Resend timeout'));
+      emailPort.sendAcceptanceConfirmationToRecipient.mockRejectedValue(new Error('Resend timeout'));
 
       await expect(handler.handle([makeJob()])).rejects.toThrow('Resend timeout');
     });
 
     it('stops processing batch on first job failure', async () => {
       const { handler, emailPort } = await buildHandler();
-      emailPort.sendAcceptanceConfirmationToSender.mockRejectedValueOnce(new Error('network error'));
+      emailPort.sendAcceptanceConfirmationToSender.mockRejectedValue(new Error('network error'));
 
       const job1 = makeJob({ ...BASE_PAYLOAD, acceptanceRecordId: 'ar-1', offerId: 'offer-1' });
       const job2 = makeJob({ ...BASE_PAYLOAD, acceptanceRecordId: 'ar-2', offerId: 'offer-2' });
 
       await expect(handler.handle([job1, job2])).rejects.toThrow();
-      // Only the first job's sender email was attempted
-      expect(emailPort.sendAcceptanceConfirmationToSender).toHaveBeenCalledTimes(1);
+      // withEmailRetry makes 3 attempts before giving up; job2 is never started
+      expect(emailPort.sendAcceptanceConfirmationToSender).toHaveBeenCalledTimes(3);
+      expect(emailPort.sendAcceptanceConfirmationToRecipient).not.toHaveBeenCalled();
     });
   });
 

@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe, Global, Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
@@ -16,8 +17,21 @@ import { DomainExceptionFilter } from '../../src/common/filters/domain-exception
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
 import { DatabaseModule } from '../../src/modules/database/database.module';
+import { TraceModule } from '../../src/common/trace/trace.module';
+import { JobService } from '../../src/modules/jobs/job.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { SubscriptionService } from '../../src/modules/billing/subscription.service';
+
+// ── Global stub for JobService ────────────────────────────────────────────────
+@Global()
+@Module({
+  providers: [{ provide: JobService, useValue: {
+    send: jest.fn<() => Promise<string>>().mockResolvedValue('job-stub-1'),
+    sendOnce: jest.fn<() => Promise<string | null>>().mockResolvedValue('job-stub-1'),
+  }}],
+  exports: [JobService],
+})
+class StubJobsModule {}
 
 // ── Global mock for SubscriptionService ──────────────────────────────────────
 // BillingModule is not imported in this test module. This stub provides
@@ -92,6 +106,8 @@ function createMockDb() {
       findFirst: jest.fn(),
       updateMany: jest.fn(),
       create: jest.fn(),
+      aggregate: jest.fn<() => Promise<{ _sum: { attemptCount: number | null } }>>()
+        .mockResolvedValue({ _sum: { attemptCount: 0 } }),
     },
     acceptanceRecord: {
       findFirst: jest.fn(),
@@ -242,6 +258,8 @@ async function buildApp(db: MockDb) {
       }),
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
       MockBillingModule,
+      StubJobsModule,
+      TraceModule,
       DatabaseModule,
       AuthModule,
       EmailModule,

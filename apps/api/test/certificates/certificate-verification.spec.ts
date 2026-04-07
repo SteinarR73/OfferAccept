@@ -85,7 +85,16 @@ describe('CertificateService.verify()', () => {
       acceptanceRecordId: RECORD_ID,
       issuedAt: ISSUED_AT,
       certificateHash: storedHash,
-      acceptanceRecord: { id: RECORD_ID, sessionId: SESSION_ID, snapshotId: 'snap-1' },
+      canonicalHash: null,
+    });
+    db.acceptanceRecord.findUniqueOrThrow.mockResolvedValue({
+      id: RECORD_ID,
+      sessionId: SESSION_ID,
+      snapshotId: 'snap-1',
+      verifiedEmail: 'bob@client.com',
+      acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
+      ipAddress: null,
+      userAgent: null,
     });
     const snapshotHashInput = {
       title: makePayload().offer.title,
@@ -223,7 +232,12 @@ describe('CertificateService.generateForAcceptance()', () => {
     db.acceptanceCertificate.findUnique.mockResolvedValue(null);
     db.acceptanceRecord.findUniqueOrThrow.mockResolvedValue({
       id: RECORD_ID,
+      snapshotId: 'snap-1',
       snapshot: { offerId: 'offer-1' },
+      verifiedEmail: 'bob@client.com',
+      acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
+      ipAddress: null,
+      userAgent: null,
     });
     // include: offer is needed for access control in exportPayload, but
     // generateForAcceptance bypasses exportPayload — uses db.acceptanceCertificate.create directly

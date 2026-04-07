@@ -118,13 +118,20 @@ async function buildService(overrides: {
               acceptanceRecordId: RECORD_ID,
               certificateHash: overrides.storedHash ?? built.certificateHash,
               issuedAt: ISSUED_AT,
-              acceptanceRecord: {
-                id: RECORD_ID,
-                sessionId: SESSION_ID,
-                snapshotId: SNAPSHOT_ID,
-              },
+              canonicalHash: null,
             },
       ),
+    },
+    acceptanceRecord: {
+      findUniqueOrThrow: jest.fn<() => Promise<unknown>>().mockResolvedValue({
+        id: RECORD_ID,
+        sessionId: SESSION_ID,
+        snapshotId: SNAPSHOT_ID,
+        verifiedEmail: 'bob@client.com',
+        acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
+        ipAddress: '1.2.3.4',
+        userAgent: 'Mozilla/5.0',
+      }),
     },
     offerSnapshot: {
       findUniqueOrThrow: jest.fn<() => Promise<unknown>>().mockResolvedValue(snapshot),

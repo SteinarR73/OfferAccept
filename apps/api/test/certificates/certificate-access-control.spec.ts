@@ -205,7 +205,16 @@ describe('CertificateService.verify() — public endpoint safety', () => {
       acceptanceRecordId: RECORD_ID,
       issuedAt: ISSUED_AT,
       certificateHash: built.certificateHash,
-      acceptanceRecord: { id: RECORD_ID, sessionId: 'session-1', snapshotId: 'snap-1' },
+      canonicalHash: null,
+    });
+    db.acceptanceRecord.findUniqueOrThrow.mockResolvedValue({
+      id: RECORD_ID,
+      sessionId: 'session-1',
+      snapshotId: 'snap-1',
+      verifiedEmail: 'corp@client.com',
+      acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
+      ipAddress: null,
+      userAgent: null,
     });
     builder.build.mockResolvedValue(built);
 

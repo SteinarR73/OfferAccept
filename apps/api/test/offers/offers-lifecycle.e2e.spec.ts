@@ -281,7 +281,7 @@ describe('Offers Lifecycle (e2e)', () => {
       // Email must have been sent
       expect(emailAdapter.getAllSentLinks()).toHaveLength(1);
       expect(emailAdapter.getAllSentLinks()[0].to).toBe('client@acme.com');
-      expect(emailAdapter.getAllSentLinks()[0].signingUrl).toMatch(/^https:\/\/app\.test\/sign\/oa_/);
+      expect(emailAdapter.getAllSentLinks()[0].signingUrl).toMatch(/^https:\/\/app\.test\/accept\/oa_/);
     });
 
     it('raw token is NOT in the snapshot data stored to DB', async () => {

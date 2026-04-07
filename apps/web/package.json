@@ -11,7 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@offeraccept/types": "*",
+    "@offeraccept/types": "workspace:*",
     "@sentry/nextjs": "^9.0.0",
     "@types/qrcode": "^1.5.6",
     "lucide-react": "^0.577.0",
