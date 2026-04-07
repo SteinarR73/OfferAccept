@@ -8,6 +8,7 @@ on:
 
 env:
   NODE_VERSION: "22"
+  PNPM_VERSION: "10.20.0"
 
 jobs:
   # ── Version gate ──────────────────────────────────────────────────────────────
@@ -164,22 +165,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run Prisma migrations
-        run: npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
+        run: pnpm exec prisma migrate deploy --schema=packages/database/prisma/schema.prisma
 
       - name: Generate Prisma client
-        run: npm run db:generate
+        run: pnpm run db:generate
 
       - name: Run API tests
-        run: npm test --workspace=apps/api
+        run: pnpm --filter ./apps/api run test
 
   # ── Web unit tests ────────────────────────────────────────────────────────────
   test-web:
@@ -188,16 +193,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run web tests
-        run: npm test --workspace=apps/web
+        run: pnpm --filter ./apps/web run test
 
   # ── Build ─────────────────────────────────────────────────────────────────────
   build:
@@ -207,16 +216,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
         env:
-          # Next.js build requires NEXT_PUBLIC_API_URL to be set
+          # Next.js build — public API base URL required at build time
           NEXT_PUBLIC_API_URL: https://api.example.com/api/v1
+          # ── Sentry source-map upload ────────────────────────────────────────
+          # Uploading source maps requires SENTRY_AUTH_TOKEN. Add this token as a
+          # GitHub Actions secret (Settings → Secrets → Actions → New repository secret).
+          # If the secret is absent, withSentryConfig() disables the upload plugin
+          # and the build proceeds — maps are simply not uploaded for this run.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          # APP_VERSION tags every Sentry event with the commit SHA so errors can
+          # be linked directly to the commit that introduced them.
+          APP_VERSION: ${{ github.sha }}

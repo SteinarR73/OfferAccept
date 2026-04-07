@@ -1,4 +1,4 @@
-import { SigningClient } from '../../sign/[token]/signing-client';
+import { SigningClient } from './signing-client';
 
 // Server component. Extracts the token from the URL and passes it to the
 // client component which manages the acceptance flow state machine.

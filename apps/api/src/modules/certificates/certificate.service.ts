@@ -309,8 +309,23 @@ export class CertificateService {
       );
     }
 
-    // canonicalHashMatch === undefined means the certificate predates this field;
-    // there is no stored value to compare against, so the check is N/A (not a failure).
+    // Legacy certificates (canonicalHash === null) pre-date the 5-field fingerprint
+    // field introduced in migration 20260328_certificate_canonical_hash.  There is
+    // no stored value to compare against, so the check cannot be performed.
+    //
+    // We treat the absence as N/A rather than a failure so that older certificates
+    // continue to verify successfully on their three remaining checks.  However we
+    // do NOT silently skip the gap: an informational anomaly is added so that
+    // callers, audit tooling, and the public verify UI can surface the limitation
+    // rather than presenting an unqualified "✅ All checks passed" to the user.
+    if (cert.canonicalHash === null) {
+      anomalies.push(
+        'LEGACY_CERTIFICATE: This certificate was issued before the canonical acceptance ' +
+        'fingerprint was introduced. The 5-field binding (acceptedAt, dealId, ipAddress, ' +
+        'recipientEmail, userAgent) cannot be independently verified. ' +
+        'All other integrity checks (certificateHash, snapshotIntegrity, eventChain) remain valid.',
+      );
+    }
     const canonicalHashOk = canonicalHashMatch ?? true;
 
     return {
