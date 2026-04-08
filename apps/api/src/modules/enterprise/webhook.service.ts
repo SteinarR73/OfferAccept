@@ -1,8 +1,10 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
 import { JobService } from '../jobs/job.service';
 import { WebhookEndpointNotFoundError } from '../../common/errors/domain.errors';
+import { FieldCipher } from '../../common/crypto/field-cipher';
 import {
   validateWebhookUrl,
   validateWebhookUrlDns,
@@ -39,11 +41,32 @@ export type WebhookEvent = (typeof ALL_WEBHOOK_EVENTS)[number];
 @Injectable()
 export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
+  private readonly cipher: FieldCipher | null;
 
   constructor(
     @Inject('PRISMA') private readonly db: PrismaClient,
     private readonly jobService: JobService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    const key = this.config.get<string>('WEBHOOK_SECRET_KEY');
+    // Cipher is optional in dev/test; required at startup in production
+    // (enforced by env.ts validation).
+    this.cipher = key ? new FieldCipher(key) : null;
+  }
+
+  /** Encrypt a raw secret before persisting. No-op when cipher is unavailable (dev/test). */
+  private encryptSecret(raw: string): string {
+    return this.cipher ? this.cipher.encrypt(raw) : raw;
+  }
+
+  /** Decrypt a stored secret. Handles both encrypted and legacy plaintext values. */
+  private decryptSecret(stored: string): string {
+    if (!this.cipher) return stored;
+    if (this.cipher.isEncrypted(stored)) return this.cipher.decrypt(stored);
+    // Legacy plaintext value — log once for observability, return as-is.
+    this.logger.warn('webhook secret is stored in plaintext — rotate to encrypt');
+    return stored;
+  }
 
   // ── Endpoint management ──────────────────────────────────────────────────────
 
@@ -62,12 +85,13 @@ export class WebhookService {
       data: {
         organizationId: params.organizationId,
         url: params.url,
-        secret,
+        secret: this.encryptSecret(secret),
         events: params.events,
       },
     });
 
     // Secret returned ONCE at creation — not re-retrievable. Customer must store it.
+    // Return the raw (unencrypted) secret so the customer can configure their handler.
     return { id: endpoint.id, url: endpoint.url, events: endpoint.events, secret };
   }
 
@@ -190,7 +214,7 @@ export class WebhookService {
     return validateWebhookUrlDns(url);
   }
 
-  // Returns the endpoint record including its secret (for signing).
+  // Returns the endpoint record with its secret decrypted (for signing).
   // Returns null if the endpoint no longer exists.
   async getEndpoint(endpointId: string): Promise<{
     id: string;
@@ -198,10 +222,12 @@ export class WebhookService {
     secret: string;
     enabled: boolean;
   } | null> {
-    return this.db.webhookEndpoint.findUnique({
+    const row = await this.db.webhookEndpoint.findUnique({
       where: { id: endpointId },
       select: { id: true, url: true, secret: true, enabled: true },
     });
+    if (!row) return null;
+    return { ...row, secret: this.decryptSecret(row.secret) };
   }
 
   // Replay protection: returns true if a successful delivery already exists for
@@ -261,12 +287,13 @@ export class WebhookService {
 
     await this.db.webhookEndpoint.update({
       where: { id: endpointId },
-      data: { secret: newSecret },
+      data: { secret: this.encryptSecret(newSecret) },
     });
 
     this.logger.log(`Webhook secret rotated: endpoint=${endpointId} org=${organizationId}`);
 
     // New secret returned ONCE — not re-retrievable. Customer must store it.
+    // Return the raw (unencrypted) secret so the customer can configure their handler.
     return { id: endpointId, secret: newSecret };
   }
 

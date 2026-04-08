@@ -14,21 +14,23 @@ Items marked **[PILOT]** are acceptable to defer until controlled pilot is under
 ## Gate 1 — Correctness (must pass before any testing)
 
 ### 1.1 Acceptance statement single source of truth **[CODE]**
-- [ ] `buildAcceptanceStatement` in `signing/domain/acceptance-statement.ts` is the
+- [x] `buildAcceptanceStatement` in `signing/domain/acceptance-statement.ts` is the
       only implementation. Both `SigningFlowService.getOfferContext` (display) and
       `AcceptanceService.accept` (storage) import from this module.
-- [ ] Test: `test/signing/acceptance-statement.spec.ts` passes. Display and stored text
+- [x] Test: `test/signing/acceptance-statement.spec.ts` passes. Display and stored text
       are byte-for-byte identical.
+- [x] CI: `gate-tests` job runs `pnpm test:gates` and blocks build on failure. Added 2026-04-08.
 
 **Why this matters:** If the text shown to the recipient differs from the text stored in
 the certificate, the certificate is not evidence of what the recipient agreed to.
 
 ### 1.2 Certificate hash determinism **[CODE]**
-- [ ] `AcceptanceCertificate.issuedAt` is generated once in `CertificateService.generateForAcceptance`
+- [x] `AcceptanceCertificate.issuedAt` is generated once in `CertificateService.generateForAcceptance`
       and stored in the DB row. The builder never calls `new Date()` internally.
-- [ ] `builder.build(acceptanceRecordId, certificateId, issuedAt)` called with the stored
+- [x] `builder.build(acceptanceRecordId, certificateId, issuedAt)` called with the stored
       `issuedAt` always produces the same `certificateHash`.
-- [ ] Test: `test/certificates/certificate-hash.spec.ts` passes.
+- [x] Test: `test/certificates/certificate-hash.spec.ts` passes.
+- [x] CI: covered by `gate-tests` job. Added 2026-04-08.
 
 ### 1.3 No side effects on GET signing endpoints **[CODE]**
 - [ ] `GET /signing/:token` (getOfferContext) does NOT create a session.
@@ -95,10 +97,11 @@ consume the OTP before the real recipient sees it.
 - [ ] Support routes return 403 (not 401) for valid-JWT callers without `INTERNAL_SUPPORT` role.
 
 ### 2.7 Tenant isolation **[CODE]**
-- [ ] All offer queries include `organizationId: orgId` in the WHERE clause.
-- [ ] `SendOfferService.resend` and `.revoke` validate org ownership before acting.
-- [ ] `GET /support/*` routes are intentionally cross-org (INTERNAL_SUPPORT only).
-- [ ] Test: `test/offers/tenant-isolation.spec.ts` passes.
+- [x] All offer queries include `organizationId: orgId` in the WHERE clause.
+- [x] `SendOfferService.resend` and `.revoke` validate org ownership before acting.
+- [x] `GET /support/*` routes are intentionally cross-org (INTERNAL_SUPPORT only).
+- [x] Test: `test/offers/tenant-isolation.spec.ts` passes.
+- [x] CI: covered by `gate-tests` job. Added 2026-04-08.
 
 ### 2.8 CORS configuration **[OPS]**
 - [ ] `WEB_BASE_URL` in production points to the real web origin.

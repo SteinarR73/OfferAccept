@@ -75,6 +75,11 @@ const envSchema = z
     // these ranges, preventing IP spoofing by end clients.
     // Leave unset to skip CIDR validation (trust all X-Forwarded-For values from the proxy hop).
     TRUSTED_PROXY_CIDR: z.string().optional(),
+    // AES-256-GCM key for encrypting sensitive database columns (e.g. webhook secrets).
+    // Must be exactly 64 hex characters (32 bytes / 256 bits).
+    // Generate one with: openssl rand -hex 32
+    // Required in production. Optional in dev/test (encryption is skipped when absent).
+    WEBHOOK_SECRET_KEY: z.string().optional(),
     BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -157,6 +162,17 @@ const envSchema = z
       message:
         'STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and all STRIPE_PRICE_* vars are required when BILLING_PROVIDER=stripe',
       path: ['BILLING_PROVIDER'],
+    },
+  )
+  .refine(
+    (data) =>
+      data.NODE_ENV !== 'production' ||
+      (!!data.WEBHOOK_SECRET_KEY && data.WEBHOOK_SECRET_KEY.length === 64),
+    {
+      message:
+        'WEBHOOK_SECRET_KEY is required in production and must be exactly 64 hex characters. ' +
+        'Generate one with: openssl rand -hex 32',
+      path: ['WEBHOOK_SECRET_KEY'],
     },
   )
   .refine(

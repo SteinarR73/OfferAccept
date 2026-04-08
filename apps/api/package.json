@@ -9,7 +9,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:confidence": "jest --config ./test/launch-confidence/jest.confidence.json --forceExit --verbose"
+    "test:confidence": "jest --config ./test/launch-confidence/jest.confidence.json --forceExit --verbose",
+    "test:gates": "jest --testPathPattern=\"test/(signing/acceptance-statement|certificates/certificate-hash|offers/tenant-isolation)\\.spec\\.ts$\" --forceExit --verbose"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1014.0",

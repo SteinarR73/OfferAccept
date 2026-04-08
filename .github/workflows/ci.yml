@@ -161,6 +161,8 @@ jobs:
       EMAIL_FROM: test@localhost
       EMAIL_PROVIDER: dev
       STORAGE_PROVIDER: dev
+      # 64 hex chars — fixed test key so webhook encryption is exercised in CI
+      WEBHOOK_SECRET_KEY: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
 
     steps:
       - uses: actions/checkout@v4
@@ -208,11 +210,80 @@ jobs:
       - name: Run web tests
         run: pnpm --filter ./apps/web run test
 
+  # ── Launch gate tests ─────────────────────────────────────────────────────────
+  # Gate 1: correctness of the acceptance evidence model.
+  # These 3 tests are the minimum bar — if any fails, the build is blocked.
+  #   acceptance-statement : display text == stored text (cert validity)
+  #   certificate-hash     : hash is deterministic (cert integrity)
+  #   tenant-isolation     : cross-org data access is denied (data isolation)
+  gate-tests:
+    name: Launch gates — correctness + isolation
+    runs-on: ubuntu-latest
+    needs: [test-api]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: offeraccept_test
+          POSTGRES_USER: offeraccept
+          POSTGRES_PASSWORD: offeraccept
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://offeraccept:offeraccept@localhost:5432/offeraccept_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-test-secret-that-is-at-least-32-characters
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL_DAYS: 30
+      COOKIE_SECURE: "false"
+      SIGNING_LINK_SECRET: ci-signing-secret-32-characters-minimum
+      WEB_BASE_URL: http://localhost:3000
+      EMAIL_FROM: test@localhost
+      EMAIL_PROVIDER: dev
+      STORAGE_PROVIDER: dev
+      WEBHOOK_SECRET_KEY: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prisma migrations
+        run: pnpm exec prisma migrate deploy --schema=packages/database/prisma/schema.prisma
+
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
+      - name: Run gate tests
+        run: pnpm --filter ./apps/api run test:gates
+
   # ── Build ─────────────────────────────────────────────────────────────────────
   build:
     name: Build all workspaces
     runs-on: ubuntu-latest
-    needs: [test-api, test-web]
+    needs: [test-api, test-web, gate-tests]
     steps:
       - uses: actions/checkout@v4
 

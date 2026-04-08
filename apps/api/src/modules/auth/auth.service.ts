@@ -129,20 +129,20 @@ export class AuthService {
 
     const { rawToken, session } = await this.sessionService.create(user.id, context);
 
-    // Resolve org context from Membership (canonical for multi-org).
-    // Falls back to User.organizationId for accounts that predate the Membership migration.
-    // Throws if neither source yields an org — this should never happen for a valid account
-    // and indicates a data integrity problem that must not be silently swallowed.
+    // Resolve org context exclusively from the Membership join table.
+    // The migration 20260408_backfill_memberships_from_user_org ensures every
+    // account has at least one Membership row. User.organizationId is deprecated
+    // and no longer read here.
     const membership = await this.repo.findPrimaryMembership(user.id);
-    const orgId = membership?.organizationId ?? user.organizationId;
-    const orgRole = membership?.role ?? user.role;
+    const orgId   = membership?.organizationId;
+    const orgRole = membership?.role;
 
     if (!orgId) {
-      // Guard: a user with no org context cannot operate the system correctly.
-      // Log with userId so the problem account can be identified and repaired.
+      // Guard: a user with no Membership row cannot operate the system correctly.
+      // This should never happen after the backfill migration; if it does, it
+      // indicates a data integrity problem that must not be silently swallowed.
       throw new Error(
-        `User ${user.id} has no resolvable orgId — missing Membership row and User.organizationId is null. ` +
-        `Account requires data repair before login is possible.`,
+        `User ${user.id} has no Membership row — account requires data repair before login is possible.`,
       );
     }
 
@@ -196,14 +196,13 @@ export class AuthService {
     );
 
     const membership = await this.repo.findPrimaryMembership(user.id);
-    const orgId = membership?.organizationId ?? user.organizationId;
-    const orgRole = membership?.role ?? user.role;
+    const orgId   = membership?.organizationId;
+    const orgRole = membership?.role;
 
     if (!orgId) {
       await this.sessionService.revoke(session.id);
       throw new Error(
-        `User ${user.id} has no resolvable orgId during token refresh — ` +
-        `missing Membership row and User.organizationId is null. Account requires data repair.`,
+        `User ${user.id} has no Membership row during token refresh — account requires data repair.`,
       );
     }
 
