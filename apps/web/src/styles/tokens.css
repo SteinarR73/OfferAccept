@@ -114,4 +114,19 @@
   --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
+  /* ── 8. Transitions ────────────────────────────────────────────── */
+  /* Use these in component style attributes or utility classes to   */
+  /* keep motion consistent across the design system.               */
+  --transition-fast:      150ms ease;
+  --transition-base:      200ms ease;
+  --transition-slow:      300ms ease;
+  --transition-colors:    color var(--transition-fast),
+                          background-color var(--transition-fast),
+                          border-color var(--transition-fast),
+                          fill var(--transition-fast),
+                          stroke var(--transition-fast);
+  --transition-shadow:    box-shadow var(--transition-base);
+  --transition-transform: transform var(--transition-base);
+  --transition-opacity:   opacity var(--transition-base);
+
 }

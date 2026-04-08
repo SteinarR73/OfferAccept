@@ -341,6 +341,25 @@ export async function deleteWebhook(id: string): Promise<void> {
   return request<void>(`/webhooks/${id}`, { method: 'DELETE' });
 }
 
+// ─── DPA ──────────────────────────────────────────────────────────────────────
+
+export interface DpaStatus {
+  accepted: boolean;
+  currentVersion: string;
+  acceptedVersion: string | null;
+  acceptedAt: string | null;
+  acceptedByUserId: string | null;
+  agreementId: string | null;
+}
+
+export async function getDpaStatus(orgId: string): Promise<DpaStatus> {
+  return request(`/org/${orgId}/dpa`);
+}
+
+export async function acceptDpa(orgId: string): Promise<DpaStatus> {
+  return request(`/org/${orgId}/dpa`, { method: 'POST' });
+}
+
 // ─── Certificates ─────────────────────────────────────────────────────────────
 
 export interface CertificateDetail {

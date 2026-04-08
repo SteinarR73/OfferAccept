@@ -4,6 +4,7 @@ import { OrgService } from './org.service';
 import { OrgRepository } from './org.repository';
 import { MembershipService } from './membership.service';
 import { InviteService } from './invite.service';
+import { DpaService } from './dpa.service';
 import { OrgRoleGuard } from './guards/org-role.guard';
 
 // ─── OrganizationsModule ──────────────────────────────────────────────────────
@@ -21,6 +22,7 @@ import { OrgRoleGuard } from './guards/org-role.guard';
     OrgService,
     MembershipService,
     InviteService,
+    DpaService,
     OrgRoleGuard,
   ],
   exports: [MembershipService, OrgRepository],

@@ -38,10 +38,10 @@ interface UploadedDoc {
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
 const STEPS = [
-  { id: 1, label: 'Deal name',  icon: FileText },
-  { id: 2, label: 'Document',   icon: FileCheck },
-  { id: 3, label: 'Recipient',  icon: User     },
-  { id: 4, label: 'Review',     icon: Send     },
+  { id: 1, label: 'Name',       icon: FileText,  cta: 'Continue'    },
+  { id: 2, label: 'Document',   icon: FileCheck, cta: 'Continue'    },
+  { id: 3, label: 'Recipient',  icon: User,      cta: 'Review deal' },
+  { id: 4, label: 'Review',     icon: Send,      cta: 'Send deal'   },
 ] as const;
 
 // ─── NewDealWizardPage ─────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ export default function NewDealWizardPage() {
             loading={isLoading}
             rightIcon={isLoading ? undefined : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
           >
-            {step === 3 ? 'Review' : 'Continue'}
+            {STEPS[step - 1].cta}
           </Button>
         ) : (
           <Button
@@ -257,15 +257,19 @@ function StepIndicator({ current, total, label }: { current: number; total: numb
   return (
     <div aria-label={`Step ${current} of ${total}: ${label}`}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-semibold text-blue-600">
+        <span className="text-xs font-semibold text-[--color-accent]">
           Step {current} / {total}
         </span>
-        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs text-[--color-text-muted]">{label}</span>
       </div>
-      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border)' }}>
         <div
-          className="h-full bg-blue-500 rounded-full transition-all duration-300"
-          style={{ width: `${Math.max(pct, 8)}%` }}
+          className="h-full rounded-full animate-progress-bar"
+          style={{
+            width: `${Math.max(pct, 8)}%`,
+            backgroundColor: 'var(--color-accent)',
+            transition: 'width var(--transition-slow)',
+          }}
           role="progressbar"
           aria-valuenow={current}
           aria-valuemin={1}
@@ -282,11 +286,16 @@ function StepIndicator({ current, total, label }: { current: number; total: numb
             <div key={n} className="flex flex-col items-center gap-0.5">
               <div
                 className={cn(
-                  'w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border transition-all',
-                  done   ? 'bg-blue-600 border-blue-600 text-white'
-                  : active ? 'bg-white border-blue-500 text-blue-600 ring-2 ring-blue-100'
-                           : 'bg-white border-gray-200 text-gray-400',
+                  'w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border',
+                  'transition-all',
                 )}
+                style={
+                  done
+                    ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: '#fff' }
+                    : active
+                    ? { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-accent)', color: 'var(--color-accent)', boxShadow: '0 0 0 3px var(--color-accent-light)' }
+                    : { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }
+                }
                 aria-hidden="true"
               >
                 {done ? <Check className="w-2.5 h-2.5" /> : n}

@@ -16,6 +16,7 @@ import { Request } from 'express';
 import { OrgService } from './org.service';
 import { MembershipService } from './membership.service';
 import { InviteService } from './invite.service';
+import { DpaService } from './dpa.service';
 import { OrgRoleGuard, RequireOrgRole } from './guards/org-role.guard';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
@@ -68,6 +69,7 @@ export class OrgController {
     private readonly orgService: OrgService,
     private readonly membershipService: MembershipService,
     private readonly inviteService: InviteService,
+    private readonly dpaService: DpaService,
     private readonly rateLimiter: RateLimitService,
   ) {}
 
@@ -174,5 +176,38 @@ export class OrgController {
     @Req() req: Request & { user: JwtPayload },
   ) {
     await this.membershipService.transferOwnership(req.user.sub, dto.toUserId, orgId);
+  }
+
+  // ── DPA status ───────────────────────────────────────────────────────────────
+  // Returns whether the current DPA version has been accepted by the organisation.
+
+  @Get(':id/dpa')
+  @UseGuards(JwtAuthGuard, OrgRoleGuard)
+  @RequireOrgRole('MEMBER')
+  async getDpaStatus(@Param('id') orgId: string) {
+    return this.dpaService.getStatus(orgId);
+  }
+
+  // ── DPA accept ───────────────────────────────────────────────────────────────
+  // Creates an append-only DPA acceptance record for this organisation.
+  // Requires ADMIN role — only admins/owners may execute legal agreements on
+  // behalf of the organisation.
+  // Rate-limited to prevent replay-accept spam.
+
+  @Post(':id/dpa')
+  @UseGuards(JwtAuthGuard, OrgRoleGuard)
+  @RequireOrgRole('ADMIN')
+  @HttpCode(HttpStatus.CREATED)
+  async acceptDpa(
+    @Param('id') orgId: string,
+    @Req() req: Request & { user: JwtPayload },
+  ) {
+    await this.rateLimiter.check('dpa_accept', req.user.sub);
+    return this.dpaService.accept({
+      organizationId:   orgId,
+      acceptedByUserId: req.user.sub,
+      ipAddress:        extractClientIp(req),
+      userAgent:        (req.headers as Record<string, string>)['user-agent'] ?? '',
+    });
   }
 }

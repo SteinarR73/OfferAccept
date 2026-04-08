@@ -53,6 +53,7 @@ model Organization {
   files            File[]
   apiKeys          ApiKey[]
   webhookEndpoints WebhookEndpoint[]
+  dpaAgreements    DpaAgreement[]
 
   @@map("organizations")
 }
@@ -1029,4 +1030,35 @@ model WebhookDeliveryAttempt {
   @@index([endpointId])
   @@index([endpointId, webhookEventId])
   @@map("webhook_delivery_attempts")
+}
+
+// ─── DpaAgreement ─────────────────────────────────────────────────────────────
+// Append-only record of each DPA acceptance event.
+// One row per execution — re-executing against a new DPA version creates a new row.
+//
+// dpaVersion: identifies the DPA document version (e.g. "1.0", "2.0").
+//   The latest version is defined in the DpaService constant CURRENT_DPA_VERSION.
+// artifactKey: optional S3 key of the countersigned PDF stored at the time of
+//   acceptance, for enterprise customers who want a downloadable artifact.
+// ipAddress / userAgent: captured at request time for non-repudiation evidence.
+//
+// Immutability: rows are NEVER updated or deleted.
+// The "current" DPA status for an org is the most recently created row where
+// dpaVersion = CURRENT_DPA_VERSION.
+
+model DpaAgreement {
+  id               String   @id @default(cuid())
+  organizationId   String
+  dpaVersion       String   @db.VarChar(20)   // e.g. "1.0"
+  acceptedAt       DateTime @default(now())
+  acceptedByUserId String
+  ipAddress        String   @db.VarChar(45)   // supports IPv4 and IPv6
+  userAgent        String   @db.VarChar(500)
+  artifactKey      String?  @db.Text          // S3 key for countersigned PDF, if stored
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, dpaVersion])
+  @@map("dpa_agreements")
 }

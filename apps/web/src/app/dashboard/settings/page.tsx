@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { User, Users, Key, Webhook, Copy, Trash2, Plus, Check } from 'lucide-react';
+import { User, Users, Key, Webhook, Copy, Trash2, Plus, Check, FileText, CheckCircle2, Clock } from 'lucide-react';
 
 // Team, API Keys, and Webhooks are hidden for v1 launch.
 // The underlying tab components remain implemented for post-launch activation.
@@ -19,10 +19,13 @@ import {
   createWebhook,
   updateWebhook,
   deleteWebhook,
+  getDpaStatus,
+  acceptDpa,
   type OrgMember,
   type ApiKey,
   type ApiKeyCreated,
   type Webhook as WebhookType,
+  type DpaStatus,
 } from '../../../lib/offers-api';
 import { useCurrentOrg, useHasOrgRole } from '../../../lib/org-context';
 import { PageHeader } from '../../../components/ui/PageHeader';
@@ -35,10 +38,11 @@ import { cn } from '../../../lib/cn';
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'team' | 'api-keys' | 'webhooks';
+type TabId = 'profile' | 'team' | 'api-keys' | 'webhooks' | 'dpa';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'profile', label: 'Profile', icon: <User className="w-3.5 h-3.5" aria-hidden="true" /> },
+  { id: 'profile', label: 'Profile',              icon: <User     className="w-3.5 h-3.5" aria-hidden="true" /> },
+  { id: 'dpa',     label: 'Data Processing (DPA)', icon: <FileText className="w-3.5 h-3.5" aria-hidden="true" /> },
 ];
 
 // ─── Profile tab ──────────────────────────────────────────────────────────────
@@ -616,6 +620,134 @@ function WebhooksTab() {
   );
 }
 
+// ─── DPA tab ──────────────────────────────────────────────────────────────────
+
+function DpaTab() {
+  const { orgId } = useCurrentOrg();
+  const isAdmin = useHasOrgRole('ADMIN');
+
+  const [status, setStatus] = useState<DpaStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (!orgId) return;
+    getDpaStatus(orgId)
+      .then(setStatus)
+      .catch(() => setError('Could not load DPA status.'))
+      .finally(() => setLoading(false));
+  }, [orgId]);
+
+  async function handleAccept() {
+    if (!orgId || !confirmed) return;
+    setAccepting(true);
+    setError(null);
+    try {
+      const updated = await acceptDpa(orgId);
+      setStatus(updated);
+      setConfirmed(false);
+    } catch {
+      setError('Could not record DPA acceptance. Please try again.');
+    } finally {
+      setAccepting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && <Alert variant="error" dismissible>{error}</Alert>}
+
+      <Card>
+        <CardHeader
+          title="Data Processing Agreement"
+          description="Execute the DPA on behalf of your organisation to meet GDPR and enterprise compliance requirements."
+          border
+        />
+        <CardSection>
+          {loading ? (
+            <div className="space-y-2">
+              <div className="skeleton h-3 w-48 rounded bg-gray-200" />
+              <div className="skeleton h-2.5 w-64 rounded bg-gray-100" />
+            </div>
+          ) : status?.accepted ? (
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-[--color-success] flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-medium text-[--color-text-primary]">
+                  DPA v{status.acceptedVersion} accepted
+                </p>
+                {status.acceptedAt && (
+                  <p className="text-xs text-[--color-text-muted] mt-0.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" aria-hidden="true" />
+                    {new Date(status.acceptedAt).toLocaleDateString('en-US', {
+                      month: 'long', day: 'numeric', year: 'numeric',
+                    })}
+                  </p>
+                )}
+                <a
+                  href="/legal/dpa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[--color-info] hover:underline mt-1 inline-block"
+                >
+                  View current DPA (v{status.currentVersion}) →
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-[--color-text-secondary]">
+                Your organisation has not yet executed the DPA for the current version (v{status?.currentVersion ?? '1.0'}).
+                Review the agreement before accepting.
+              </p>
+              <a
+                href="/legal/dpa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[--color-info] hover:underline"
+              >
+                Read the Data Processing Agreement →
+              </a>
+              {isAdmin && (
+                <div className="pt-2 space-y-3 border-t border-[--color-border-subtle]">
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={confirmed}
+                      onChange={(e) => setConfirmed(e.target.checked)}
+                      className="mt-0.5 accent-[--color-accent]"
+                    />
+                    <span className="text-xs text-[--color-text-secondary]">
+                      I have read and agree to the Data Processing Agreement on behalf of my organisation.
+                      I confirm I have authority to bind the organisation to this agreement.
+                    </span>
+                  </label>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={accepting}
+                    disabled={!confirmed}
+                    onClick={handleAccept}
+                  >
+                    Execute DPA
+                  </Button>
+                </div>
+              )}
+              {!isAdmin && (
+                <Alert variant="info">
+                  Only organisation admins and owners can execute the DPA.
+                </Alert>
+              )}
+            </div>
+          )}
+        </CardSection>
+      </Card>
+    </div>
+  );
+}
+
 // ─── SettingsPage ─────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -648,8 +780,9 @@ export default function SettingsPage() {
 
       {/* Tab content */}
       <div role="tabpanel">
-        {activeTab === 'profile' && <ProfileTab />}
-        {activeTab === 'team' && <TeamTab />}
+        {activeTab === 'profile'  && <ProfileTab />}
+        {activeTab === 'dpa'      && <DpaTab />}
+        {activeTab === 'team'     && <TeamTab />}
         {activeTab === 'api-keys' && <ApiKeysTab />}
         {activeTab === 'webhooks' && <WebhooksTab />}
       </div>
