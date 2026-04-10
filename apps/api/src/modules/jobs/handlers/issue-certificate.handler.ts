@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { Job } from 'pg-boss';
 import { CertificateService } from '../../certificates/certificate.service';
+import { JobService } from '../job.service';
 import type { IssueCertificatePayload } from '../job.types';
 
 // ─── IssueCertificateHandler ──────────────────────────────────────────────────
@@ -36,7 +37,10 @@ import type { IssueCertificatePayload } from '../job.types';
 export class IssueCertificateHandler {
   private readonly logger = new Logger(IssueCertificateHandler.name);
 
-  constructor(private readonly certificateService: CertificateService) {}
+  constructor(
+    private readonly certificateService: CertificateService,
+    private readonly jobService: JobService,
+  ) {}
 
   async handle(jobs: Job<IssueCertificatePayload>[]): Promise<void> {
     for (const job of jobs) {
@@ -87,6 +91,13 @@ export class IssueCertificateHandler {
           acceptanceRecordId,
           attempt,
         }));
+
+        // Enqueue async PDF generation — singletonKey prevents duplicate jobs.
+        await this.jobService.send(
+          'generate-certificate-pdf',
+          { certificateId },
+          { singletonKey: `generate-certificate-pdf:${certificateId}` },
+        );
       } catch (err) {
         this.logger.error(
           JSON.stringify({ event: 'certificate_issuance_failed', traceId, jobId: job.id, acceptanceRecordId, attempt }),

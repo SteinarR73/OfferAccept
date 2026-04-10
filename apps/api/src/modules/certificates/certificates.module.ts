@@ -10,6 +10,6 @@ import { DealEventsModule } from '../deal-events/deal-events.module';
   imports: [SigningEventsModule, DealEventsModule],
   controllers: [CertificatesController],
   providers: [CertificatePayloadBuilder, CertificateService, CertificatePdfService],
-  exports: [CertificateService],
+  exports: [CertificateService, CertificatePdfService],
 })
 export class CertificatesModule {}

@@ -2,20 +2,21 @@ import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { RateLimitService, REDIS_CLIENT } from './rate-limit.service';
+import { RATE_LIMITER_BACKEND } from './rate-limiter.backend';
+import { RedisRateLimiterBackend } from './redis-rate-limiter.backend';
+import { MemoryRateLimiterBackend } from './memory-rate-limiter.backend';
 import type { Env } from '../../config/env';
 
 // ─── RateLimitModule ──────────────────────────────────────────────────────────
 // Global module. Provides:
-//   REDIS_CLIENT     — shared ioredis instance (all modules may inject if needed)
-//   RateLimitService — sliding-window rate limiter backed by Redis
+//   REDIS_CLIENT         — shared ioredis instance (all modules may inject if needed)
+//   RATE_LIMITER_BACKEND — switched by RATE_LIMIT_BACKEND env var:
+//                            redis  (default) → RedisRateLimiterBackend (distributed)
+//                            memory           → MemoryRateLimiterBackend (single-process)
+//   RateLimitService     — sliding-window rate limiter with business logic
 //
-// Redis connection:
-//   URL from REDIS_URL env var. All API pods must point to the same Redis
-//   instance so per-IP / per-token limits are globally consistent.
-//
-// The ioredis client reconnects automatically on disconnect (default settings).
-// Errors are logged but do not throw — the rate limiter fails open so that
-// a Redis outage does not take down the entire API.
+// Use RATE_LIMIT_BACKEND=memory in development or tests that don't need Redis.
+// NEVER use memory in production — limits are per-process only.
 
 @Global()
 @Module({
@@ -29,23 +30,14 @@ import type { Env } from '../../config/env';
         const connectTimeout = config.get('REDIS_CONNECT_TIMEOUT_MS', { infer: true });
         const commandTimeout = config.get('REDIS_COMMAND_TIMEOUT_MS', { infer: true });
 
-        // Enable TLS if the URL uses rediss:// or if REDIS_TLS=true is set.
-        // External/managed Redis (Upstash, Elasticache) requires TLS. Enabling it
-        // for a non-TLS server will cause connection failures, so only set this
-        // when the remote endpoint actually requires it.
         const useTls = forceTls || url.startsWith('rediss://');
 
         const client = new Redis(url, {
           tls: useTls ? {} : undefined,
-          // Sub-second timeouts: Redis errors must not add significant API latency.
           connectTimeout,
           commandTimeout,
-          // Retry failed connections with exponential backoff, up to 30 s.
           retryStrategy: (times: number) => Math.min(times * 200, 30_000),
-          // Do not crash the process on connection errors — let retryStrategy handle it.
           enableOfflineQueue: true,
-          // Prevent memory growth during outages: commands queued while offline
-          // are attempted once reconnected.
           maxRetriesPerRequest: null,
           lazyConnect: false,
         });
@@ -59,6 +51,24 @@ import type { Env } from '../../config/env';
         return client;
       },
       inject: [ConfigService],
+    },
+    {
+      provide: RATE_LIMITER_BACKEND,
+      useFactory: (
+        config: ConfigService<Env, true>,
+        redis: Redis,
+      ): RedisRateLimiterBackend | MemoryRateLimiterBackend => {
+        const backend = config.get('RATE_LIMIT_BACKEND', { infer: true });
+        if (backend === 'memory') {
+          new Logger('RateLimitModule').warn(
+            'RATE_LIMIT_BACKEND=memory — rate limits are per-process only. ' +
+            'Do NOT use in production.',
+          );
+          return new MemoryRateLimiterBackend();
+        }
+        return new RedisRateLimiterBackend(redis);
+      },
+      inject: [ConfigService, REDIS_CLIENT],
     },
     RateLimitService,
   ],

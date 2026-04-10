@@ -52,6 +52,11 @@ export class DevStorageAdapter implements StoragePort {
     this.logger.debug(`[DEV] Deleted key: ${key}`);
   }
 
+  async putBuffer(key: string, mimeType: string, buffer: Buffer): Promise<void> {
+    this.storeBuffer(key, buffer, mimeType);
+    this.logger.debug(`[DEV] Stored buffer for key: ${key} (${buffer.byteLength} bytes)`);
+  }
+
   // ── Test helpers ─────────────────────────────────────────────────────────────
 
   /** Simulate a completed S3 upload. Computes and stores the SHA-256 of the buffer. */

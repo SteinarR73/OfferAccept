@@ -70,6 +70,7 @@ async function buildHandler(certService: ReturnType<typeof makeCertService>) {
     providers: [
       IssueCertificateHandler,
       { provide: CertificateService, useValue: certService },
+      { provide: JobService, useValue: { send: jest.fn<() => Promise<string | null>>().mockResolvedValue('job-pdf-1') } },
     ],
   }).compile();
   return module.get(IssueCertificateHandler);

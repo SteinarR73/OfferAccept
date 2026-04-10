@@ -33,6 +33,23 @@ import { SubscriptionService } from '../../src/modules/billing/subscription.serv
 })
 class StubJobsModule {}
 
+// ── Global stub for StoragePort ──────────────────────────────────────────────
+import { STORAGE_PORT } from '../../src/common/storage/storage.port';
+
+@Global()
+@Module({
+  providers: [{ provide: STORAGE_PORT, useValue: {
+    getPresignedUploadUrl: jest.fn(),
+    getPresignedDownloadUrl: jest.fn<() => Promise<string>>().mockResolvedValue('http://storage.test/file'),
+    getObjectSha256: jest.fn<() => Promise<null>>().mockResolvedValue(null),
+    getObjectMimeType: jest.fn<() => Promise<null>>().mockResolvedValue(null),
+    delete: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    putBuffer: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  }}],
+  exports: [STORAGE_PORT],
+})
+class MockStorageModule {}
+
 // ── Global mock for SubscriptionService ──────────────────────────────────────
 // BillingModule is not imported in this test module. This stub provides
 // SubscriptionService globally so SendOfferService (in OffersModule) can be
@@ -259,6 +276,7 @@ async function buildApp(db: MockDb) {
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
       MockBillingModule,
       StubJobsModule,
+      MockStorageModule,
       TraceModule,
       DatabaseModule,
       AuthModule,

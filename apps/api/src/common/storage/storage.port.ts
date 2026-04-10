@@ -43,6 +43,13 @@ export interface StoragePort {
   getObjectMimeType(key: string): Promise<string | null>;
 
   delete(key: string): Promise<void>;
+
+  /**
+   * Upload a server-generated buffer directly to storage.
+   * Used for server-side generated files (e.g. certificate PDFs from the async job).
+   * Does NOT use a presigned URL — the server writes the bytes directly.
+   */
+  putBuffer(key: string, mimeType: string, buffer: Buffer): Promise<void>;
 }
 
 export const STORAGE_PORT = 'STORAGE_PORT';

@@ -130,4 +130,17 @@ export class S3Adapter implements StoragePort {
     await this.client.send(command);
     this.logger.debug(`Deleted S3 object: ${key}`);
   }
+
+  async putBuffer(key: string, mimeType: string, buffer: Buffer): Promise<void> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: mimeType,
+      ContentLength: buffer.byteLength,
+      Body: buffer,
+      ServerSideEncryption: 'AES256',
+    });
+    await this.client.send(command);
+    this.logger.debug(`Uploaded buffer to S3: ${key} (${buffer.byteLength} bytes)`);
+  }
 }

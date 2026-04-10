@@ -80,6 +80,28 @@ const envSchema = z
     // Generate one with: openssl rand -hex 32
     // Required in production. Optional in dev/test (encryption is skipped when absent).
     WEBHOOK_SECRET_KEY: z.string().optional(),
+    // Rate limiter storage backend.
+    // 'redis'  (default) — distributed sliding-window via Lua scripts; required in production.
+    // 'memory' — in-process Map; safe for development and unit tests that don't need Redis.
+    // NEVER set to 'memory' in production — limits are per-process only.
+    RATE_LIMIT_BACKEND: z.enum(['redis', 'memory']).default('redis'),
+    // ── Support access hardening ──────────────────────────────────────────────
+    // Comma-separated list of IP addresses allowed to access INTERNAL_SUPPORT
+    // endpoints. Requests from other IPs receive 403 Forbidden.
+    // Leave unset to disable IP restriction (not recommended in production).
+    // Example: "10.0.1.5,10.0.1.6"
+    SUPPORT_IP_ALLOWLIST: z.string().optional(),
+    // Maximum age (in minutes) of an INTERNAL_SUPPORT session.
+    // Tokens older than this (based on JWT `iat` claim) are rejected.
+    // Leave unset to disable TTL enforcement.
+    // Recommended production value: 480 (8 hours).
+    SUPPORT_SESSION_TTL_MINUTES: z.coerce.number().int().min(1).max(1440).optional(),
+    // When true, INTERNAL_SUPPORT JWT must contain an `mfaVerifiedAt` claim.
+    // Tokens without this claim receive 403 Forbidden.
+    REQUIRE_SUPPORT_MFA: z
+      .string()
+      .transform((v) => v === 'true')
+      .default('false'),
     BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -180,6 +202,15 @@ const envSchema = z
     {
       message: 'BILLING_PROVIDER=none must not be used in production. Set BILLING_PROVIDER=stripe.',
       path: ['BILLING_PROVIDER'],
+    },
+  )
+  .refine(
+    (data) => data.NODE_ENV !== 'production' || data.RATE_LIMIT_BACKEND !== 'memory',
+    {
+      message:
+        'RATE_LIMIT_BACKEND=memory must not be used in production. ' +
+        'Rate limits are per-process only and will be bypassed under horizontal scaling.',
+      path: ['RATE_LIMIT_BACKEND'],
     },
   )
   .refine(

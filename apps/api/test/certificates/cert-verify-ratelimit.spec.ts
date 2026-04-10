@@ -7,6 +7,7 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { CertificatePdfService } from '../../src/modules/certificates/certificate-pdf.service';
 import { TraceContext } from '../../src/common/trace/trace.context';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { STORAGE_PORT } from '../../src/common/storage/storage.port';
 
 // ─── Certificate verify — rate limit headers tests ─────────────────────────────
 //
@@ -69,6 +70,7 @@ async function buildController() {
       { provide: RateLimitService, useValue: rateLimiterMock },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
       { provide: ConfigService, useValue: { getOrThrow: (_key: string) => 'https://app.test' } },
+      { provide: STORAGE_PORT, useValue: { getPresignedDownloadUrl: jest.fn() } },
     ],
   }).compile();
 

@@ -282,6 +282,8 @@ model Offer {
   @@index([createdById])
   // Used by the expiry background job: SELECT … WHERE status = 'SENT' AND expiresAt < NOW()
   @@index([status, expiresAt])
+  // Used by cursor-based list pagination: ORDER BY createdAt DESC, id DESC scoped to an org.
+  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("offers")
 }
 
@@ -671,14 +673,14 @@ model AcceptanceCertificate {
   canonicalHash      String?  // SHA-256 hex of 5-field canonical acceptance fingerprint; null on legacy certificates
   pdfStorageKey      String?  // object storage key; null until PDF is generated
   // FK to the OfferSnapshot used when this certificate was generated.
-  // Nullable for legacy certificates issued before this field was added.
+  // NOT NULL: every certificate must reference the snapshot it was issued against.
   // @unique: one certificate per snapshot (follows from AcceptanceRecord.snapshotId @unique).
-  snapshotId         String?  @unique
+  snapshotId         String   @unique
   issuedAt           DateTime @default(now())
 
   offer            Offer             @relation(fields: [offerId], references: [id])
   acceptanceRecord AcceptanceRecord  @relation(fields: [acceptanceRecordId], references: [id])
-  snapshot         OfferSnapshot?    @relation(fields: [snapshotId], references: [id])
+  snapshot         OfferSnapshot     @relation(fields: [snapshotId], references: [id])
 
   @@map("acceptance_certificates")
 }

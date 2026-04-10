@@ -2,37 +2,41 @@ import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import {
   RateLimitService,
-  REDIS_CLIENT,
   PROFILES,
 } from '../../src/common/rate-limit/rate-limit.service';
+import { RATE_LIMITER_BACKEND, type RateLimiterBackend } from '../../src/common/rate-limit/rate-limiter.backend';
 import { RateLimitExceededError } from '../../src/common/errors/domain.errors';
 
 // ─── Distributed consistency tests ────────────────────────────────────────────
 //
-// Verifies that multiple API instances sharing one Redis instance enforce limits
+// Verifies that multiple API instances sharing one backend store enforce limits
 // globally — requests across all pods count towards the same window.
 //
 // Simulation:
 //   Two RateLimitService instances (Instance A and Instance B) are created with
-//   the same FakeRedis store. This mirrors two pods sharing one Redis endpoint.
+//   the SAME SharedFakeBackend store. This mirrors two pods sharing one Redis endpoint.
 //
 // Scenarios:
 //   1. Basic distributed counting: A + B together hit the limit exactly
-//   2. Instance B is rejected when A has already exhausted the window
+//   2. Instance B is blocked when Instance A exhausts the window
 //   3. Concurrent burst from both instances respects the shared limit
 //   4. One instance's window expiry is visible to the other instance
 //   5. Different keys on the same profile are independent across instances
-//   6. Stripe-style burst: both instances see consistent limits at high rate
+//   6. peek() on one instance reflects state written by the other
 
-// ── Shared FakeRedis (mirrors the algorithm from sliding-window.spec.ts) ──────
+// ── SharedFakeBackend — shared sorted-set simulation ─────────────────────────
+//
+// Implements RateLimiterBackend using the same sliding-window algorithm as the
+// Lua scripts, backed by a shared in-memory store. Both service instances
+// point to the same object, simulating shared Redis.
 
 interface SortedSetEntry {
   score: number;
   member: string;
 }
 
-class SharedFakeRedis {
-  // Public so both instances read and write the same store
+class SharedFakeBackend implements RateLimiterBackend {
+  // Public so tests can inspect state
   readonly sets = new Map<string, SortedSetEntry[]>();
 
   private getSet(key: string): SortedSetEntry[] {
@@ -40,71 +44,59 @@ class SharedFakeRedis {
     return this.sets.get(key)!;
   }
 
-  private zremrangebyscore(key: string, min: number, max: number): void {
+  private zremrangebyscore(key: string, cutoff: number): void {
     const set = this.getSet(key);
-    this.sets.set(key, set.filter((e) => !(e.score >= min && e.score <= max)));
+    this.sets.set(key, set.filter((e) => e.score > cutoff));
   }
 
   private zcard(key: string): number {
     return this.getSet(key).length;
   }
 
-  private zrangeWithScores(key: string, start: number, stop: number): string[] {
-    const sorted = [...this.getSet(key)].sort((a, b) => a.score - b.score);
-    const slice = sorted.slice(start, stop === -1 ? undefined : stop + 1);
-    const result: string[] = [];
-    for (const e of slice) result.push(e.member, String(e.score));
-    return result;
+  private zrangeOldest(key: string): SortedSetEntry | undefined {
+    const set = this.getSet(key);
+    if (set.length === 0) return undefined;
+    return [...set].sort((a, b) => a.score - b.score)[0];
   }
 
   private zadd(key: string, score: number, member: string): void {
     this.getSet(key).push({ score, member });
   }
 
-  eval(
-    script: string,
-    _numKeys: number,
-    redisKey: string,
-    ...args: string[]
-  ): [number, number, number] | [number, number] {
-    const isCheck = script.includes("redis.call('ZADD'");
+  checkRaw(
+    key: string,
+    limit: number,
+    windowMs: number,
+    now: number,
+    member: string,
+  ): Promise<[number, number, number]> {
+    const cutoff = now - windowMs;
+    this.zremrangebyscore(key, cutoff);
+    const count = this.zcard(key);
 
-    if (isCheck) {
-      const limit = parseInt(args[0], 10);
-      const windowMs = parseInt(args[1], 10);
-      const now = parseInt(args[2], 10);
-      const member = args[3];
-      const cutoff = now - windowMs;
-
-      this.zremrangebyscore(redisKey, -Infinity, cutoff);
-      const count = this.zcard(redisKey);
-
-      if (count >= limit) {
-        const oldest = this.zrangeWithScores(redisKey, 0, 0);
-        let resetAtMs = now + windowMs;
-        if (oldest.length >= 2) resetAtMs = parseInt(oldest[1], 10) + windowMs;
-        return [0, 0, resetAtMs];
-      }
-
-      this.zadd(redisKey, now, member);
-      return [1, limit - count - 1, now + windowMs];
-    } else {
-      const limit = parseInt(args[0], 10);
-      const windowMs = parseInt(args[1], 10);
-      const now = parseInt(args[2], 10);
-      const cutoff = now - windowMs;
-
-      this.zremrangebyscore(redisKey, -Infinity, cutoff);
-      const count = this.zcard(redisKey);
-      const oldest = this.zrangeWithScores(redisKey, 0, 0);
-      let resetAtMs = now + windowMs;
-      if (oldest.length >= 2) resetAtMs = parseInt(oldest[1], 10) + windowMs;
-
-      return [Math.max(0, limit - count), resetAtMs];
+    if (count >= limit) {
+      const oldest = this.zrangeOldest(key);
+      const resetAtMs = oldest ? oldest.score + windowMs : now + windowMs;
+      return Promise.resolve([0, 0, resetAtMs]);
     }
+
+    this.zadd(key, now, member);
+    return Promise.resolve([1, limit - count - 1, now + windowMs]);
   }
 
-  quit = jest.fn<() => Promise<'OK'>>().mockResolvedValue('OK');
+  peekRaw(
+    key: string,
+    limit: number,
+    windowMs: number,
+    now: number,
+  ): Promise<[number, number]> {
+    const cutoff = now - windowMs;
+    this.zremrangebyscore(key, cutoff);
+    const count = this.zcard(key);
+    const oldest = this.zrangeOldest(key);
+    const resetAtMs = oldest ? oldest.score + windowMs : now + windowMs;
+    return Promise.resolve([Math.max(0, limit - count), resetAtMs]);
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -112,21 +104,21 @@ class SharedFakeRedis {
 async function buildTwoInstances(): Promise<{
   instanceA: RateLimitService;
   instanceB: RateLimitService;
-  sharedRedis: SharedFakeRedis;
+  sharedBackend: SharedFakeBackend;
 }> {
-  const sharedRedis = new SharedFakeRedis();
+  const sharedBackend = new SharedFakeBackend();
 
   const [moduleA, moduleB] = await Promise.all([
     Test.createTestingModule({
       providers: [
         RateLimitService,
-        { provide: REDIS_CLIENT, useValue: sharedRedis },
+        { provide: RATE_LIMITER_BACKEND, useValue: sharedBackend },
       ],
     }).compile(),
     Test.createTestingModule({
       providers: [
         RateLimitService,
-        { provide: REDIS_CLIENT, useValue: sharedRedis },
+        { provide: RATE_LIMITER_BACKEND, useValue: sharedBackend },
       ],
     }).compile(),
   ]);
@@ -134,13 +126,13 @@ async function buildTwoInstances(): Promise<{
   return {
     instanceA: moduleA.get(RateLimitService),
     instanceB: moduleB.get(RateLimitService),
-    sharedRedis,
+    sharedBackend,
   };
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('Distributed consistency — two instances, shared Redis', () => {
+describe('Distributed consistency — two instances, shared backend', () => {
   it('requests from A and B together count towards the shared limit', async () => {
     const { instanceA, instanceB } = await buildTwoInstances();
     const profile = 'login_attempt';
@@ -212,7 +204,7 @@ describe('Distributed consistency — two instances, shared Redis', () => {
     // Advance time — window expires
     jest.spyOn(Date, 'now').mockReturnValue(t0 + windowMs + 1);
 
-    // Instance B can now proceed (shared Redis sees the expiry)
+    // Instance B can now proceed (shared backend sees the expiry)
     await expect(instanceB.check(profile, token)).resolves.not.toThrow();
 
     jest.restoreAllMocks();
@@ -256,7 +248,7 @@ describe('Distributed consistency — two instances, shared Redis', () => {
     const ip = '99.99.99.99';
 
     // Fire limit*2 requests "simultaneously" — JS is single-threaded so this
-    // tests sequential ordering, but the shared Redis store ensures atomicity
+    // tests sequential ordering, but the shared backend store ensures atomicity
     const checks = Array.from({ length: limit * 2 }, (_, i) =>
       (i % 2 === 0 ? instanceA : instanceB).check(profile, ip).then(() => 'ok').catch(() => 'denied'),
     );

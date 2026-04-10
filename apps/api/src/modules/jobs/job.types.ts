@@ -62,6 +62,27 @@ export interface ReconcileCertificatesPayload {
   // Cron-triggered sweep — no per-job parameters needed.
 }
 
+// ── generate-certificate-pdf ──────────────────────────────────────────────────
+//
+// Enqueued by IssueCertificateHandler immediately after a certificate row is
+// persisted. Generates the PDF from the stored evidence and uploads it to S3,
+// then writes the S3 key into AcceptanceCertificate.pdfStorageKey.
+//
+// Idempotency:
+//   Enqueued with singletonKey = "generate-certificate-pdf:{certificateId}".
+//   pg-boss will refuse a second enqueue while a job with the same key is
+//   pending/active, preventing duplicate PDF uploads.
+//
+//   Handler-level: if pdfStorageKey is already set on the certificate, the
+//   handler exits immediately (idempotent re-run after a partial failure).
+//
+// Retry policy: 3 attempts with 60 s base delay.
+//   PDF generation + S3 upload are idempotent — safe to retry.
+
+export interface GenerateCertificatePdfPayload {
+  certificateId: string;
+}
+
 // ── notify-deal-accepted ───────────────────────────────────────────────────────
 //
 // Enqueued by SigningFlowService immediately after the acceptance transaction
@@ -122,6 +143,7 @@ export interface JobPayloadMap {
   'send-reminders': SendRemindersPayload;
   'notify-deal-accepted': NotifyDealAcceptedPayload;
   'reconcile-certificates': ReconcileCertificatesPayload;
+  'generate-certificate-pdf': GenerateCertificatePdfPayload;
 }
 
 // ── Queue-level retry + TTL defaults ─────────────────────────────────────────
@@ -192,5 +214,13 @@ export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
     retryDelay: 60,
     retryBackoff: false,
     expireInSeconds: 300,
+  },
+  'generate-certificate-pdf': {
+    // PDF generation + S3 upload — idempotent; safe to retry.
+    // Retry schedule: 60 s → 120 s → 240 s.
+    retryLimit: 3,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInSeconds: 3600, // kill if stuck for > 1 h
   },
 };

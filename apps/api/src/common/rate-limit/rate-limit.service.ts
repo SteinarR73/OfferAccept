@@ -1,6 +1,6 @@
-import { Injectable, Inject, Logger, OnApplicationShutdown } from '@nestjs/common';
-import type Redis from 'ioredis';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { RateLimitExceededError, RateLimitServiceUnavailableError } from '../errors/domain.errors';
+import { RATE_LIMITER_BACKEND, type RateLimiterBackend } from './rate-limiter.backend';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
 
@@ -8,40 +8,16 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
 //
 // Algorithm: Sorted-set sliding window log, executed atomically via Lua.
 //
-// Per-key data structure (Redis sorted set):
-//   Key:    rl:{profile}:{scope}      e.g. rl:login_attempt:1.2.3.4
-//   Member: "{now}:{random}"          unique ID per request (avoids collisions
-//                                     at identical millisecond timestamps)
-//   Score:  Unix timestamp in ms      used for range queries and pruning
-//
-// On every check() call, a single Lua script atomically:
-//   1. Removes all members older than (now - windowMs)  — slides the window
-//   2. Counts remaining members                          — current request count
-//   3. If count >= limit → returns denied + earliest resetAt timestamp
-//   4. Otherwise → ZADDs the new request and sets PEXPIRE
-//
-// Atomicity guarantee:
-//   The Lua script runs as a single Redis command. No other client can observe
-//   a partial state between steps 1–4. This prevents the TOCTOU race that would
-//   exist with separate ZADD/ZCARD calls.
-//
-// Distributed consistency:
-//   All API instances share one Redis instance (REDIS_URL). Counters are global
-//   — horizontal scaling does not multiply effective limits.
+// See rate-limiter.backend.ts for the storage interface.
+// See redis-rate-limiter.backend.ts for the Redis+Lua implementation.
+// See memory-rate-limiter.backend.ts for the in-process dev/test implementation.
 //
 // Failure mode — differentiated by risk profile:
 //   HIGH_RISK profiles (OTP, login, signup): fail closed → 503 Service Unavailable.
-//     Rationale: Redis downtime on these endpoints creates a brute-force bypass
-//     window. A short outage is less harmful than unbounded credential-stuffing.
-//     Callers receive a deterministic 503 with Retry-After semantics.
-//   LOW_RISK profiles (cert verify, deal send, invite, resend, support tools): fail open.
-//     Rationale: these endpoints carry no credential-guessing risk. Blocking
-//     legitimate users during a Redis blip is more harmful than the abuse risk.
-//     All fail-open events are logged and metered so operators can act promptly.
+//   LOW_RISK profiles (cert verify, deal send, invite, etc.): fail open.
 //
-// Key expiry:
-//   PEXPIRE is set to (windowMs + 1 s) after each successful request.
-//   Idle keys self-delete, preventing unbounded memory growth in Redis.
+// Key format:  rl:{profile}:{scope}
+// Backend is injected via RATE_LIMITER_BACKEND token (switched by RATE_LIMIT_BACKEND env var).
 
 // Named limit profiles. Callers reference a profile name for consistency.
 export type RateLimitProfile =
@@ -73,7 +49,9 @@ export type RateLimitProfile =
   | 'data_export'            // 5 exports per user per hour
   | 'erasure_request'        // 2 erasure requests per user per 24 hours
   // Bulk certificate export — authenticated, keyed by orgId:ip
-  | 'bulk_cert_export';      // 3 bulk exports per org per hour
+  | 'bulk_cert_export'       // 3 bulk exports per org per hour
+  // Enterprise / org settings — authenticated, keyed by userId
+  | 'dpa_accept';            // 3 DPA acceptances per user per hour
 
 export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
   token_verification:     { limit: 10, windowMs: 15 * 60 * 1000 },
@@ -97,12 +75,13 @@ export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: numbe
   data_export:            { limit: 5,  windowMs:      60 * 60 * 1000 },
   erasure_request:        { limit: 2,  windowMs: 24 * 60 * 60 * 1000 },
   bulk_cert_export:       { limit: 3,  windowMs:      60 * 60 * 1000 },
+  dpa_accept:             { limit: 3,  windowMs:      60 * 60 * 1000 },
 };
 
-// ── High-risk profiles — fail closed when Redis is unavailable ─────────────────
+// ── High-risk profiles — fail closed when the backend is unavailable ───────────
 //
-// These profiles guard credential-sensitive endpoints. If Redis is down, we
-// MUST NOT allow unlimited attempts. Return 503 so callers can retry later.
+// These profiles guard credential-sensitive endpoints. If the backend throws,
+// we MUST NOT allow unlimited attempts. Return 503 so callers can retry later.
 
 const HIGH_RISK_PROFILES: ReadonlySet<RateLimitProfile> = new Set<RateLimitProfile>([
   'otp_issuance',
@@ -115,94 +94,22 @@ const HIGH_RISK_PROFILES: ReadonlySet<RateLimitProfile> = new Set<RateLimitProfi
   'signup_attempt_burst',
 ]);
 
-// ── Lua scripts ────────────────────────────────────────────────────────────────
-//
-// CHECK_SCRIPT: atomic sliding-window check-and-increment.
-//
-// KEYS[1]  — Redis key (sorted set)
-// ARGV[1]  — limit          (integer, max requests per window)
-// ARGV[2]  — windowMs       (integer, window size in milliseconds)
-// ARGV[3]  — now            (integer, current Unix time in ms)
-// ARGV[4]  — member         (string,  unique ID for this request)
-//
-// Returns array [allowed, remaining, resetAtMs]:
-//   allowed   — 1 if request is permitted, 0 if rate-limited
-//   remaining — number of remaining slots after this request (0 if denied)
-//   resetAtMs — Unix ms when the oldest in-window request exits the window
-//               (i.e., when the first slot opens up again)
-
-const CHECK_SCRIPT = `
-local key      = KEYS[1]
-local limit    = tonumber(ARGV[1])
-local windowMs = tonumber(ARGV[2])
-local now      = tonumber(ARGV[3])
-local member   = ARGV[4]
-local cutoff   = now - windowMs
-
-redis.call('ZREMRANGEBYSCORE', key, '-inf', cutoff)
-
-local count = tonumber(redis.call('ZCARD', key))
-
-if count >= limit then
-  local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
-  local resetAtMs = now + windowMs
-  if oldest and #oldest >= 2 then
-    resetAtMs = tonumber(oldest[2]) + windowMs
-  end
-  return {0, 0, resetAtMs}
-end
-
-redis.call('ZADD', key, now, member)
-redis.call('PEXPIRE', key, windowMs + 1000)
-
-local remaining = limit - count - 1
-return {1, remaining, now + windowMs}
-`.trim();
-
-// PEEK_SCRIPT: read-only sliding-window state (cleans expired entries but does not add).
-//
-// KEYS[1]  — Redis key
-// ARGV[1]  — limit
-// ARGV[2]  — windowMs
-// ARGV[3]  — now
-//
-// Returns array [remaining, resetAtMs]
-
-const PEEK_SCRIPT = `
-local key      = KEYS[1]
-local limit    = tonumber(ARGV[1])
-local windowMs = tonumber(ARGV[2])
-local now      = tonumber(ARGV[3])
-local cutoff   = now - windowMs
-
-redis.call('ZREMRANGEBYSCORE', key, '-inf', cutoff)
-
-local count    = tonumber(redis.call('ZCARD', key))
-local oldest   = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
-local resetAtMs = now + windowMs
-
-if oldest and #oldest >= 2 then
-  resetAtMs = tonumber(oldest[2]) + windowMs
-end
-
-local remaining = math.max(0, limit - count)
-return {remaining, resetAtMs}
-`.trim();
-
 // ── Service ────────────────────────────────────────────────────────────────────
 
 @Injectable()
-export class RateLimitService implements OnApplicationShutdown {
+export class RateLimitService {
   private readonly logger = new Logger(RateLimitService.name);
 
-  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+  constructor(
+    @Inject(RATE_LIMITER_BACKEND) private readonly backend: RateLimiterBackend,
+  ) {}
 
   // Check and increment. Throws RateLimitExceededError if over limit.
   // key should be the raw scope value (e.g. an IP address or token hash).
-  // The Redis key is constructed as: rl:{profile}:{key}
+  // The storage key is constructed as: rl:{profile}:{key}
   async check(profile: RateLimitProfile, key: string): Promise<void> {
     const { limit, windowMs } = PROFILES[profile];
-    const redisKey = `rl:${profile}:${key}`;
+    const storageKey = `rl:${profile}:${key}`;
     const now = Date.now();
     // Unique member: timestamp + random suffix prevents collisions when multiple
     // requests arrive within the same millisecond from the same scope.
@@ -210,22 +117,12 @@ export class RateLimitService implements OnApplicationShutdown {
 
     let result: [number, number, number];
     try {
-      result = (await this.redis.eval(
-        CHECK_SCRIPT,
-        1,
-        redisKey,
-        String(limit),
-        String(windowMs),
-        String(now),
-        member,
-      )) as [number, number, number];
+      result = await this.backend.checkRaw(storageKey, limit, windowMs, now, member);
     } catch (err) {
       const isHighRisk = HIGH_RISK_PROFILES.has(profile);
-      // Metric: rate_limit_redis_error — monitor this to detect Redis instability.
-      // Structured JSON so log aggregators can extract metric=rate_limit_redis_error.
       this.logger.error(
         JSON.stringify({
-          metric: 'rate_limit_redis_error',
+          metric: 'rate_limit_backend_error',
           profile,
           key,
           action: isHighRisk ? 'fail_closed' : 'fail_open',
@@ -234,14 +131,10 @@ export class RateLimitService implements OnApplicationShutdown {
       );
 
       if (isHighRisk) {
-        // Fail closed: brute-force protection must not be bypassed during Redis outage.
-        // Callers receive 503 with a deterministic Retry-After expectation.
         throw new RateLimitServiceUnavailableError();
       }
 
-      // Fail open: low-risk endpoint — blocking legitimate users during a Redis
-      // blip is more harmful than the marginal abuse risk. Operator is alerted
-      // via the metric log above and must restore Redis promptly.
+      // Fail open: low-risk endpoint.
       return;
     }
 
@@ -250,10 +143,6 @@ export class RateLimitService implements OnApplicationShutdown {
     if (!allowed) {
       const resetAt = new Date(resetAtMs);
       const retryAfterMs = Math.max(0, resetAtMs - now);
-      // Metric: rate_limit_exceeded — alert if this fires > 50×/min sustained.
-      // Sudden spike on otp_verification / login_attempt = active credential-stuffing.
-      // Sustained hits on deal_send / invite_attempt = API abuse or runaway client.
-      // Structured JSON so log aggregators can group by profile and build rate charts.
       this.logger.warn(
         JSON.stringify({
           metric: 'rate_limit_exceeded',
@@ -269,41 +158,26 @@ export class RateLimitService implements OnApplicationShutdown {
   // Peek without incrementing — for building response headers.
   async peek(profile: RateLimitProfile, key: string): Promise<{ remaining: number; resetAt: Date }> {
     const { limit, windowMs } = PROFILES[profile];
-    const redisKey = `rl:${profile}:${key}`;
+    const storageKey = `rl:${profile}:${key}`;
     const now = Date.now();
 
     try {
-      const result = (await this.redis.eval(
-        PEEK_SCRIPT,
-        1,
-        redisKey,
-        String(limit),
-        String(windowMs),
-        String(now),
-      )) as [number, number];
-
+      const result = await this.backend.peekRaw(storageKey, limit, windowMs, now);
       return {
         remaining: result[0],
         resetAt: new Date(result[1]),
       };
     } catch (err) {
-      // Metric: rate_limit_redis_error — same event as in check(), but from peek().
-      // Alert on any occurrence — indicates Redis connectivity issues.
       this.logger.error(
         JSON.stringify({
-          metric: 'rate_limit_redis_error',
+          metric: 'rate_limit_backend_error',
           profile,
           key,
           action: 'peek_fail_open',
           error: err instanceof Error ? err.message : String(err),
         }),
       );
-      // Fail-open: return full remaining count so callers can still serve headers.
       return { remaining: limit, resetAt: new Date(now + windowMs) };
     }
-  }
-
-  async onApplicationShutdown(): Promise<void> {
-    await this.redis.quit();
   }
 }

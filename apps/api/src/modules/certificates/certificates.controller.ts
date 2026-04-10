@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, Param, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Get, Logger, Param, UseGuards, Req, Res, Inject } from '@nestjs/common';
 import { Request, Response } from 'express';
 import * as archiver from 'archiver';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +9,7 @@ import { CertificateService } from './certificate.service';
 import { CertificatePdfService } from './certificate-pdf.service';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 import { TraceContext } from '../../common/trace/trace.context';
+import { STORAGE_PORT, type StoragePort } from '../../common/storage/storage.port';
 
 // ─── CertificatesController ────────────────────────────────────────────────────
 // Mixed access: some routes are public (no auth), others require a JWT.
@@ -43,6 +44,7 @@ export class CertificatesController {
     private readonly rateLimiter: RateLimitService,
     private readonly traceContext: TraceContext,
     config: ConfigService,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {
     this.webBaseUrl = config.getOrThrow<string>('WEB_BASE_URL');
   }
@@ -229,6 +231,13 @@ export class CertificatesController {
   //
   // The PDF is NOT an electronic signature document — it clearly identifies itself
   // as an acceptance record. No signature graphics are included.
+  // Returns a PDF version of the acceptance certificate for archival.
+  //
+  // Serve strategy (prefer pre-generated):
+  //   1. Check if AcceptanceCertificate.pdfStorageKey is set (async job completed).
+  //      If yes → redirect to a short-lived presigned S3 download URL.
+  //   2. If not yet available (job pending/failed) → generate on-demand and stream.
+  //      This guarantees the endpoint always responds even during job lag.
   @Get(':id/pdf')
   @UseGuards(JwtAuthGuard)
   async downloadPdf(
@@ -236,6 +245,22 @@ export class CertificatesController {
     @CurrentUser() user: JwtPayload,
     @Res() res: Response,
   ): Promise<void> {
+    // Check if the PDF has already been generated and stored asynchronously.
+    const pdfStorageKey = await this.certificates.getPdfStorageKey(id, user.orgId, user.role);
+
+    if (pdfStorageKey) {
+      // Serve via presigned URL — offloads bandwidth from the API process.
+      const filename = `certificate-${id}.pdf`;
+      const downloadUrl = await this.storage.getPresignedDownloadUrl(
+        pdfStorageKey,
+        300, // 5 minutes
+        filename,
+      );
+      res.redirect(302, downloadUrl);
+      return;
+    }
+
+    // PDF not yet generated — fall back to on-demand generation.
     const exported = await this.certificates.exportPayload(id, user.orgId, user.role);
 
     const pdfBytes = await this.pdfService.generate({

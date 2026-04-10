@@ -9,6 +9,7 @@ import { SigningModule } from '../../src/modules/signing/signing.module';
 import { RateLimitModule } from '../../src/common/rate-limit/rate-limit.module';
 import { REDIS_CLIENT } from '../../src/common/rate-limit/rate-limit.service';
 import { JobService } from '../../src/modules/jobs/job.service';
+import { STORAGE_PORT } from '../../src/common/storage/storage.port';
 
 // ─── Minimal global stub for JobsModule ──────────────────────────────────────
 // JobsModule is @Global() in the real app (imported in AppModule) but is NOT
@@ -26,6 +27,17 @@ class StubJobsModule {
     };
   }
 }
+
+// ─── Minimal global stub for StorageModule ───────────────────────────────────
+// CertificatesController depends on STORAGE_PORT (for PDF download redirect).
+// StorageModule is not imported in this isolated test so we stub it globally.
+@Global()
+@Module({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providers: [{ provide: STORAGE_PORT, useValue: { getPresignedDownloadUrl: (jest.fn() as any).mockResolvedValue('https://storage.test/cert.pdf') } }],
+  exports: [STORAGE_PORT],
+})
+class MockStorageModule {}
 import { AuthModule } from '../../src/common/auth/auth.module';
 import { EmailModule } from '../../src/common/email/email.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
@@ -88,6 +100,9 @@ describe('Public Signing Flow (e2e)', () => {
         // StubJobsModule must come before SigningModule so JobService is
         // globally visible when SigningFlowService's dependencies are resolved.
         StubJobsModule.register(jobService),
+        // MockStorageModule must come before SigningModule so STORAGE_PORT is
+        // globally visible when CertificatesController's dependencies are resolved.
+        MockStorageModule,
         SigningModule,
       ],
     })

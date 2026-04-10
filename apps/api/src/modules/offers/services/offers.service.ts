@@ -49,20 +49,79 @@ export class OffersService {
     return offer;
   }
 
-  async list(orgId: string, page: number, pageSize: number) {
+  async list(
+    orgId: string,
+    page: number,
+    pageSize: number,
+    cursor?: string,
+  ): Promise<{
+    data: Offer[];
+    total?: number;
+    page?: number;
+    pageSize: number;
+    nextCursor: string | null;
+  }> {
+    const safePageSize = Math.min(pageSize, 100);
+
+    if (cursor) {
+      return this.listWithCursor(orgId, safePageSize, cursor);
+    }
+
+    // ── Offset pagination (backward compat) ───────────────────────────────────
     const [data, total] = await this.db.$transaction([
       this.db.offer.findMany({
         where: { organizationId: orgId, deletedAt: null },
         include: { recipient: true, _count: { select: { documents: true } } },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * safePageSize,
+        take: safePageSize,
       }),
       this.db.offer.count({
         where: { organizationId: orgId, deletedAt: null },
       }),
     ]);
-    return { data, total, page, pageSize };
+
+    // Compute nextCursor so callers can switch to cursor mode on the next call.
+    const lastItem = data[data.length - 1];
+    const hasMore = (page - 1) * safePageSize + data.length < total;
+    const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.id, lastItem.createdAt) : null;
+
+    return { data, total, page, pageSize: safePageSize, nextCursor };
+  }
+
+  private async listWithCursor(
+    orgId: string,
+    pageSize: number,
+    encodedCursor: string,
+  ): Promise<{
+    data: Offer[];
+    pageSize: number;
+    nextCursor: string | null;
+  }> {
+    const decoded = decodeCursor(encodedCursor);
+    if (!decoded) {
+      // Malformed cursor: fall back to first page without offset
+      const data = await this.db.offer.findMany({
+        where: { organizationId: orgId, deletedAt: null },
+        include: { recipient: true, _count: { select: { documents: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: pageSize + 1,
+      });
+      return buildCursorPage(data, pageSize);
+    }
+
+    // Prisma cursor: start after the item with id = decoded.id.
+    // We fetch pageSize + 1 to determine whether a next page exists.
+    const data = await this.db.offer.findMany({
+      where: { organizationId: orgId, deletedAt: null },
+      include: { recipient: true, _count: { select: { documents: true } } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      cursor: { id: decoded.id },
+      skip: 1,     // skip the cursor item itself
+      take: pageSize + 1,
+    });
+
+    return buildCursorPage(data, pageSize);
   }
 
   // ── Draft creation ────────────────────────────────────────────────────────
@@ -313,4 +372,40 @@ export class OffersService {
     }
     return offer;
   }
+}
+
+// ── Cursor helpers ─────────────────────────────────────────────────────────────
+// Cursor format: base64url(JSON.stringify({ id: string, createdAt: string }))
+// The cursor identifies the last item seen; the next page starts after it.
+
+function encodeCursor(id: string, createdAt: Date): string {
+  return Buffer.from(JSON.stringify({ id, createdAt: createdAt.toISOString() })).toString('base64url');
+}
+
+function decodeCursor(encoded: string): { id: string; createdAt: string } | null {
+  try {
+    const raw = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf-8')) as unknown;
+    if (
+      typeof raw === 'object' &&
+      raw !== null &&
+      typeof (raw as Record<string, unknown>)['id'] === 'string' &&
+      typeof (raw as Record<string, unknown>)['createdAt'] === 'string'
+    ) {
+      return raw as { id: string; createdAt: string };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function buildCursorPage(
+  data: Offer[],
+  pageSize: number,
+): { data: Offer[]; pageSize: number; nextCursor: string | null } {
+  const hasMore = data.length > pageSize;
+  const page = hasMore ? data.slice(0, pageSize) : data;
+  const lastItem = page[page.length - 1];
+  const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.id, lastItem.createdAt) : null;
+  return { data: page, pageSize, nextCursor };
 }

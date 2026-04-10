@@ -45,13 +45,19 @@ export class OffersController {
   ) {}
 
   // GET /offers?page=1&pageSize=20
+  // GET /offers?cursor=<base64>&pageSize=20  — cursor-based (preferred for large lists)
+  //
+  // When `cursor` is present it takes precedence over `page`.
+  // Cursor format: base64url-encoded JSON { id, createdAt } of the last seen item.
+  // Response always includes `nextCursor: string | null` for the next page.
   @Get()
   async list(
     @CurrentUser() user: JwtPayload,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('cursor') cursor?: string,
   ) {
-    return this.offersService.list(user.orgId, page, Math.min(pageSize, 100));
+    return this.offersService.list(user.orgId, page, Math.min(pageSize, 100), cursor);
   }
 
   // GET /offers/:id

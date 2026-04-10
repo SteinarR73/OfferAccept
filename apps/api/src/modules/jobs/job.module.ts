@@ -14,6 +14,7 @@ import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.han
 import { SendRemindersHandler } from './handlers/send-reminders.handler';
 import { NotifyDealAcceptedHandler } from './handlers/notify-deal-accepted.handler';
 import { ReconcileCertificatesHandler } from './handlers/reconcile-certificates.handler';
+import { GenerateCertificatePdfHandler } from './handlers/generate-certificate-pdf.handler';
 import { CertificatesModule } from '../certificates/certificates.module';
 import { BillingModule } from '../billing/billing.module';
 import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
@@ -81,6 +82,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     SendRemindersHandler,
     NotifyDealAcceptedHandler,
     ReconcileCertificatesHandler,
+    GenerateCertificatePdfHandler,
   ],
   exports: [JobService],
 })

@@ -442,6 +442,59 @@ export class CertificateService {
     });
   }
 
+  // ── Job-internal methods — bypass auth (called from background jobs only) ──────
+
+  // Returns the export payload for a certificate without org authorization.
+  // ONLY for use in trusted background job handlers — never in HTTP controllers.
+  async getExportForJob(certificateId: string): Promise<{
+    certificateId: string;
+    certificateHash: string;
+    issuedAt: string;
+    pdfStorageKey: string | null;
+    payload: CertificatePayload;
+  }> {
+    const cert = await this.db.acceptanceCertificate.findUnique({
+      where: { id: certificateId },
+      select: { id: true, issuedAt: true, certificateHash: true, pdfStorageKey: true },
+    });
+    if (!cert) throw new NotFoundException(`Certificate ${certificateId} not found`);
+
+    const built = await this.builder.build(cert.id, certificateId, cert.issuedAt);
+
+    return {
+      certificateId: cert.id,
+      certificateHash: cert.certificateHash,
+      issuedAt: cert.issuedAt.toISOString(),
+      pdfStorageKey: cert.pdfStorageKey,
+      payload: built.payload,
+    };
+  }
+
+  // Records the S3 key of the pre-generated PDF on the certificate row.
+  // Idempotent: safe to call more than once with the same key.
+  async setPdfStorageKey(certificateId: string, pdfStorageKey: string): Promise<void> {
+    await this.db.acceptanceCertificate.update({
+      where: { id: certificateId },
+      data: { pdfStorageKey },
+    });
+  }
+
+  // Returns the pdfStorageKey (or null) after verifying caller has access.
+  // Used by CertificatesController to decide whether to serve from S3 or generate on-demand.
+  async getPdfStorageKey(
+    certificateId: string,
+    callerOrgId: string,
+    callerRole: string,
+  ): Promise<string | null> {
+    const cert = await this.db.acceptanceCertificate.findUnique({
+      where: { id: certificateId },
+      select: { pdfStorageKey: true, offer: { select: { organizationId: true } } },
+    });
+    if (!cert) throw new NotFoundException('Certificate not found');
+    this.assertCanAccess(cert.offer.organizationId, callerOrgId, callerRole);
+    return cert.pdfStorageKey;
+  }
+
   private assertCanAccess(resourceOrgId: string, callerOrgId: string, callerRole: string): void {
     if (callerRole === 'INTERNAL_SUPPORT') return;
     if (resourceOrgId !== callerOrgId) {

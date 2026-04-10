@@ -2,9 +2,9 @@ import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import {
   RateLimitService,
-  REDIS_CLIENT,
   PROFILES,
 } from '../../src/common/rate-limit/rate-limit.service';
+import { RATE_LIMITER_BACKEND, type RateLimiterBackend } from '../../src/common/rate-limit/rate-limiter.backend';
 import { RateLimitExceededError, RateLimitServiceUnavailableError } from '../../src/common/errors/domain.errors';
 
 // ─── Sliding window unit tests ─────────────────────────────────────────────────
@@ -13,35 +13,35 @@ import { RateLimitExceededError, RateLimitServiceUnavailableError } from '../../
 // We simulate Redis sorted-set behaviour in JavaScript so the Lua-equivalent
 // algorithm runs in-process without a real Redis connection.
 //
-// Each test gets a fresh FakeRedis instance (isolated key space).
+// Each test gets a fresh FakeRedisBackend instance (isolated key space).
 //
 // What is verified:
 //   - Requests within the limit are allowed
 //   - The (limit+1)th request in a window is rejected with the correct error
 //   - Requests after the window expires are allowed again (window slides)
-//   - ENTERPRISE unlimited bypass (all requests allowed regardless of count)
 //   - peek() returns correct remaining count without incrementing
-//   - Fail-open behaviour when Redis throws
+//   - Fail-open behaviour when backend throws
+//   - Fail-closed behaviour for high-risk profiles when backend throws
 //   - retryAfterMs is > 0 and resetAt is a future Date on rejection
 
-// ── FakeRedis — sorted-set simulation ─────────────────────────────────────────
+// ── FakeRedisBackend — sorted-set simulation ──────────────────────────────────
 //
-// Implements only the Redis commands used by the Lua scripts:
+// Implements RateLimiterBackend using the same sliding-window algorithm as the
+// Lua scripts, in pure JavaScript. No Redis connection required.
+//
+// Commands simulated:
 //   ZREMRANGEBYSCORE  — prune entries older than cutoff
 //   ZCARD             — count entries
 //   ZRANGE ... WITHSCORES — get oldest entry
 //   ZADD              — add entry
-//   PEXPIRE           — no-op in tests (TTL management not needed)
-//
-// eval() re-implements the Lua logic in JavaScript using the same data.
-// This is intentionally faithful to the Lua — it tests the algorithm.
+//   PEXPIRE           — no-op (TTL management not needed in tests)
 
 interface SortedSetEntry {
   score: number; // timestamp in ms
   member: string;
 }
 
-class FakeRedis {
+class FakeRedisBackend implements RateLimiterBackend {
   private readonly sets = new Map<string, SortedSetEntry[]>();
 
   private getSet(key: string): SortedSetEntry[] {
@@ -49,106 +49,90 @@ class FakeRedis {
     return this.sets.get(key)!;
   }
 
-  private zremrangebyscore(key: string, min: number, max: number): void {
+  private zremrangebyscore(key: string, cutoff: number): void {
     const set = this.getSet(key);
-    const filtered = set.filter((e) => e.score > max || e.score < min);
-    this.sets.set(key, filtered);
+    this.sets.set(key, set.filter((e) => e.score > cutoff));
   }
 
   private zcard(key: string): number {
     return this.getSet(key).length;
   }
 
-  private zrangeWithScores(key: string, start: number, stop: number): string[] {
+  private zrangeOldest(key: string): SortedSetEntry | undefined {
     const set = this.getSet(key);
-    const sorted = [...set].sort((a, b) => a.score - b.score);
-    const slice = sorted.slice(start, stop === -1 ? undefined : stop + 1);
-    // Returns [member, score, member, score, ...] like Redis WITHSCORES
-    const result: string[] = [];
-    for (const e of slice) {
-      result.push(e.member, String(e.score));
-    }
-    return result;
+    if (set.length === 0) return undefined;
+    return [...set].sort((a, b) => a.score - b.score)[0];
   }
 
   private zadd(key: string, score: number, member: string): void {
-    const set = this.getSet(key);
-    set.push({ score, member });
+    this.getSet(key).push({ score, member });
   }
 
-  // eval() re-implements both Lua scripts in JS.
-  // The scripts are identified by a prefix match on the first 20 chars.
-  eval(
-    script: string,
-    _numKeys: number,
-    redisKey: string,
-    ...args: string[]
-  ): [number, number, number] | [number, number] {
-    const isCheckScript = script.trimStart().startsWith('local key');
-    const isPeekScript = script.trimStart().startsWith('local key') && !script.includes('ZADD');
+  checkRaw(
+    key: string,
+    limit: number,
+    windowMs: number,
+    now: number,
+    member: string,
+  ): Promise<[number, number, number]> {
+    const cutoff = now - windowMs;
+    this.zremrangebyscore(key, cutoff);
+    const count = this.zcard(key);
 
-    // Determine script type by presence of ZADD
-    const isCheck = script.includes("redis.call('ZADD'");
-
-    if (isCheck) {
-      // CHECK_SCRIPT logic
-      const limit = parseInt(args[0], 10);
-      const windowMs = parseInt(args[1], 10);
-      const now = parseInt(args[2], 10);
-      const member = args[3];
-      const cutoff = now - windowMs;
-
-      this.zremrangebyscore(redisKey, -Infinity, cutoff);
-      const count = this.zcard(redisKey);
-
-      if (count >= limit) {
-        const oldest = this.zrangeWithScores(redisKey, 0, 0);
-        let resetAtMs = now + windowMs;
-        if (oldest.length >= 2) {
-          resetAtMs = parseInt(oldest[1], 10) + windowMs;
-        }
-        return [0, 0, resetAtMs];
-      }
-
-      this.zadd(redisKey, now, member);
-      // PEXPIRE is a no-op here
-      const remaining = limit - count - 1;
-      return [1, remaining, now + windowMs];
-    } else {
-      // PEEK_SCRIPT logic
-      const limit = parseInt(args[0], 10);
-      const windowMs = parseInt(args[1], 10);
-      const now = parseInt(args[2], 10);
-      const cutoff = now - windowMs;
-
-      this.zremrangebyscore(redisKey, -Infinity, cutoff);
-      const count = this.zcard(redisKey);
-      const oldest = this.zrangeWithScores(redisKey, 0, 0);
-      let resetAtMs = now + windowMs;
-      if (oldest.length >= 2) {
-        resetAtMs = parseInt(oldest[1], 10) + windowMs;
-      }
-      const remaining = Math.max(0, limit - count);
-      return [remaining, resetAtMs];
+    if (count >= limit) {
+      const oldest = this.zrangeOldest(key);
+      const resetAtMs = oldest ? oldest.score + windowMs : now + windowMs;
+      return Promise.resolve([0, 0, resetAtMs]);
     }
 
-    void isCheckScript;
-    void isPeekScript;
+    this.zadd(key, now, member);
+    const remaining = limit - count - 1;
+    return Promise.resolve([1, remaining, now + windowMs]);
   }
 
-  quit = jest.fn<() => Promise<'OK'>>().mockResolvedValue('OK');
+  peekRaw(
+    key: string,
+    limit: number,
+    windowMs: number,
+    now: number,
+  ): Promise<[number, number]> {
+    const cutoff = now - windowMs;
+    this.zremrangebyscore(key, cutoff);
+    const count = this.zcard(key);
+    const oldest = this.zrangeOldest(key);
+    const resetAtMs = oldest ? oldest.score + windowMs : now + windowMs;
+    const remaining = Math.max(0, limit - count);
+    return Promise.resolve([remaining, resetAtMs]);
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-async function buildService(redis: FakeRedis = new FakeRedis()) {
+async function buildService(backend: RateLimiterBackend = new FakeRedisBackend()) {
   const module = await Test.createTestingModule({
     providers: [
       RateLimitService,
-      { provide: REDIS_CLIENT, useValue: redis },
+      { provide: RATE_LIMITER_BACKEND, useValue: backend },
     ],
   }).compile();
-  return { service: module.get(RateLimitService), redis };
+  return { service: module.get(RateLimitService), backend };
+}
+
+function makeBrokenBackend(): RateLimiterBackend {
+  return {
+    checkRaw: jest.fn<() => Promise<never>>().mockRejectedValue(new Error('ECONNREFUSED')),
+    peekRaw: jest.fn<() => Promise<never>>().mockRejectedValue(new Error('ECONNREFUSED')),
+  };
+}
+
+async function buildServiceWithBrokenBackend() {
+  const module = await Test.createTestingModule({
+    providers: [
+      RateLimitService,
+      { provide: RATE_LIMITER_BACKEND, useValue: makeBrokenBackend() },
+    ],
+  }).compile();
+  return module.get(RateLimitService);
 }
 
 // ── check(): basic allow/deny ──────────────────────────────────────────────────
@@ -199,7 +183,7 @@ describe('check() — basic allow/deny', () => {
     }
     await expect(service.check('otp_issuance', 'some-token')).rejects.toThrow(RateLimitExceededError);
 
-    // login_attempt profile uses a different Redis key — unaffected
+    // login_attempt profile uses a different key — unaffected
     await expect(service.check('login_attempt', 'some-token')).resolves.not.toThrow();
   });
 });
@@ -235,8 +219,8 @@ describe('check() — error shape on rejection', () => {
 
 describe('check() — sliding window', () => {
   it('allows requests again after the window expires', async () => {
-    const redis = new FakeRedis();
-    const { service } = await buildService(redis);
+    const backend = new FakeRedisBackend();
+    const { service } = await buildService(backend);
     const profile = 'otp_issuance';
     const { limit, windowMs } = PROFILES[profile];
 
@@ -254,8 +238,8 @@ describe('check() — sliding window', () => {
   });
 
   it('only expired entries slide out — recent ones still count', async () => {
-    const redis = new FakeRedis();
-    const { service } = await buildService(redis);
+    const backend = new FakeRedisBackend();
+    const { service } = await buildService(backend);
     const profile = 'signup_attempt'; // limit=5, window=1h
     const { limit, windowMs } = PROFILES[profile];
 
@@ -299,6 +283,7 @@ describe('check() — profile limits enforced correctly', () => {
     ['support_resend_otp',  3],
     ['support_resend_link', 5],
     ['token_verification', 10],
+    ['dpa_accept',          3],
   ];
 
   it.each(cases)('%s allows exactly %i requests then rejects', async (profile, expectedLimit) => {
@@ -362,29 +347,12 @@ describe('peek()', () => {
   });
 });
 
-// ── Redis-unavailable behaviour — differentiated by risk profile ───────────────
+// ── Backend-unavailable behaviour — differentiated by risk profile ─────────────
 //
 // HIGH_RISK profiles (OTP, login, signup): fail closed → RateLimitServiceUnavailableError
 // LOW_RISK profiles (cert_verify, deal_send, etc.): fail open → request allowed
 
-function makeBrokenRedis() {
-  return {
-    eval: jest.fn<() => Promise<never>>().mockRejectedValue(new Error('ECONNREFUSED')),
-    quit: jest.fn<() => Promise<'OK'>>().mockResolvedValue('OK'),
-  };
-}
-
-async function buildServiceWithBrokenRedis() {
-  const module = await Test.createTestingModule({
-    providers: [
-      RateLimitService,
-      { provide: REDIS_CLIENT, useValue: makeBrokenRedis() },
-    ],
-  }).compile();
-  return module.get(RateLimitService);
-}
-
-describe('Redis unavailable — high-risk profiles fail closed', () => {
+describe('Backend unavailable — high-risk profiles fail closed', () => {
   const highRiskProfiles = [
     'otp_verification',
     'otp_verification_burst',
@@ -399,7 +367,7 @@ describe('Redis unavailable — high-risk profiles fail closed', () => {
   it.each(highRiskProfiles)(
     'check() throws RateLimitServiceUnavailableError for high-risk profile: %s',
     async (profile) => {
-      const service = await buildServiceWithBrokenRedis();
+      const service = await buildServiceWithBrokenBackend();
       await expect(service.check(profile, '1.1.1.1')).rejects.toThrow(
         RateLimitServiceUnavailableError,
       );
@@ -407,22 +375,21 @@ describe('Redis unavailable — high-risk profiles fail closed', () => {
   );
 
   it('otp_verification fails closed and does not silently allow the request', async () => {
-    const service = await buildServiceWithBrokenRedis();
-    // Must throw — not resolve — so Redis downtime is never a bypass path.
+    const service = await buildServiceWithBrokenBackend();
     await expect(service.check('otp_verification', 'ip')).rejects.toBeInstanceOf(
       RateLimitServiceUnavailableError,
     );
   });
 
   it('login_attempt fails closed with RateLimitServiceUnavailableError (not RateLimitExceededError)', async () => {
-    const service = await buildServiceWithBrokenRedis();
+    const service = await buildServiceWithBrokenBackend();
     const err = await service.check('login_attempt', '2.2.2.2').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(RateLimitServiceUnavailableError);
     expect(err).not.toBeInstanceOf(RateLimitExceededError);
   });
 });
 
-describe('Redis unavailable — low-risk profiles fail open', () => {
+describe('Backend unavailable — low-risk profiles fail open', () => {
   const lowRiskProfiles = [
     'token_verification',
     'signing_global',
@@ -434,26 +401,27 @@ describe('Redis unavailable — low-risk profiles fail open', () => {
     'deal_resend',
     'support_resend_otp',
     'support_resend_link',
+    'dpa_accept',
   ] as const;
 
   it.each(lowRiskProfiles)(
     'check() allows request (fail open) for low-risk profile: %s',
     async (profile) => {
-      const service = await buildServiceWithBrokenRedis();
+      const service = await buildServiceWithBrokenBackend();
       await expect(service.check(profile, '1.1.1.1')).resolves.not.toThrow();
     },
   );
 });
 
-describe('peek() on Redis error — always fail open regardless of profile', () => {
-  it('peek() returns full limit for high-risk profile on Redis error', async () => {
-    const service = await buildServiceWithBrokenRedis();
+describe('peek() on backend error — always fail open regardless of profile', () => {
+  it('peek() returns full limit for high-risk profile on backend error', async () => {
+    const service = await buildServiceWithBrokenBackend();
     const { remaining } = await service.peek('login_attempt', '1.1.1.1');
     expect(remaining).toBe(PROFILES.login_attempt.limit);
   });
 
-  it('peek() returns full limit for low-risk profile on Redis error', async () => {
-    const service = await buildServiceWithBrokenRedis();
+  it('peek() returns full limit for low-risk profile on backend error', async () => {
+    const service = await buildServiceWithBrokenBackend();
     const { remaining } = await service.peek('cert_verify', '1.1.1.1');
     expect(remaining).toBe(PROFILES.cert_verify.limit);
   });
