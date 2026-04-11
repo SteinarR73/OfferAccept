@@ -11,6 +11,32 @@ env:
   PNPM_VERSION: "10.20.0"
 
 jobs:
+  # ── Secret scan ───────────────────────────────────────────────────────────────
+  # Scans every tracked file for credential patterns (Stripe keys, AWS access
+  # key IDs, private key headers, long JWT/API secret assignments, etc.).
+  # Exits 1 on any match — the build cannot proceed past this gate.
+  # See: docs/security/secret-scanning.md
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scan for secrets
+        run: pnpm secret-scan
+
   # ── Version gate ──────────────────────────────────────────────────────────────
   # Verify that key package versions match what is documented in README.md.
   # Fail fast if a dependency is upgraded without updating the docs.
@@ -283,7 +309,7 @@ jobs:
   build:
     name: Build all workspaces
     runs-on: ubuntu-latest
-    needs: [test-api, test-web, gate-tests]
+    needs: [secret-scan, test-api, test-web, gate-tests]
     steps:
       - uses: actions/checkout@v4
 
