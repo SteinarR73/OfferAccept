@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UseGuards,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
@@ -115,6 +116,8 @@ class ResendVerificationDto {
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly rateLimiter: RateLimitService,
@@ -184,17 +187,32 @@ export class AuthController {
 
   // POST /auth/refresh
   // Rotates the refresh token and issues a new access token.
-  // Reads the raw refresh token from the HttpOnly cookie.
+  //
+  // Reads the raw refresh token from the HttpOnly cookie scoped to this path.
+  // On success: sets new accessToken + refreshToken cookies and returns 200.
+  //
+  // Security properties:
+  //   - Rotation on every call: the old refresh token is revoked, a new one issued.
+  //   - Token family tracking: if a revoked token is presented (replay), ALL active
+  //     sessions in the same family are revoked and the client receives 401.
+  //     This protects against token theft — the legitimate holder's subsequent
+  //     rotation detects the replay and terminates the attacker's access too.
+  //   - The raw refresh token is never logged, only its SHA-256 hash is stored.
+  //
+  // Error codes (from DomainExceptionFilter):
+  //   401 SESSION_REVOKED    — replay attack detected; family has been revoked
+  //   401 AUTH_TOKEN_INVALID — token not found, expired, or user account invalid
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    const rawRefreshToken: string | undefined = req.cookies?.['refreshToken'];
+    const rawRefreshToken: string | undefined = (req.cookies as Record<string, string> | undefined)?.['refreshToken'];
     if (!rawRefreshToken) {
-      res.status(HttpStatus.UNAUTHORIZED).json({ message: 'No refresh token provided.' });
-      return { message: 'No refresh token.' };
+      // No cookie present — client is not authenticated. Throw so NestJS
+      // returns a properly structured 401 via the exception filter chain.
+      throw new UnauthorizedException('No refresh token provided.');
     }
 
     const context = { ipAddress: extractClientIp(req), userAgent: req.headers['user-agent'] };

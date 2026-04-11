@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
 import { CsrfOriginMiddleware } from './common/middleware/csrf-origin.middleware';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './modules/database/database.module';
@@ -23,6 +24,12 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { DealEventsModule } from './modules/deal-events/deal-events.module';
 import { TraceModule } from './common/trace/trace.module';
 import { AccountModule } from './modules/account/account.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { PackagesModule } from './modules/packages/packages.module';
+import { MetricsModule } from './common/metrics/metrics.module';
+import { AiModule } from './common/ai/ai.module';
+import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
+import { ApiRateLimitGuard } from './common/rate-limit/api-rate-limit.guard';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
@@ -32,7 +39,35 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
       isGlobal: true,
       validate: validateEnv,
     }),
+    // Pino structured logger. Replaces NestJS's default console logger.
+    // All existing `new Logger(context)` calls transparently use pino.
+    // HTTP requests are logged by pino-http with requestId correlation.
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env['NODE_ENV'] === 'production' ? 'info' : 'debug',
+        // Pretty-print in development; JSON in production for log aggregators.
+        transport:
+          process.env['NODE_ENV'] !== 'production'
+            ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
+            : undefined,
+        // Never log credential headers in HTTP access logs.
+        redact: {
+          paths: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-api-key"]'],
+          censor: '[Redacted]',
+        },
+        // Attach requestId (from X-Request-ID header or generated UUID) to every
+        // HTTP log line. Correlates access logs with application logs.
+        customProps: (req: { id?: string }) => ({ requestId: req.id }),
+        // Suppress noisy health-probe access logs in production.
+        autoLogging: {
+          ignore: (req: { url?: string }) =>
+            !!req.url?.startsWith('/api/v1/health') || !!req.url?.startsWith('/api/v1/metrics'),
+        },
+      },
+    }),
     DatabaseModule,
+    MetricsModule,
+    AiModule,
     RateLimitModule,
     EmailModule,
     StorageModule,    // global: provides STORAGE_PORT
@@ -52,6 +87,8 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
     AnalyticsModule,
     TraceModule,    // global: provides TraceContext to all modules
     AccountModule,
+    AdminModule,
+    PackagesModule,
   ],
   providers: [
     // Register RequestIdInterceptor through DI so it can receive TraceContext.
@@ -65,6 +102,21 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
     {
       provide: APP_INTERCEPTOR,
       useClass: SentryInterceptor,
+    },
+    // Global per-IP rate limit: 100 requests per minute.
+    // Registered as APP_GUARD so it runs inside NestJS's exception-filter chain,
+    // ensuring RateLimitExceededError is translated to 429 by DomainExceptionFilter.
+    // Admin users (OWNER, INTERNAL_SUPPORT) and health probes are exempt.
+    {
+      provide: APP_GUARD,
+      useClass: ApiRateLimitGuard,
+    },
+    // Registered as APP_FILTER (not app.useGlobalFilters(new ...)) so NestJS
+    // resolves DomainExceptionFilter through the DI container, enabling MetricsService
+    // injection for api_error_rate counter tracking.
+    {
+      provide: APP_FILTER,
+      useClass: DomainExceptionFilter,
     },
   ],
 })

@@ -133,6 +133,18 @@ export interface NotifyDealAcceptedPayload {
 
 export type JobName = keyof JobPayloadMap;
 
+// ── archive-deal-events ───────────────────────────────────────────────────────
+//
+// Cron-triggered sweep that moves DealEvent rows older than 18 months from
+// deal_events (hot) to deal_events_archive (cold).
+// See: handlers/archive-deal-events.handler.ts
+// See: docs/data-lifecycle/deal-event-retention.md
+
+export interface ArchiveDealEventsPayload {
+  // Cron-triggered sweep — no per-job parameters needed.
+  // batchSize and retentionMonths are read from env vars inside the handler.
+}
+
 export interface JobPayloadMap {
   'expire-sessions': ExpireSessionsPayload;
   'expire-offers': ExpireOffersPayload;
@@ -144,6 +156,7 @@ export interface JobPayloadMap {
   'notify-deal-accepted': NotifyDealAcceptedPayload;
   'reconcile-certificates': ReconcileCertificatesPayload;
   'generate-certificate-pdf': GenerateCertificatePdfPayload;
+  'archive-deal-events': ArchiveDealEventsPayload;
 }
 
 // ── Queue-level retry + TTL defaults ─────────────────────────────────────────
@@ -156,6 +169,14 @@ export interface JobPayloadMap {
 //   attempt 3: +retryDelay * 2^2 s
 
 export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
+  'archive-deal-events': {
+    // Runs daily (cron: 0 2 * * *). Each run archives one batch.
+    // Conservative retry policy — archival is idempotent (INSERT OR IGNORE).
+    retryLimit: 3,
+    retryDelay: 300,      // 5 min gaps — no urgency
+    retryBackoff: false,
+    expireInSeconds: 3600, // kill if running > 1 h (indicates a pathologically large batch)
+  },
   'send-reminders': {
     retryLimit: 3,
     retryDelay: 60,

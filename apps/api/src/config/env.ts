@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import pino from 'pino';
+
+// Pre-init logger: used only by validateEnv() which runs before the NestJS
+// container starts (ConfigModule.forRoot validate hook). At that point, nestjs-pino
+// is not yet available, so we use a plain pino instance.
+const startupLogger = pino({ level: 'error' });
 
 // Validates all required environment variables at startup.
 // The app will refuse to start with a clear error if anything is missing.
@@ -102,6 +108,24 @@ const envSchema = z
       .string()
       .transform((v) => v === 'true')
       .default('false'),
+    // ── AI / Gemini ───────────────────────────────────────────────────────────
+    // AI provider selection. 'none' disables all AI features gracefully.
+    AI_PROVIDER: z.enum(['gemini', 'none']).default('none'),
+    // Gemini API key — required when AI_PROVIDER=gemini.
+    GEMINI_API_KEY: z.string().optional(),
+    // Hard cap on tokens (input + output combined) per UTC day.
+    // 0 = unlimited (not recommended in production).
+    AI_DAILY_TOKEN_LIMIT: z.coerce.number().int().min(0).default(0),
+    // Default model to use (e.g. 'gemini-2.0-flash', 'gemini-2.5-pro').
+    AI_DEFAULT_MODEL: z.string().default('gemini-2.0-flash'),
+    // Hard timeout per AI call in milliseconds.
+    AI_CALL_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
+    // Consecutive failures before the circuit opens.
+    AI_CIRCUIT_FAILURE_THRESHOLD: z.coerce.number().int().min(1).default(5),
+    // Milliseconds the circuit stays open before a probe is sent.
+    AI_CIRCUIT_COOLDOWN_MS: z.coerce.number().int().min(1000).default(60000),
+    // Maximum retries on transient AI errors.
+    AI_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
     BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -230,7 +254,7 @@ export function validateEnv(config: Record<string, unknown>): Env {
 
   if (!result.success) {
     const formatted = result.error.format();
-    console.error('❌ Invalid environment variables:', JSON.stringify(formatted, null, 2));
+    startupLogger.error({ validationErrors: formatted }, 'Invalid environment variables');
     const messages = result.error.errors.map((e) => e.message).join('; ');
     throw new Error(`Invalid environment configuration: ${messages}`);
   }

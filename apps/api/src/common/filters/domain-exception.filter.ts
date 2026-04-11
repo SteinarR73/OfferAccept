@@ -3,8 +3,11 @@ import {
   Catch,
   ArgumentsHost,
   HttpStatus,
+  Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
+import { MetricsService } from '../metrics/metrics.service';
 import { Request, Response } from 'express';
 import {
   DomainError,
@@ -71,9 +74,16 @@ interface ErrorResponse {
   detail?: Record<string, unknown>;
 }
 
+// @Injectable is required because this filter is registered as APP_FILTER in
+// AppModule, which means NestJS resolves it through the DI container.
+@Injectable()
 @Catch(DomainError)
 export class DomainExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(DomainExceptionFilter.name);
+
+  // MetricsService is @Optional so the filter works in test environments where
+  // MetricsModule is not loaded. When absent, metrics recording is skipped.
+  constructor(@Optional() private readonly metrics?: MetricsService) {}
 
   catch(exception: DomainError, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -88,6 +98,16 @@ export class DomainExceptionFilter implements ExceptionFilter {
         exception.stack,
       );
     }
+
+    // Set Retry-After on rate-limit responses so clients can back off correctly.
+    if (exception instanceof RateLimitExceededError) {
+      response.set('Retry-After', String(Math.ceil(exception.retryAfterMs / 1000)));
+    }
+
+    // Increment api_error_rate counter for observability dashboards and alerting.
+    // Uses the machine-readable code (e.g. RATE_LIMITED, OFFER_NOT_FOUND) as the
+    // primary label so alert rules target specific error types, not just status codes.
+    this.metrics?.recordApiError(body.code ?? 'UNKNOWN', statusCode);
 
     response.status(statusCode).json(body);
   }

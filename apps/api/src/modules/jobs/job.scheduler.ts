@@ -26,6 +26,7 @@ import { JOB_BOSS } from './job.service';
 //   send-reminders           */5 * * * *       Every 5 minutes
 //   reconcile-certificates   */15 * * * *      Every 15 minutes
 //   reset-monthly-billing    0 0 1 * *         Midnight UTC on 1st of month
+//   archive-deal-events      0 2 * * *         02:00 UTC daily
 //
 // issue-certificate, send-email, send-webhook, notify-deal-accepted are
 // event-driven — they are enqueued by application code rather than on a schedule.
@@ -77,6 +78,14 @@ export class JobScheduler implements OnApplicationBootstrap {
       },
     );
 
-    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders, reconcile-certificates');
+    // archive-deal-events: 02:00 UTC daily — moves DealEvent rows older than
+    // 18 months to deal_events_archive. Each run processes at most
+    // DEAL_EVENT_ARCHIVE_BATCH_SIZE rows (default 10,000); larger backlogs
+    // clear progressively over subsequent nightly runs.
+    await this.boss.schedule('archive-deal-events', '0 2 * * *', {}, {
+      tz: 'UTC',
+    });
+
+    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders, reconcile-certificates, archive-deal-events');
   }
 }

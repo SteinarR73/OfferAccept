@@ -5,6 +5,8 @@ import { RateLimitService, REDIS_CLIENT } from './rate-limit.service';
 import { RATE_LIMITER_BACKEND } from './rate-limiter.backend';
 import { RedisRateLimiterBackend } from './redis-rate-limiter.backend';
 import { MemoryRateLimiterBackend } from './memory-rate-limiter.backend';
+import { ApiRateLimitGuard } from './api-rate-limit.guard';
+import { AiRateLimitGuard } from './ai-rate-limit.guard';
 import type { Env } from '../../config/env';
 
 // ─── RateLimitModule ──────────────────────────────────────────────────────────
@@ -71,7 +73,9 @@ import type { Env } from '../../config/env';
       inject: [ConfigService, REDIS_CLIENT],
     },
     RateLimitService,
+    ApiRateLimitGuard,
+    AiRateLimitGuard,
   ],
-  exports: [RateLimitService, REDIS_CLIENT],
+  exports: [RateLimitService, REDIS_CLIENT, ApiRateLimitGuard, AiRateLimitGuard],
 })
 export class RateLimitModule {}

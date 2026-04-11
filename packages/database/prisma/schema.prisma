@@ -102,8 +102,24 @@ model Invite {
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
+  // NOTE: no @@unique([organizationId, email]) constraint.
+  // Application code (InviteService.invite) revokes prior pending invites before
+  // creating a new one, but this is not race-condition-safe under concurrent requests.
+  // Two simultaneous invites to the same address can both pass the revocation check
+  // and both insert — leaving two active rows for the same org+email pair.
+  //
+  // Recommended future constraint (add in a dedicated migration):
+  //   @@unique([organizationId, email])
+  //
+  // This requires either filtering out accepted/revoked rows at the application layer,
+  // or using a partial unique index instead:
+  //   CREATE UNIQUE INDEX invites_org_email_active_idx
+  //     ON invites("organizationId", email)
+  //     WHERE "acceptedAt" IS NULL AND "revokedAt" IS NULL;
   @@index([organizationId])
   @@index([email])
+  // Supports "invitations sent by user" queries (e.g. dashboard, revocation on user deletion)
+  @@index([invitedById])
   @@map("invites")
 }
 
@@ -178,6 +194,7 @@ model User {
   memberships             Membership[]
   invitesSent             Invite[]
   erasureRequests         ErasureRequest[]
+  userPackages            UserPackage[]
 
   @@index([organizationId])
   @@map("users")
@@ -188,6 +205,31 @@ model User {
 // refreshTokenHash: SHA-256 of the raw random refresh token (never stored raw).
 // revokedAt: set on logout or token rotation — row is kept for audit purposes.
 
+// ─── Session ──────────────────────────────────────────────────────────────────
+// This model IS the RefreshToken store.
+// One row per refresh-token issuance. Columns cover the requested RefreshToken
+// fields exactly:
+//   id               → id
+//   userId           → userId
+//   refreshTokenHash → tokenHash (SHA-256 of raw 256-bit random token)
+//   expiresAt        → expiresAt
+//   createdAt        → createdAt
+//
+// Additional fields for session metadata and security:
+//   revokedAt  — set on logout or rotation; row kept for audit
+//   familyId   — links all tokens derived from the same root login
+//
+// Token family tracking (replay / theft detection):
+//   - Every login call creates a root session and sets familyId = random hex.
+//   - Every rotation propagates familyId from parent to child.
+//   - When a revoked token is presented (replay attack detected),
+//     SessionService.findByRawToken() calls revokeFamily(familyId) to
+//     invalidate ALL active sessions in the family before throwing
+//     SessionRevokedError. This limits the damage window to the interval
+//     between theft and first use of the stolen token.
+//   - Sessions created before this migration have familyId = null and receive
+//     a fresh family on their first successful rotation.
+
 model Session {
   id               String    @id @default(cuid())
   userId           String
@@ -197,9 +239,15 @@ model Session {
   userAgent        String?
   expiresAt        DateTime
   revokedAt        DateTime?
+  // Links tokens issued from the same root login — enables family revocation.
+  // Null only for sessions created before the family-tracking migration.
+  familyId         String?   @db.VarChar(64)
   createdAt        DateTime  @default(now())
 
+  // Supports: list all sessions for a user
   @@index([userId])
+  // Supports: revokeFamily() — revoke all active sessions in a family
+  @@index([familyId])
   @@map("sessions")
 }
 
@@ -666,6 +714,9 @@ model AcceptanceRecord {
 // It does not re-read Offer, User, or Organization at generation time.
 
 model AcceptanceCertificate {
+  // @db.Uuid annotation is intentionally absent: adding it requires an ALTER COLUMN
+  // TYPE migration on an existing text column. Add it in a separate migration when
+  // scheduling maintenance. All other id fields use cuid() — this is the only uuid().
   id                 String   @id @default(uuid())
   offerId            String   @unique  // for convenient dashboard lookups
   acceptanceRecordId String   @unique
@@ -982,6 +1033,39 @@ model DealEvent {
   @@map("deal_events")
 }
 
+// ─── DealEventArchive ─────────────────────────────────────────────────────────
+// Cold store for deal events older than 18 months.
+// Structurally identical to DealEvent but without the foreign key constraint
+// (the source offer may have been deleted by the time a row is read from here).
+// See docs/data-lifecycle/deal-event-retention.md for the retention policy.
+
+model DealEventArchive {
+  id         String        @id
+  dealId     String
+  eventType  DealEventType
+  metadata   Json?
+  createdAt  DateTime
+  archivedAt DateTime      @default(now())
+
+  @@index([dealId, createdAt])
+  @@index([archivedAt])
+  @@map("deal_events_archive")
+}
+
+// ─── ArchivalCheckpoint ───────────────────────────────────────────────────────
+// Single row tracking the archival job's progress.
+// Used by archive-deal-events handler to avoid re-scanning already-archived rows.
+
+model ArchivalCheckpoint {
+  id                String    @id @default("deal_events")
+  lastArchivedAt    DateTime?
+  lastRunAt         DateTime  @updatedAt
+  rowsArchived      Int       @default(0)
+  totalRowsArchived BigInt    @default(0)
+
+  @@map("archival_checkpoint")
+}
+
 // ─── ErasureRequest ───────────────────────────────────────────────────────────
 // Records a GDPR Art. 17 right-to-erasure request from a user.
 // Creating a row initiates the workflow; actual deletion is performed by an
@@ -1063,4 +1147,213 @@ model DpaAgreement {
   @@index([organizationId])
   @@index([organizationId, dpaVersion])
   @@map("dpa_agreements")
+}
+
+// ─── SystemSetting ────────────────────────────────────────────────────────────
+// Platform-level key/value configuration store.
+// One row per setting key. Values are JSON-serialized strings so numeric,
+// string, and boolean settings share the same column without schema changes.
+//
+// Keys are a CLOSED SET validated at the application layer (AdminSettingsService).
+// Do not insert arbitrary keys from user input — the Zod schema is the whitelist.
+//
+// Read behaviour: AdminSettingsService merges DB rows with SETTING_DEFAULTS so
+// that every key always has a valid value, even before the first PATCH.
+//
+// Durability: settings survive server restarts — they are read from the DB on
+// every request. No in-process cache is used so PATCH is immediately visible.
+//
+// updatedBy: userId of the OWNER or INTERNAL_SUPPORT actor who last wrote this
+// key. Required — never null.
+
+model SystemSetting {
+  key       String   @id              // e.g. "offer_expiry_days"
+  value     String                    // JSON-encoded: "30", "\"support@example.com\""
+  updatedAt DateTime @updatedAt
+  updatedBy String                    // userId of last modifier
+
+  @@map("system_settings")
+}
+
+// ─── SettingAuditLog ──────────────────────────────────────────────────────────
+// Append-only record of every admin settings change.
+// One row per (key, change event). Written inside the same transaction as the
+// SystemSetting upsert, so audit rows are never created without the matching
+// write and never missing from a write that committed.
+//
+// oldValue: null means the key was using its compiled default and had never been
+//   explicitly persisted before this change.
+// newValue: the JSON-encoded value that was written to system_settings.
+//
+// Rows are never updated or deleted — this is a compliance audit trail.
+
+model SettingAuditLog {
+  id        String   @id @default(cuid())
+  key       String                        // setting key that changed
+  oldValue  String?                       // JSON-encoded previous value; null = was default
+  newValue  String                        // JSON-encoded new value
+  changedBy String                        // userId of actor
+  changedAt DateTime @default(now())
+
+  @@index([key])
+  @@index([changedAt])
+  @@map("setting_audit_logs")
+}
+
+// ─── Job ──────────────────────────────────────────────────────────────────────
+// Application-level job tracking table — a companion to pg-boss.
+//
+// pg-boss is the delivery mechanism (atomically claims jobs, schedules retries,
+// archives exhausted jobs to pgboss.archive). This table is the observability
+// and admin-management layer: it records every execution attempt with enough
+// context to diagnose failures, recover stale locks on startup, and expose a
+// dead-letter UI to platform admins.
+//
+// Lifecycle:
+//   PENDING       — row created; job not yet picked up by a worker
+//   RUNNING       — worker claimed the job (lockedAt, lockedBy set)
+//   COMPLETED     — handler returned without throwing
+//   FAILED        — handler threw; attempts < maxAttempts; pg-boss will retry
+//   DEAD_LETTERED — attempts >= maxAttempts; requires operator action to requeue
+//
+// Stale lock recovery:
+//   On startup, JobTrackingService resets RUNNING rows whose lockedAt is older
+//   than STALE_LOCK_THRESHOLD_MS (5 min) to FAILED. These rows represent jobs
+//   whose worker process crashed mid-execution — pg-boss will re-deliver them.
+//
+// Requeue:
+//   Admin calls POST /admin/dead-letters/:id/requeue.
+//   A new pg-boss job is sent with the stored payload; pgBossId is updated to
+//   the new job ID; status is reset to PENDING; attempts is reset to 0.
+//
+// pgBossId:
+//   Set when the worker first claims the pg-boss job. NULL on a newly-requeued
+//   row before the first re-delivery. UNIQUE — two concurrent workers cannot
+//   claim the same pg-boss job into the same tracking row.
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  DEAD_LETTERED
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  // pg-boss job ID for correlation with pgboss.job / pgboss.archive tables.
+  // Nullable: set to null briefly after requeue until the new pg-boss job is delivered.
+  pgBossId       String?   @unique
+  name           String    @db.VarChar(100)   // matches JobName in job.types.ts
+  payload        Json                         // snapshot of job data at first claim time
+  status         JobStatus @default(PENDING)
+  // Total delivery attempts across all pg-boss retries for this logical job.
+  attempts       Int       @default(0)
+  // Derived from QUEUE_OPTIONS.retryLimit + 1 at claim time.
+  maxAttempts    Int       @default(3)
+  // Last error message. Null when COMPLETED. Preserved across retries.
+  failReason     String?   @db.Text
+  // Set when status transitions to DEAD_LETTERED.
+  deadLetteredAt DateTime?
+  // Set while status = RUNNING; cleared on COMPLETED / FAILED / DEAD_LETTERED.
+  lockedAt       DateTime?
+  // "hostname:pid" of the worker that holds the current lock.
+  lockedBy       String?   @db.VarChar(200)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Supports: list all running/failed/dead-lettered jobs
+  @@index([status])
+  // Supports: "are there stuck jobs of type X?"
+  @@index([name, status])
+  // Supports: admin DLQ query (non-null deadLetteredAt = dead-lettered)
+  @@index([deadLetteredAt])
+  @@map("jobs")
+}
+
+// ─── AuditEventType enum ──────────────────────────────────────────────────────
+// Closed set of valid audit event identifiers.
+// @map values use dotted notation (domain.verb) for readability in DB tooling;
+// Prisma client exposes the underscore form (package_activated) in TypeScript.
+//
+// ADDING A NEW VALUE:
+//   1. Add the member here.
+//   2. Add a migration that runs: ALTER TYPE "AuditEventType" ADD VALUE 'new.value';
+//   3. Add the matching payload interface to AuditEventPayloadMap in packages.service.ts.
+//   4. Add the string literal to AUDIT_EVENT_TYPES in packages.service.ts.
+
+enum AuditEventType {
+  package_activated  @map("package.activated")
+  ai_request         @map("ai.request")
+}
+
+// ─── PackageType enum ─────────────────────────────────────────────────────────
+// Closed set of valid package identifiers.
+// Enforced at DB level by PostgreSQL enum type — arbitrary values cannot be
+// inserted even by direct SQL outside the API.
+//
+// ADDING A NEW VALUE:
+//   1. Add the member here.
+//   2. Add a migration: ALTER TYPE "PackageType" ADD VALUE 'NEW_VALUE';
+//   3. Add the string literal to PACKAGE_TYPES in packages.service.ts.
+
+enum PackageType {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  ADD_ON_ESIGN
+}
+
+// ─── UserPackage ──────────────────────────────────────────────────────────────
+// Records a package activated by a user.
+// packageType is enforced at DB level by the PackageType enum.
+// Rows are append-only — activating the same type a second time creates a new row
+// (the application layer may choose to deduplicate, but the table does not enforce it).
+
+model UserPackage {
+  id          String      @id @default(cuid())
+  userId      String
+  packageType PackageType               // DB-level enum — arbitrary values rejected
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("user_packages")
+}
+
+// ─── AuditEvent ───────────────────────────────────────────────────────────────
+// Append-only structured audit log for significant write operations.
+// Rows are NEVER updated or deleted.
+//
+// Structured columns:
+//   type       — controlled enum; arbitrary values rejected at DB level
+//   actorId    — userId of the human or system principal that triggered the event;
+//                null for system-generated events with no authenticated actor
+//   entityType — logical name of the affected resource, e.g. "user_package"
+//   entityId   — id of the affected resource row
+//   payload    — event-type-specific JSON metadata (shape defined per type in
+//                AuditEventPayloadMap in packages.service.ts)
+//
+// Queryability:
+//   - all events for a user: WHERE actorId = ?          (actorId index)
+//   - all events for entity: WHERE entityType = ? AND entityId = ?
+//                                                       (composite index)
+//   - all events by type:    WHERE type = ?             (type index)
+//   - time-range sweeps:     WHERE createdAt BETWEEN ?  (createdAt index)
+
+model AuditEvent {
+  id         String         @id @default(cuid())
+  type       AuditEventType               // closed enum — enforced at DB level
+  actorId    String?                      // userId; null = system-generated
+  entityType String?        @db.VarChar(50)   // e.g. "user_package"
+  entityId   String?                      // FK-by-convention to the entity row
+  payload    Json                         // shape varies by type; see AuditEventPayloadMap
+  createdAt  DateTime       @default(now())
+
+  @@index([type])
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_events")
 }

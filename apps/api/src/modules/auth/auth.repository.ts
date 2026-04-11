@@ -26,9 +26,14 @@ export class AuthRepository {
   constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
 
   // ── User ──────────────────────────────────────────────────────────────────────
+  //
+  // Email normalization: User.email is a PostgreSQL `text` column with a case-sensitive
+  // unique constraint. All reads and writes normalize to lowercase + trim so that
+  // "User@example.com" and "user@example.com" resolve to the same account.
+  // Never bypass .toLowerCase().trim() on email before querying or inserting.
 
   async findUserByEmail(email: string): Promise<User | null> {
-    return this.db.user.findFirst({ where: { email, deletedAt: null } });
+    return this.db.user.findFirst({ where: { email: email.toLowerCase().trim(), deletedAt: null } });
   }
 
   async findUserById(userId: string): Promise<User | null> {
@@ -66,7 +71,7 @@ export class AuthRepository {
         data: {
           organizationId: org.id,
           name: params.userName,
-          email: params.email,
+          email: params.email.toLowerCase().trim(),
           hashedPassword: params.hashedPassword,
           role: 'OWNER',
           emailVerified: false,

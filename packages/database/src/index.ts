@@ -31,7 +31,12 @@ export type {
   AcceptanceRecord,
   AcceptanceCertificate,
   Subscription,
-  // Enums
+  SystemSetting,
+  SettingAuditLog,
+  UserPackage,
+  AuditEvent,
+  Job,
+  // Enums (type-only — import as values via the export below for runtime use)
   UserRole,
   OfferStatus,
   RecipientStatus,
@@ -42,4 +47,6 @@ export type {
   SubscriptionPlan,
  } from '@prisma/client';
 
-export { Prisma } from '@prisma/client';
+// Enum values must be exported as runtime values (not `export type`) so callers
+// can reference e.g. PackageType.STARTER or Object.values(PackageType).
+export { Prisma, AuditEventType, PackageType, JobStatus } from '@prisma/client';

@@ -129,7 +129,7 @@ export class OrgRepository {
     expiresAt: Date;
     invitedById: string;
   }) {
-    return this.db.invite.create({ data });
+    return this.db.invite.create({ data: { ...data, email: data.email.toLowerCase().trim() } });
   }
 
   async markInviteAccepted(inviteId: string): Promise<void> {
@@ -150,7 +150,7 @@ export class OrgRepository {
   async revokePendingInvites(email: string, orgId: string): Promise<void> {
     await this.db.invite.updateMany({
       where: {
-        email,
+        email: email.toLowerCase().trim(),
         organizationId: orgId,
         acceptedAt: null,
         revokedAt: null,
@@ -177,10 +177,16 @@ export class OrgRepository {
     return count > 0;
   }
 
+  // ── Email normalization note ──────────────────────────────────────────────────
+  // Invite.email and User.email are PostgreSQL `text` columns — case-sensitive.
+  // All methods below normalize to .toLowerCase().trim() at the DB boundary.
+  // Never omit this normalization or two records with different capitalisation
+  // will be treated as distinct identities.
+
   // Find a user by email (needed for invite duplicate-member check)
   async findUserIdByEmail(email: string): Promise<string | null> {
     const user = await this.db.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email: email.toLowerCase().trim(), deletedAt: null },
       select: { id: true },
     });
     return user?.id ?? null;

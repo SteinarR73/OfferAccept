@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { AiRateLimitGuard } from '../../common/rate-limit/ai-rate-limit.guard';
 import { AnalyticsService } from './analytics.service';
 import { AcceptanceInsightsService } from './acceptance-insights.service';
 import { DealEventService } from '../deal-events/deal-events.service';
@@ -28,7 +29,9 @@ export class AnalyticsController {
 
   // GET /analytics/insights
   // Returns actionable acceptance intelligence for the caller's org.
+  // AI-driven: rate-limited to 10 requests per hour per user (admin exempt).
   @Get('insights')
+  @UseGuards(AiRateLimitGuard)
   async getInsights(@CurrentUser() user: JwtPayload) {
     return this.insightsService.getInsights(user.orgId);
   }

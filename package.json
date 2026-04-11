@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "preinstall": "npx only-allow pnpm",
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
@@ -15,7 +16,8 @@
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "db:studio": "turbo run db:studio",
-    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore"
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "secret-scan": "tsx scripts/secret-scan.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

@@ -192,6 +192,7 @@ export class AuthService {
     const { rawToken: newRawToken, session: newSession } = await this.sessionService.rotate(
       session.id,
       session.userId,
+      session.familyId, // propagate family so replay detection covers the full chain
       context,
     );
 

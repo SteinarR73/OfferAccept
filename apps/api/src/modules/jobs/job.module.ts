@@ -4,6 +4,7 @@ import { PgBoss } from 'pg-boss';
 import { JOB_BOSS, JobService } from './job.service';
 import { JobWorker } from './job.worker';
 import { JobScheduler } from './job.scheduler';
+import { JobTrackingService } from './job-tracking.service';
 import { ExpireSessionsHandler } from './handlers/expire-sessions.handler';
 import { ExpireOffersHandler } from './handlers/expire-offers.handler';
 import { IssueCertificateHandler } from './handlers/issue-certificate.handler';
@@ -15,6 +16,7 @@ import { SendRemindersHandler } from './handlers/send-reminders.handler';
 import { NotifyDealAcceptedHandler } from './handlers/notify-deal-accepted.handler';
 import { ReconcileCertificatesHandler } from './handlers/reconcile-certificates.handler';
 import { GenerateCertificatePdfHandler } from './handlers/generate-certificate-pdf.handler';
+import { ArchiveDealEventsHandler } from './handlers/archive-deal-events.handler';
 import { CertificatesModule } from '../certificates/certificates.module';
 import { BillingModule } from '../billing/billing.module';
 import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
@@ -70,6 +72,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     JobService,
     JobWorker,
     JobScheduler,
+    JobTrackingService,
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     ExpireSessionsHandler,
@@ -83,7 +86,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotifyDealAcceptedHandler,
     ReconcileCertificatesHandler,
     GenerateCertificatePdfHandler,
+    ArchiveDealEventsHandler,
   ],
-  exports: [JobService],
+  exports: [JobService, JobTrackingService],
 })
 export class JobsModule {}

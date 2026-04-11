@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# ─── pre-commit hook ───────────────────────────────────────────────────────────
+# Blocks commits that would introduce secrets or sensitive files into the repo.
+#
+# SETUP (one-time per clone):
+#   git config core.hooksPath .githooks
+#
+# Or add to your shell profile so it runs automatically after each clone:
+#   git config --global init.templateDir ~/.git-templates
+#   mkdir -p ~/.git-templates/hooks
+#   cp .githooks/pre-commit ~/.git-templates/hooks/pre-commit
+#   chmod +x ~/.git-templates/hooks/pre-commit
+#
+# CI enforcement:
+#   The same checks run in CI via scripts/secret-scan.ts — this hook is
+#   a local fast-feedback layer, not a replacement for CI scanning.
+
+set -euo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Colour
+
+fail() {
+  echo -e "${RED}[pre-commit] BLOCKED: $1${NC}" >&2
+  echo -e "${YELLOW}  Fix: $2${NC}" >&2
+}
+
+BLOCKED=0
+
+# ── 1. Block database / SQLite files ─────────────────────────────────────────
+while IFS= read -r -d '' file; do
+  if [[ "$file" =~ \.(db|sqlite|sqlite3|db-wal|db-shm)$ ]]; then
+    fail "Attempting to commit database file: $file" \
+         "Run: git rm --cached \"$file\"  then add it to .gitignore"
+    BLOCKED=1
+  fi
+done < <(git diff --cached --name-only -z)
+
+# ── 2. Block .env files ────────────────────────────────────────────────────────
+while IFS= read -r -d '' file; do
+  if [[ "$file" =~ (^|/)\.env($|\.) ]]; then
+    fail "Attempting to commit environment file: $file" \
+         "Run: git rm --cached \"$file\"  then verify .gitignore covers it"
+    BLOCKED=1
+  fi
+done < <(git diff --cached --name-only -z)
+
+# ── 3. Block private key / certificate files ──────────────────────────────────
+while IFS= read -r -d '' file; do
+  if [[ "$file" =~ \.(pem|key|p12|pfx|crt|cer|jks|keystore)$ ]]; then
+    fail "Attempting to commit credential/certificate file: $file" \
+         "Remove from staging: git rm --cached \"$file\""
+    BLOCKED=1
+  fi
+done < <(git diff --cached --name-only -z)
+
+# ── 4. Scan staged content for secret patterns ────────────────────────────────
+# Uses git diff --cached to read only what's being committed (not the full working tree).
+STAGED_DIFF=$(git diff --cached --unified=0 2>/dev/null || true)
+
+check_pattern() {
+  local label="$1"
+  local pattern="$2"
+  if echo "$STAGED_DIFF" | grep -qP "^\+(?!\+\+).*${pattern}"; then
+    fail "Possible secret in staged changes: $label" \
+         "Review with: git diff --cached | grep -P '${pattern}'"
+    BLOCKED=1
+  fi
+}
+
+# JWT secrets / long base64-looking values assigned to secret-sounding vars
+check_pattern "JWT_SECRET assignment with long value" \
+  'JWT_SECRET\s*[=:]\s*[A-Za-z0-9+/=_\-]{32,}'
+
+# Stripe live secret keys (sk_live_...)
+check_pattern "Stripe live secret key" \
+  'sk_live_[A-Za-z0-9]{20,}'
+
+# AWS access key IDs
+check_pattern "AWS access key" \
+  'AKIA[A-Z0-9]{16}'
+
+# Generic high-entropy strings assigned to API_KEY / SECRET / TOKEN vars
+# (Only fires when the value is ≥40 chars — avoids false positives on short test values)
+check_pattern "API key / secret assignment (≥40 chars)" \
+  '(API_KEY|SECRET_KEY|ACCESS_TOKEN|PRIVATE_KEY)\s*[=:]\s*[A-Za-z0-9+/=_\-]{40,}'
+
+# ── 5. Result ──────────────────────────────────────────────────────────────────
+if [[ "$BLOCKED" -eq 1 ]]; then
+  echo ""
+  echo -e "${RED}Commit blocked. Resolve the issues above before committing.${NC}" >&2
+  echo "To bypass in exceptional circumstances (e.g. rotating a test key):" >&2
+  echo "  git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0

@@ -51,7 +51,11 @@ export type RateLimitProfile =
   // Bulk certificate export — authenticated, keyed by orgId:ip
   | 'bulk_cert_export'       // 3 bulk exports per org per hour
   // Enterprise / org settings — authenticated, keyed by userId
-  | 'dpa_accept';            // 3 DPA acceptances per user per hour
+  | 'dpa_accept'             // 3 DPA acceptances per user per hour
+  // Global API abuse protection — keyed by IP (all routes, admin exempt)
+  | 'api_general'            // 100 requests per minute per IP
+  // AI-driven endpoints — keyed by userId (admin exempt)
+  | 'ai_generation';         // 10 requests per hour per userId
 
 export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: number }> = {
   token_verification:     { limit: 10, windowMs: 15 * 60 * 1000 },
@@ -76,6 +80,8 @@ export const PROFILES: Record<RateLimitProfile, { limit: number; windowMs: numbe
   erasure_request:        { limit: 2,  windowMs: 24 * 60 * 60 * 1000 },
   bulk_cert_export:       { limit: 3,  windowMs:      60 * 60 * 1000 },
   dpa_accept:             { limit: 3,  windowMs:      60 * 60 * 1000 },
+  api_general:            { limit: 100, windowMs:          60 * 1000 },
+  ai_generation:          { limit: 10,  windowMs:  60 * 60 * 1000 },
 };
 
 // ── High-risk profiles — fail closed when the backend is unavailable ───────────

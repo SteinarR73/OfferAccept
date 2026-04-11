@@ -1,24 +1,31 @@
-// Sentry must be initialised before any other imports so it can instrument modules.
+// Observability must be initialised before any other imports so Sentry/OTel can
+// instrument all subsequently loaded modules (HTTP, database drivers, etc.).
 import './instrument';
-import { NestFactory, HttpAdapterHost } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import type { Env } from './config/env';
-
-const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: process.env.NODE_ENV === 'production' ? ['warn', 'error'] : ['log', 'warn', 'error'],
+    // Disable the default NestJS console logger — nestjs-pino provides it via
+    // app.useLogger() below. Suppressing here avoids duplicated boot logs.
+    bufferLogs: true,
     // rawBody: true makes the raw request body available via @RawBody() in controllers.
     // Required for Stripe webhook signature verification — Stripe signs the raw bytes,
     // not the parsed JSON. Without this, constructEvent() will throw a signature mismatch.
     rawBody: true,
   });
+
+  // ── Pino logger ───────────────────────────────────────────────────────────────
+  // Swap NestJS's default logger for the pino-backed one from LoggerModule.
+  // All `new Logger(context)` calls throughout the app now route through pino,
+  // producing structured JSON in production and pretty-printed lines in dev.
+  app.useLogger(app.get(Logger));
 
   // ── Reverse-proxy trust ──────────────────────────────────────────────────────
   // Read TRUST_PROXY from the validated ConfigService so it is covered by the
@@ -53,10 +60,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  app.useGlobalFilters(new DomainExceptionFilter());
-
-  // RequestIdInterceptor is registered as an APP_INTERCEPTOR in AppModule so it
-  // can receive TraceContext via DI. No manual registration needed here.
+  // DomainExceptionFilter is registered as APP_FILTER in AppModule so it receives
+  // MetricsService via DI. No manual useGlobalFilters() call needed here.
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -83,7 +88,7 @@ async function bootstrap() {
 
   const port = config.get('API_PORT', { infer: true });
   await app.listen(port);
-  logger.log(`API running on http://localhost:${port}/api/v1`);
+  app.get(Logger).log(`API running on http://localhost:${port}/api/v1`);
 }
 
 bootstrap();
