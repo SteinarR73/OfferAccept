@@ -21,6 +21,18 @@ out/
 # Keep migrations in source control, but not the generated client
 packages/database/node_modules/
 
+# SQLite — never commit database files; these are dev/test artefacts only.
+# If dev.db is already tracked, run: git rm --cached prisma/dev.db
+prisma/*.db
+prisma/*.db-wal
+prisma/*.db-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Security audit outputs — contain redacted credential info, never commit
+docs/security/audit-report.json
+
 # Logs
 *.log
 npm-debug.log*
