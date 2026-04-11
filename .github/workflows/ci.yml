@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # No branch filter — secret-scan must run on every PR, regardless of
+    # target branch. Limiting to 'main' would allow secrets to enter via
+    # PRs targeting feature branches that are later merged without re-scan.
 
 env:
   NODE_VERSION: "22"

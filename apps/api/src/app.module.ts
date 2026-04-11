@@ -4,6 +4,7 @@ import { APP_INTERCEPTOR, APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { CsrfOriginMiddleware } from './common/middleware/csrf-origin.middleware';
+import { buildLogSanitizer } from './common/logging/log-sanitizer';
 import { validateEnv } from './config/env';
 import { DatabaseModule } from './modules/database/database.module';
 import { HealthModule } from './modules/health/health.module';
@@ -51,10 +52,19 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
           process.env['NODE_ENV'] !== 'production'
             ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
             : undefined,
-        // Never log credential headers in HTTP access logs.
+        // Layer 1 — path-based redaction: removes known credential header fields
+        // before they can appear in HTTP access log entries.
         redact: {
           paths: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-api-key"]'],
           censor: '[Redacted]',
+        },
+        // Layer 2 — pattern-based sanitization: walks every log object and
+        // replaces credential-pattern matches (Stripe keys, Gemini API keys,
+        // bearer tokens, PEM headers) with [REDACTED:<rule>] tokens.
+        // Covers values that land in error messages, request bodies, SDK
+        // responses, or any dynamically keyed field that path-redaction misses.
+        formatters: {
+          log: buildLogSanitizer(),
         },
         // Attach requestId (from X-Request-ID header or generated UUID) to every
         // HTTP log line. Correlates access logs with application logs.

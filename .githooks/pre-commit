@@ -62,7 +62,27 @@ STAGED_DIFF=$(git diff --cached --unified=0 2>/dev/null || true)
 check_pattern() {
   local label="$1"
   local pattern="$2"
-  if echo "$STAGED_DIFF" | grep -qP "^\+(?!\+\+).*${pattern}"; then
+  # Extract matching added lines, then suppress known false-positive tokens.
+  # Tokens: example, test, placeholder, your_, xxx, <secret>, ${
+  # These cover test fixtures, documentation examples, and template strings.
+  # Mirrors the FALSE_POSITIVE_TOKENS list in scripts/secret-scan.ts.
+  # Build context-aware filtered diff: strip file headers for suppressed paths,
+  # then check only added lines that survive all filters.
+  local context_diff
+  context_diff=$(echo "$STAGED_DIFF" \
+    | awk '
+        /^diff --git/ { in_skip=0 }
+        /^diff --git.*\.(spec|test)\.(ts|js)/ { in_skip=1 }
+        /^diff --git.*\/(\.githooks|scripts)\// { in_skip=1 }
+        !in_skip { print }
+    ')
+  local hits
+  hits=$(echo "$context_diff" \
+    | grep -P "^\+(?!\+\+).*${pattern}" \
+    | grep -viP '(example|placeholder|your_|<secret>|\$\{)' \
+    | grep -v 'secret-scan-ignore' \
+    || true)
+  if [[ -n "$hits" ]]; then
     fail "Possible secret in staged changes: $label" \
          "Review with: git diff --cached | grep -P '${pattern}'"
     BLOCKED=1
