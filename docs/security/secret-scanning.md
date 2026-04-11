@@ -2,14 +2,17 @@
 
 ## Overview
 
-Two complementary layers prevent credentials from entering the repository:
+Three complementary layers prevent credentials from leaking:
 
 | Layer | Where | When | Tool |
 |-------|-------|------|------|
 | Pre-commit hook | Developer workstation | Before every local commit | `.githooks/pre-commit` |
-| CI job | GitHub Actions | Every push and pull request | `scripts/secret-scan.ts` via `pnpm secret-scan` |
+| CI job | GitHub Actions | Every push and every pull request | `scripts/secret-scan.ts` via `pnpm secret-scan` |
+| Runtime log sanitizer | API process (production + staging) | Every pino log entry before emission | `apps/api/src/common/logging/log-sanitizer.ts` |
 
-The pre-commit hook is a fast local feedback loop. The CI job is the enforcement gate — it runs on the full file tree and must pass before a build artifact can be produced.
+**Pre-commit hook** — fast local feedback; catches secrets before they leave the workstation.  
+**CI job** — enforcement gate; scans the full file tree on every push and PR. No artifact is produced if the scan fails.  
+**Runtime log sanitizer** — last-resort defence; even if a credential reaches application code (e.g. in an SDK error response), it is redacted before the log entry is written to stdout or forwarded to a log aggregator.
 
 ---
 
@@ -17,7 +20,7 @@ The pre-commit hook is a fast local feedback loop. The CI job is the enforcement
 
 **File:** `.github/workflows/ci.yml`  
 **Job name:** `secret-scan`  
-**Trigger:** Every `push` and `pull_request` targeting `main`  
+**Trigger:** Every `push` to any branch and every `pull_request` regardless of target branch  
 **Blocking:** The `build` job lists `secret-scan` in its `needs` array — no artifact is produced if the scan fails.
 
 ### What it does
@@ -122,6 +125,70 @@ git commit --no-verify
 
 Use only when intentionally committing a known-safe exception (e.g. rotating a test key
 value). Document the reason in the commit message.
+
+---
+
+## Runtime log sanitizer
+
+**File:** `apps/api/src/common/logging/log-sanitizer.ts`  
+**Wired in:** `apps/api/src/app.module.ts` → `LoggerModule.forRoot` → `pinoHttp.formatters.log`
+
+### Why it is needed
+
+pino's built-in `redact` operates on fixed JSON paths such as `req.headers.authorization`.
+It cannot redact a credential that arrives inside an error message string, a third-party SDK
+response object, or a dynamically-keyed field. The log sanitizer fills that gap by walking
+the entire log object with pattern matching before each entry is emitted.
+
+### How it works
+
+`buildLogSanitizer()` returns a `formatters.log`-compatible function. On every log entry it:
+
+1. Receives the full log object from pino.
+2. Recursively walks every string value (including nested objects and arrays).
+3. For each string, tests all detection rules.
+4. Replaces any match with `[REDACTED:<rule-name>]`.
+5. Returns the original object reference unchanged when no patterns match (zero-allocation fast path).
+6. **Does not mutate the input** — a new object is returned only when at least one value changed.
+
+### Detection rules
+
+| Rule | Pattern | Covers |
+|------|---------|--------|
+| `stripe-live-secret` | `sk_live_[A-Za-z0-9]{20,}` | Stripe secret keys |
+| `stripe-live-publishable` | `pk_live_[A-Za-z0-9]{20,}` | Stripe publishable keys |
+| `stripe-webhook-secret` | `whsec_[A-Za-z0-9]{20,}` | Stripe webhook signing secrets |
+| `aws-access-key-id` | `AKIA[A-Z0-9]{16}` | AWS access key IDs |
+| `gemini-api-key` | `AIza[A-Za-z0-9_\-]{35,}` | Google / Gemini API keys |
+| `bearer-token` | `Bearer\s+\S{40,}` | Bearer tokens (JWT and opaque) |
+| `private-key-pem` | `-----BEGIN ... PRIVATE KEY-----` | PEM private key headers |
+
+### Relationship to path-based redaction
+
+Both mechanisms are active simultaneously in `app.module.ts`:
+
+```
+redact.paths   → removes known header fields (authorization, cookie, x-api-key)
+formatters.log → removes credential pattern matches anywhere in the log object
+```
+
+The two layers are complementary: path redaction is faster for known fields; pattern
+redaction catches credentials in unexpected locations (error bodies, SDK metadata, etc.).
+
+### Tests
+
+`apps/api/test/logging/log-sanitizer.spec.ts` — 13 tests covering each rule, false-positive
+non-redaction, deep nesting, array values, and immutability.
+
+### Adding a new rule
+
+Edit the `RULES` array in `apps/api/src/common/logging/log-sanitizer.ts`:
+
+```typescript
+{ name: 'my-service-key', pattern: /myservice_[A-Za-z0-9]{32,}/g },
+```
+
+Patterns must use the `g` flag (global) — `sanitizeString` resets `lastIndex` before each test.
 
 ---
 
