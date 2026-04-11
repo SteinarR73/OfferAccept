@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { UnauthorizedException } from '@nestjs/common';
 import {
   AuthTokenInvalidError,
   SessionRevokedError,
@@ -100,12 +101,14 @@ describe('AuthController.refresh()', () => {
   });
 
   it('returns 401 when refreshToken cookie is missing', async () => {
+    // The controller throws UnauthorizedException when no cookie is present.
+    // NestJS's exception filter translates this to a 401 HTTP response.
+    // Testing via throw (not res.status) is the correct unit-test pattern for
+    // NestJS controllers that delegate error formatting to the filter chain.
     const { controller } = await buildController();
-    const res = buildMockRes();
-    await controller.refresh(buildMockReq(undefined) as never, res as never);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.any(String) }));
+    await expect(
+      controller.refresh(buildMockReq(undefined) as never, buildMockRes() as never),
+    ).rejects.toThrow(UnauthorizedException);
   });
 
   it('propagates SessionRevokedError (replay attack detection)', async () => {

@@ -5,6 +5,7 @@ import { OrgService } from '../../src/modules/organizations/org.service';
 import { MembershipService } from '../../src/modules/organizations/membership.service';
 import { InviteService } from '../../src/modules/organizations/invite.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { DpaService } from '../../src/modules/organizations/dpa.service';
 import { OrgRoleGuard } from '../../src/modules/organizations/guards/org-role.guard';
 import { JwtAuthGuard } from '../../src/common/auth/jwt-auth.guard';
 import {
@@ -64,6 +65,7 @@ async function buildController() {
       { provide: MembershipService, useValue: membershipSvcMock },
       { provide: InviteService, useValue: inviteSvcMock },
       { provide: RateLimitService, useValue: { check: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
+      { provide: DpaService, useValue: { getDpaStatus: jest.fn<() => Promise<null>>().mockResolvedValue(null) } },
     ],
   })
     .overrideGuard(JwtAuthGuard)

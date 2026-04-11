@@ -3,7 +3,11 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
-import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
+import {
+  CertificatePayloadBuilder,
+  computeCertificateHash,
+  computeCanonicalAcceptanceHash,
+} from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
@@ -99,6 +103,17 @@ function makeBuiltCert(issuedAt = ISSUED_AT) {
 
 // ─── Test factory ──────────────────────────────────────────────────────────────
 
+// Acceptance-record fields used for canonical hash computation.
+// Must match the acceptanceRecord fixture below exactly.
+const CANONICAL_INPUT = {
+  acceptedAt:     '2024-06-01T11:59:00.000Z',
+  dealId:         OFFER_ID,
+  ipAddress:      '1.2.3.4',
+  recipientEmail: 'bob@client.com',
+  userAgent:      'Mozilla/5.0',
+};
+const CANONICAL_HASH = computeCanonicalAcceptanceHash(CANONICAL_INPUT).hash;
+
 async function buildService(overrides: {
   storedHash?: string;
   snapshotOverride?: Partial<ReturnType<typeof makeSnapshotData>>;
@@ -115,10 +130,14 @@ async function buildService(overrides: {
           ? null
           : {
               id: CERT_ID,
+              offerId: OFFER_ID,
               acceptanceRecordId: RECORD_ID,
               certificateHash: overrides.storedHash ?? built.certificateHash,
               issuedAt: ISSUED_AT,
-              canonicalHash: null,
+              // Use a real computed canonicalHash so certificates are treated as modern
+              // (canonicalHash === null triggers the LEGACY_CERTIFICATE informational anomaly,
+              // which would inflate anomaliesDetected counts in all tests).
+              canonicalHash: CANONICAL_HASH,
             },
       ),
     },

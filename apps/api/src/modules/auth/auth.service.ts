@@ -134,10 +134,8 @@ export class AuthService {
     // account has at least one Membership row. User.organizationId is deprecated
     // and no longer read here.
     const membership = await this.repo.findPrimaryMembership(user.id);
-    const orgId   = membership?.organizationId;
-    const orgRole = membership?.role;
 
-    if (!orgId) {
+    if (!membership) {
       // Guard: a user with no Membership row cannot operate the system correctly.
       // This should never happen after the backfill migration; if it does, it
       // indicates a data integrity problem that must not be silently swallowed.
@@ -145,6 +143,9 @@ export class AuthService {
         `User ${user.id} has no Membership row — account requires data repair before login is possible.`,
       );
     }
+
+    const orgId   = membership.organizationId;
+    const orgRole = membership.role;
 
     const payload: AccessTokenPayload = {
       sub: user.id,
@@ -197,15 +198,16 @@ export class AuthService {
     );
 
     const membership = await this.repo.findPrimaryMembership(user.id);
-    const orgId   = membership?.organizationId;
-    const orgRole = membership?.role;
 
-    if (!orgId) {
+    if (!membership) {
       await this.sessionService.revoke(session.id);
       throw new Error(
         `User ${user.id} has no Membership row during token refresh — account requires data repair.`,
       );
     }
+
+    const orgId   = membership.organizationId;
+    const orgRole = membership.role;
 
     const payload: AccessTokenPayload = {
       sub: user.id,

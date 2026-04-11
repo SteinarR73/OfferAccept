@@ -133,7 +133,7 @@ describe('SessionService', () => {
   describe('rotate()', () => {
     it('revokes the old session and creates a new one atomically', async () => {
       const { service, db } = await buildService();
-      await service.rotate('session-old', 'user-1', {});
+      await service.rotate('session-old', 'user-1', null, {});
 
       // $transaction should be called with two operations
       expect(db.$transaction).toHaveBeenCalledWith(
@@ -144,7 +144,7 @@ describe('SessionService', () => {
     it('returns a new rawToken different from any constant', async () => {
       const { service } = await buildService();
       const { rawToken: first } = await service.create('user-1', {});
-      const { rawToken: second } = await service.rotate('session-old', 'user-1', {});
+      const { rawToken: second } = await service.rotate('session-old', 'user-1', null, {});
       // Two separate random tokens must differ
       expect(first).not.toBe(second);
     });

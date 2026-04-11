@@ -54,9 +54,22 @@ interface PackageActivatedPayload {
   packageId:   string;       // id of the created UserPackage row
 }
 
+// Payload shape for AI call audit events (written by AiService).
+// Stored as JSONB in AuditEvent.payload; no foreign keys.
+interface AiRequestPayload {
+  model:     string;
+  operation: string;
+  tokensIn:  number;
+  tokensOut: number;
+  latencyMs: number;
+  success:   boolean;
+}
+
 export type AuditEventPayloadMap = {
   // key = Prisma enum member name (TypeScript side of @map)
   package_activated: PackageActivatedPayload;
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  ai_request:        AiRequestPayload;
 };
 
 // Compile-time exhaustiveness check: if a new AuditEventType member is added

@@ -1,3 +1,4 @@
+import type { IncomingMessage } from 'node:http';
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -57,7 +58,9 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
         },
         // Attach requestId (from X-Request-ID header or generated UUID) to every
         // HTTP log line. Correlates access logs with application logs.
-        customProps: (req: { id?: string }) => ({ requestId: req.id }),
+        // pino-http sets req.id after processing RequestIdInterceptor; cast through
+        // IncomingMessage (which lacks the id extension) to avoid the mismatch.
+        customProps: (req: IncomingMessage) => ({ requestId: (req as IncomingMessage & { id?: string }).id }),
         // Suppress noisy health-probe access logs in production.
         autoLogging: {
           ignore: (req: { url?: string }) =>

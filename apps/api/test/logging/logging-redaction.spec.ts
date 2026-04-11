@@ -186,6 +186,8 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         STRIPE_PRICE_STARTER: 'price_starter',
         STRIPE_PRICE_PROFESSIONAL: 'price_professional',
         STRIPE_PRICE_ENTERPRISE: 'price_enterprise',
+        // WEBHOOK_SECRET_KEY is required in production (64 hex chars = 32 bytes)
+        WEBHOOK_SECRET_KEY: '0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20',
         COOKIE_SECURE: 'true',
         TRUST_PROXY: 'true',
       }),

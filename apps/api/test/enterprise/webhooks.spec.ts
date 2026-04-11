@@ -75,7 +75,8 @@ async function buildWebhookService(db: ReturnType<typeof buildFakePrisma>, jobSe
   })
     .overrideProvider(WebhookService)
     .useFactory({
-      factory: (prisma: typeof db, jobs: typeof jobService) => new WebhookService(prisma as never, jobs as never),
+      factory: (prisma: typeof db, jobs: typeof jobService) =>
+        new WebhookService(prisma as never, jobs as never, { get: () => undefined } as never),
       inject: ['PRISMA', 'JobService'],
     })
     .compile();
