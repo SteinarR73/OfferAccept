@@ -49,6 +49,7 @@ const validBody = {
   name: 'Alice',
   email: 'alice@acme.com',
   password: 'securepass123',
+  termsVersion: '1.1',
 };
 
 describe('AuthController.signup()', () => {
@@ -68,6 +69,9 @@ describe('AuthController.signup()', () => {
       userName: 'Alice',
       email: 'alice@acme.com',
       password: 'securepass123',
+      termsVersion: '1.1',
+      ipAddress: '1.2.3.4',
+      userAgent: null,
     });
   });
 

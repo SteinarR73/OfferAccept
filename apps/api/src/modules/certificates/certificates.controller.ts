@@ -212,6 +212,9 @@ export class CertificatesController {
       snapshotIntegrity: result.snapshotIntegrity,
       eventChainIntegrity: result.eventChainValid,
       anomaliesDetected: result.anomaliesDetected,
+      // Legal document versions governing this certificate.
+      // Versions are not sensitive — they are public document identifiers.
+      metadata: result.metadata,
     };
   }
 

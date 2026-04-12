@@ -150,6 +150,7 @@ async function buildService(overrides: {
         acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
         ipAddress: '1.2.3.4',
         userAgent: 'Mozilla/5.0',
+        acceptanceStatementVersion: null,
       }),
     },
     offerSnapshot: {
@@ -158,6 +159,11 @@ async function buildService(overrides: {
     // Legacy event — no acceptanceStatementHash in payload → statement check N/A
     signingEvent: {
       findFirst: jest.fn<() => Promise<unknown>>().mockResolvedValue({ payload: {} }),
+    },
+    // Returns termsVersionAtCreation for the metadata section; null is safe here
+    // since this test suite focuses on integrity checks, not metadata content.
+    offer: {
+      findUnique: jest.fn<any>().mockResolvedValue({ termsVersionAtCreation: null }),
     },
   };
 

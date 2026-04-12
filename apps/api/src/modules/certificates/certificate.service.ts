@@ -22,6 +22,29 @@ import { SigningEventService } from '../signing/services/signing-event.service';
 import { computeSnapshotHash } from '../signing/domain/signing-event.builder';
 import { DealEventService } from '../deal-events/deal-events.service';
 
+// The evidence model version identifies the hash algorithm, canonical hash spec,
+// and event chain verification protocol in use. Increment only on breaking changes.
+// Version history: 1.0 — initial specification (docs/security/evidence-model.md)
+const EVIDENCE_MODEL_VERSION = '1.0' as const;
+
+// ─── CertificateMetadata ──────────────────────────────────────────────────────
+// Legal and trust-layer versions returned OUTSIDE the hashed CertificatePayload
+// to preserve backward compatibility with all existing certificate hashes.
+//
+// Version resolution rules (authoritative sources):
+//   termsVersionAtCreation      — Offer.termsVersionAtCreation, persisted when the
+//                                  deal was created. Null for pre-migration offers.
+//   acceptanceStatementVersion  — AcceptanceRecord.acceptanceStatementVersion,
+//                                  persisted at acceptance time. Null for legacy records.
+//   evidenceModelVersion        — static EVIDENCE_MODEL_VERSION constant; identifies
+//                                  the hash algorithm and event chain spec in use.
+//                                  Not stored per-certificate; always the current spec.
+export interface CertificateMetadata {
+  termsVersionAtCreation:     string | null;
+  acceptanceStatementVersion: string | null;
+  evidenceModelVersion:       string;
+}
+
 // ─── CertificateService ────────────────────────────────────────────────────────
 // Owns the full certificate lifecycle:
 //   1. generateForAcceptance — idempotent; creates AcceptanceCertificate from a
@@ -94,6 +117,11 @@ export interface VerificationResult {
   integrityAnomalies: string[];
   advisoryAnomalies:  string[];
   anomaliesDetected:  string[];   // === [...integrityAnomalies, ...advisoryAnomalies]
+
+  // ── Legal and trust metadata ──────────────────────────────────────────────
+  // Legal document versions governing this certificate. Returned alongside
+  // integrity results — not part of the hashed payload (backward compatible).
+  metadata: CertificateMetadata;
 }
 
 @Injectable()
@@ -231,14 +259,26 @@ export class CertificateService {
     const record = await this.db.acceptanceRecord.findUniqueOrThrow({
       where: { id: cert.acceptanceRecordId },
       select: {
-        id:            true,
-        sessionId:     true,
-        snapshotId:    true,
-        verifiedEmail: true,
-        acceptedAt:    true,
-        ipAddress:     true,
-        userAgent:     true,
+        id:                         true,
+        sessionId:                  true,
+        snapshotId:                 true,
+        verifiedEmail:              true,
+        acceptedAt:                 true,
+        ipAddress:                  true,
+        userAgent:                  true,
+        // Persisted at acceptance time — used for trust-layer metadata only,
+        // not for hash recomputation. Null for records created before this field.
+        acceptanceStatementVersion: true,
       },
+    });
+
+    // ── Fetch offer metadata for trust-layer annotations ─────────────────────
+    // termsVersionAtCreation is read from the Offer row (mutable table) solely
+    // for the metadata section. It does NOT affect any integrity check — all
+    // hash recomputation continues to use immutable tables only.
+    const offerMeta = await this.db.offer.findUnique({
+      where: { id: cert.offerId },
+      select: { termsVersionAtCreation: true },
     });
 
     const integrityAnomalies: string[] = [];
@@ -400,6 +440,17 @@ export class CertificateService {
       integrityAnomalies,
       advisoryAnomalies,
       anomaliesDetected,
+      metadata: {
+        // termsVersionAtCreation: from the Offer row captured at deal creation.
+        // Null means the offer predates the field (migration 20260412_legal_acceptance).
+        termsVersionAtCreation:     offerMeta?.termsVersionAtCreation ?? null,
+        // acceptanceStatementVersion: from the AcceptanceRecord captured at acceptance.
+        // Null means the record predates the field (legacy acceptance).
+        acceptanceStatementVersion: record.acceptanceStatementVersion ?? null,
+        // evidenceModelVersion: static constant identifying the current hash algorithm
+        // and event chain verification spec. Not stored per-certificate.
+        evidenceModelVersion:       EVIDENCE_MODEL_VERSION,
+      },
     };
   }
 
@@ -433,12 +484,13 @@ export class CertificateService {
     payload: CertificatePayload;
     canonicalJson: string;
     eventHistory: Array<{ sequence: number; eventType: string; occurredAt: string }>;
+    metadata: CertificateMetadata;
   }> {
     const cert = await this.db.acceptanceCertificate.findUnique({
       where: { id: certificateId },
       include: {
-        offer: { select: { organizationId: true } },
-        acceptanceRecord: { select: { sessionId: true } },
+        offer: { select: { organizationId: true, termsVersionAtCreation: true } },
+        acceptanceRecord: { select: { sessionId: true, acceptanceStatementVersion: true } },
       },
     });
 
@@ -466,6 +518,11 @@ export class CertificateService {
         eventType: e.eventType,
         occurredAt: e.timestamp.toISOString(),
       })),
+      metadata: {
+        termsVersionAtCreation:     cert.offer.termsVersionAtCreation ?? null,
+        acceptanceStatementVersion: cert.acceptanceRecord.acceptanceStatementVersion ?? null,
+        evidenceModelVersion:       EVIDENCE_MODEL_VERSION,
+      },
     };
   }
 

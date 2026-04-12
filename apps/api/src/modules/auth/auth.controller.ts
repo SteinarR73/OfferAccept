@@ -40,6 +40,13 @@ class SignupDto {
   @MinLength(8)
   @MaxLength(128)
   password!: string;
+
+  // Version of the Terms of Service accepted at signup (e.g. "1.1").
+  // Required — accounts cannot be created without explicit ToS acceptance.
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  termsVersion!: string;
 }
 
 class LoginDto {
@@ -139,6 +146,9 @@ export class AuthController {
       userName: body.name,
       email: body.email,
       password: body.password,
+      termsVersion: body.termsVersion,
+      ipAddress: extractClientIp(req),
+      userAgent: req.headers['user-agent'] ?? null,
     });
 
     return { message: 'Account created. Please check your email to verify your address.' };

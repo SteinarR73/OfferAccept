@@ -91,6 +91,23 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
   });
 }
 
+export interface SignupRequest {
+  orgName: string;
+  name: string;
+  email: string;
+  password: string;
+  // Version of the Terms of Service the user accepted at signup (e.g. "1.1").
+  // Required — signup is gated on explicit ToS acceptance.
+  termsVersion: string;
+}
+
+export async function signup(data: SignupRequest): Promise<{ message: string }> {
+  return fetchOnce<{ message: string }>('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // Returns the current user's identity and org context from the JWT claims.
 export async function getMe(): Promise<{ userId: string; orgId: string; orgRole: string; role: string }> {
   return request('/auth/me');
@@ -379,6 +396,17 @@ export async function exportCertificate(id: string): Promise<{ certificateId: st
   return request(`/certificates/${id}/export`);
 }
 
+// Legal and trust-layer versions attached to every verify/export response.
+// These are returned outside the hashed payload so they don't affect existing hashes.
+export interface CertificateMetadata {
+  // Terms version captured when the deal was created. Null for pre-migration offers.
+  termsVersionAtCreation: string | null;
+  // Acceptance statement version captured at acceptance time. Null for legacy records.
+  acceptanceStatementVersion: string | null;
+  // Static identifier for the hash algorithm and event chain verification spec.
+  evidenceModelVersion: string;
+}
+
 export interface CertificateVerification {
   certificateId: string;
   // Strict: true only when all integrity checks pass AND no advisory anomalies.
@@ -397,6 +425,8 @@ export interface CertificateVerification {
   integrityAnomalies: string[];
   advisoryAnomalies: string[];
   anomaliesDetected: string[];
+  // Legal document versions governing this certificate.
+  metadata?: CertificateMetadata;
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────

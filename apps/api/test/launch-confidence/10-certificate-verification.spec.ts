@@ -123,6 +123,7 @@ function makeValidRecord() {
     acceptedAt: new Date('2026-03-01T12:00:00.000Z'),
     ipAddress: '203.0.113.42',
     userAgent: 'Mozilla/5.0',
+    acceptanceStatementVersion: null,  // not relevant to integrity checks in this suite
   };
 }
 
@@ -158,6 +159,11 @@ function makeDb(
     // Legacy event — no acceptanceStatementHash field → statement check is N/A
     signingEvent: {
       findFirst: jest.fn<any>().mockResolvedValue({ payload: {} }),
+    },
+    // Returns termsVersionAtCreation for the metadata section; null is safe here
+    // since this test suite focuses on integrity checks, not metadata content.
+    offer: {
+      findUnique: jest.fn<any>().mockResolvedValue({ termsVersionAtCreation: null }),
     },
   };
 }

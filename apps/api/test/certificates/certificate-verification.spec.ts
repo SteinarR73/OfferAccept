@@ -59,6 +59,7 @@ describe('CertificateService.verify()', () => {
     acceptanceRecord: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any>; findUnique: jest.Mock<(...args: any[]) => any> };
     offerSnapshot: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any> };
     signingEvent: { findFirst: jest.Mock<(...args: any[]) => any> };
+    offer: { findUnique: jest.Mock<(...args: any[]) => any> };
   };
   let builder: { build: jest.Mock<(...args: any[]) => any> };
   let eventService: { verifyChain: jest.Mock<(...args: any[]) => any> };
@@ -69,6 +70,8 @@ describe('CertificateService.verify()', () => {
       acceptanceRecord: { findUniqueOrThrow: jest.fn(), findUnique: jest.fn() },
       offerSnapshot: { findUniqueOrThrow: jest.fn() },
       signingEvent: { findFirst: jest.fn() },
+      // Populated by stubs: used to return termsVersionAtCreation for metadata section
+      offer: { findUnique: jest.fn<any>().mockResolvedValue({ termsVersionAtCreation: '1.1' }) },
     };
     builder = { build: jest.fn() };
     eventService = { verifyChain: jest.fn() };
@@ -108,6 +111,7 @@ describe('CertificateService.verify()', () => {
       acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
       ipAddress: null,
       userAgent: null,
+      acceptanceStatementVersion: '1.1',
     });
     const snapshotHashInput = {
       title: makePayload().offer.title,
@@ -157,6 +161,7 @@ describe('CertificateService.verify()', () => {
       acceptedAt: new Date(acceptedAt),
       ipAddress: null,
       userAgent: null,
+      acceptanceStatementVersion: '1.1',
     });
     const snapshotHashInput = {
       title: makePayload().offer.title,
@@ -292,6 +297,80 @@ describe('CertificateService.verify()', () => {
     // Builder must receive the stored issuedAt — not a freshly minted new Date()
     expect(builder.build).toHaveBeenCalledWith(RECORD_ID, CERT_ID, ISSUED_AT);
   });
+
+  // ── Trust-layer metadata ──────────────────────────────────────────────────────
+
+  it('verify() includes metadata with termsVersionAtCreation from Offer row', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    // Override the default offer mock to return a specific terms version
+    db.offer.findUnique.mockResolvedValue({ termsVersionAtCreation: '1.1' });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.metadata).toBeDefined();
+    expect(result.metadata.termsVersionAtCreation).toBe('1.1');
+  });
+
+  it('verify() includes metadata with acceptanceStatementVersion from AcceptanceRecord', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.metadata.acceptanceStatementVersion).toBe('1.1');
+  });
+
+  it('verify() includes evidenceModelVersion as a non-empty string', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(typeof result.metadata.evidenceModelVersion).toBe('string');
+    expect(result.metadata.evidenceModelVersion.length).toBeGreaterThan(0);
+  });
+
+  it('verify() returns null termsVersionAtCreation when Offer row has no version (legacy offer)', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    // Simulate a pre-migration offer that has no termsVersionAtCreation
+    db.offer.findUnique.mockResolvedValue({ termsVersionAtCreation: null });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.metadata.termsVersionAtCreation).toBeNull();
+  });
+
+  it('verify() returns null acceptanceStatementVersion for legacy acceptance records', async () => {
+    const built = makeBuiltCert();
+    // Use legacy stub (no acceptanceStatementVersion set), then override to null
+    stubLegacyCert(built.certificateHash);
+    db.acceptanceRecord.findUniqueOrThrow.mockResolvedValue({
+      id: RECORD_ID,
+      sessionId: SESSION_ID,
+      snapshotId: 'snap-1',
+      verifiedEmail: 'bob@client.com',
+      acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
+      ipAddress: null,
+      userAgent: null,
+      acceptanceStatementVersion: null,  // legacy record
+    });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.metadata.acceptanceStatementVersion).toBeNull();
+  });
 });
 
 // ─── CertificateService.generateForAcceptance() — idempotency ─────────────────
@@ -367,6 +446,90 @@ describe('CertificateService.generateForAcceptance()', () => {
     expect(createArgs.data.certificateHash).toBe(built.certificateHash);
     expect(createArgs.data.offerId).toBe('offer-1');
     expect(createArgs.data.acceptanceRecordId).toBe(RECORD_ID);
+  });
+});
+
+// ─── CertificateService.exportPayload() — metadata ────────────────────────────
+// Verifies that exportPayload() attaches the correct metadata section sourced
+// from Offer.termsVersionAtCreation and AcceptanceRecord.acceptanceStatementVersion.
+
+describe('CertificateService.exportPayload() — metadata', () => {
+  let service: CertificateService;
+  let db: {
+    acceptanceCertificate: { findUnique: jest.Mock<(...args: any[]) => any> };
+    signingEvent: { findMany: jest.Mock<(...args: any[]) => any> };
+  };
+  let builder: { build: jest.Mock<(...args: any[]) => any> };
+
+  beforeEach(async () => {
+    db = {
+      acceptanceCertificate: { findUnique: jest.fn() },
+      signingEvent: { findMany: jest.fn<any>().mockResolvedValue([]) },
+    };
+    builder = { build: jest.fn<any>().mockResolvedValue(makeBuiltCert()) };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        CertificateService,
+        { provide: 'PRISMA', useValue: db },
+        { provide: CertificatePayloadBuilder, useValue: builder },
+        { provide: SigningEventService, useValue: { verifyChain: jest.fn() } },
+        { provide: DealEventService, useValue: { emit: () => Promise.resolve() } },
+      ],
+    }).compile();
+
+    service = module.get(CertificateService);
+  });
+
+  function stubExportCert(opts: { termsVersionAtCreation?: string | null; acceptanceStatementVersion?: string | null } = {}) {
+    db.acceptanceCertificate.findUnique.mockResolvedValue({
+      id: CERT_ID,
+      offerId: OFFER_ID,
+      acceptanceRecordId: RECORD_ID,
+      issuedAt: ISSUED_AT,
+      certificateHash: makeBuiltCert().certificateHash,
+      offer: {
+        organizationId: 'org-1',
+        // Use !== undefined so that explicit null is preserved (null ?? fallback = fallback)
+        termsVersionAtCreation: opts.termsVersionAtCreation !== undefined ? opts.termsVersionAtCreation : '1.1',
+      },
+      acceptanceRecord: {
+        sessionId: SESSION_ID,
+        acceptanceStatementVersion: opts.acceptanceStatementVersion !== undefined ? opts.acceptanceStatementVersion : '1.1',
+      },
+    });
+  }
+
+  it('exportPayload() includes metadata with termsVersionAtCreation from Offer row', async () => {
+    stubExportCert({ termsVersionAtCreation: '1.1' });
+    const result = await service.exportPayload(CERT_ID, 'org-1', 'OWNER');
+    expect(result.metadata).toBeDefined();
+    expect(result.metadata.termsVersionAtCreation).toBe('1.1');
+  });
+
+  it('exportPayload() includes metadata with acceptanceStatementVersion from AcceptanceRecord', async () => {
+    stubExportCert({ acceptanceStatementVersion: '1.1' });
+    const result = await service.exportPayload(CERT_ID, 'org-1', 'OWNER');
+    expect(result.metadata.acceptanceStatementVersion).toBe('1.1');
+  });
+
+  it('exportPayload() includes a non-empty evidenceModelVersion', async () => {
+    stubExportCert();
+    const result = await service.exportPayload(CERT_ID, 'org-1', 'OWNER');
+    expect(typeof result.metadata.evidenceModelVersion).toBe('string');
+    expect(result.metadata.evidenceModelVersion.length).toBeGreaterThan(0);
+  });
+
+  it('exportPayload() returns null for termsVersionAtCreation on pre-migration offers', async () => {
+    stubExportCert({ termsVersionAtCreation: null });
+    const result = await service.exportPayload(CERT_ID, 'org-1', 'OWNER');
+    expect(result.metadata.termsVersionAtCreation).toBeNull();
+  });
+
+  it('exportPayload() returns null for acceptanceStatementVersion on legacy records', async () => {
+    stubExportCert({ acceptanceStatementVersion: null });
+    const result = await service.exportPayload(CERT_ID, 'org-1', 'OWNER');
+    expect(result.metadata.acceptanceStatementVersion).toBeNull();
   });
 });
 

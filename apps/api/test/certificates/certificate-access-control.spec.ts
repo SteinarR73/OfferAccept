@@ -66,6 +66,7 @@ type MockDb = {
   acceptanceRecord: { findUniqueOrThrow: AnyMock; findUnique: AnyMock };
   offerSnapshot: { findUniqueOrThrow: AnyMock };
   signingEvent: { findMany: AnyMock; findFirst: AnyMock };
+  offer: { findUnique: AnyMock };
 };
 
 function makeMockDb(): MockDb {
@@ -77,6 +78,9 @@ function makeMockDb(): MockDb {
       findMany: jest.fn<() => Promise<[]>>().mockResolvedValue([]),
       // Legacy event — no acceptanceStatementHash → statement check N/A
       findFirst: jest.fn<() => Promise<unknown>>().mockResolvedValue({ payload: {} }),
+    },
+    offer: {
+      findUnique: jest.fn<any>().mockResolvedValue({ termsVersionAtCreation: null }),
     },
   };
 }
@@ -219,6 +223,7 @@ describe('CertificateService.verify() — public endpoint safety', () => {
       acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
       ipAddress: null,
       userAgent: null,
+      acceptanceStatementVersion: null,
     });
     builder.build.mockResolvedValue(built);
 

@@ -28,6 +28,7 @@ import { TraceModule } from './common/trace/trace.module';
 import { AccountModule } from './modules/account/account.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PackagesModule } from './modules/packages/packages.module';
+import { SecurityModule } from './modules/security/security.module';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { AiModule } from './common/ai/ai.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
@@ -102,6 +103,7 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
     AccountModule,
     AdminModule,
     PackagesModule,
+    SecurityModule,
   ],
   providers: [
     // Register RequestIdInterceptor through DI so it can receive TraceContext.

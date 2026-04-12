@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/g
 import './globals.css';
 import { ToastProvider } from '../lib/toast';
 import { ToastContainer } from '../components/ui/Toast';
+import { LegalFooter } from '../components/LegalFooter';
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -41,7 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${jakartaSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans antialiased bg-[--color-bg] text-[--color-text-primary]">
         <ToastProvider>
-          {children}
+          <div className="min-h-screen flex flex-col">
+            {children}
+            <LegalFooter />
+          </div>
           <ToastContainer />
         </ToastProvider>
       </body>

@@ -65,6 +65,11 @@ export class AuthService {
     userName: string;
     email: string;
     password: string;
+    // Terms of Service version the user explicitly accepted at signup (e.g. "1.1").
+    // Recorded in LegalAcceptance for compliance audit trail.
+    termsVersion: string;
+    ipAddress: string | null;
+    userAgent: string | null;
   }): Promise<SignupResult> {
     const existing = await this.repo.findUserByEmail(params.email);
     if (existing) {
@@ -84,6 +89,16 @@ export class AuthService {
       userName: params.userName,
       email: params.email,
       hashedPassword,
+    });
+
+    // Record Terms of Service acceptance — immutable audit trail.
+    // Created immediately after user row is committed so userId is available.
+    await this.repo.createLegalAcceptance({
+      userId: user.id,
+      documentType: 'TERMS_OF_SERVICE',
+      documentVersion: params.termsVersion,
+      ipAddress: params.ipAddress ?? undefined,
+      userAgent: params.userAgent ?? undefined,
     });
 
     // Send verification email — fire after DB commit, non-blocking for the

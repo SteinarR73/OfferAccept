@@ -87,6 +87,28 @@ export class AuthRepository {
     });
   }
 
+  // ── LegalAcceptance ───────────────────────────────────────────────────────────
+  // Append-only — never updated or deleted.
+  // Called once per document acceptance event (currently: ToS at signup).
+
+  async createLegalAcceptance(params: {
+    userId: string;
+    documentType: string;
+    documentVersion: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    await this.db.legalAcceptance.create({
+      data: {
+        userId: params.userId,
+        documentType: params.documentType,
+        documentVersion: params.documentVersion,
+        ipAddress: params.ipAddress ?? null,
+        userAgent: params.userAgent ?? null,
+      },
+    });
+  }
+
   async markEmailVerified(userId: string): Promise<void> {
     await this.db.user.update({
       where: { id: userId },

@@ -195,6 +195,7 @@ model User {
   invitesSent             Invite[]
   erasureRequests         ErasureRequest[]
   userPackages            UserPackage[]
+  legalAcceptances        LegalAcceptance[]
 
   @@index([organizationId])
   @@map("users")
@@ -311,6 +312,12 @@ model Offer {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   deletedAt      DateTime?
+
+  // Version of the Terms of Service the sender accepted at account creation.
+  // Captured at offer creation time so audits can confirm which ToS version
+  // governed the deal, even after the ToS is updated.
+  // Nullable for backward compatibility — null on offers created before this migration.
+  termsVersionAtCreation String?
 
   organization Organization          @relation(fields: [organizationId], references: [id])
   createdBy    User                  @relation("CreatedByUser", fields: [createdById], references: [id])
@@ -694,6 +701,11 @@ model AcceptanceRecord {
   // Snapshot binding — copied at creation for certificate independence.
   // Allows regenerating the certificate without reading OfferSnapshot.
   snapshotContentHash String
+
+  // Version of the acceptance statement spec that was displayed to the recipient.
+  // Allows audits to confirm exact wording — statement text changes across versions.
+  // Nullable for backward compatibility — null on records created before this migration.
+  acceptanceStatementVersion String?
 
   // No updatedAt — immutable after creation
   createdAt DateTime @default(now())
@@ -1375,4 +1387,34 @@ model AuditEvent {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_events")
+}
+
+// ─── LegalAcceptance ──────────────────────────────────────────────────────────
+// Append-only record of each legal document acceptance at account creation.
+// One row per (userId, documentType, documentVersion) event.
+// Re-accepting a new document version creates a new row — old rows are never
+// updated or deleted.
+//
+// documentType: identifies the document category (e.g. "TERMS_OF_SERVICE").
+//   A closed set validated at the application layer.
+// documentVersion: the version string of the specific document accepted (e.g. "1.1").
+// acceptedAt: server-assigned UTC timestamp — never client-supplied.
+// ipAddress / userAgent: captured from the signup request for non-repudiation evidence.
+
+model LegalAcceptance {
+  id              String   @id @default(cuid())
+  userId          String
+  // Document category: "TERMS_OF_SERVICE" | "GDPR_STATEMENT" | "DPA"
+  documentType    String   @db.VarChar(50)
+  // Version string matching the version in the document metadata header, e.g. "1.1"
+  documentVersion String   @db.VarChar(20)
+  acceptedAt      DateTime @default(now())
+  ipAddress       String?  @db.VarChar(45)   // IPv4 or IPv6
+  userAgent       String?  @db.VarChar(500)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, documentType])
+  @@map("legal_acceptances")
 }

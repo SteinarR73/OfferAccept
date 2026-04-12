@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { verifyCertificate, type CertificateVerification } from '@/lib/offers-api';
+import { verifyCertificate, type CertificateVerification, type CertificateMetadata } from '@/lib/offers-api';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 
@@ -117,9 +117,18 @@ export default function CertificateVerifyPage() {
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[--color-border] px-6 py-4 text-center text-xs text-[--color-text-muted]">
-        Certificates are cryptographically sealed and tamper-evident. This verification is
-        performed server-side against the original signing record.
+      <footer className="border-t border-[--color-border] bg-gray-50/60">
+        <AboutCertificate
+          metadata={
+            state.phase === 'valid' || state.phase === 'legacy' || state.phase === 'invalid'
+              ? state.result.metadata
+              : undefined
+          }
+        />
+        <p className="text-center text-xs text-[--color-text-muted] px-6 py-4">
+          Certificates are cryptographically sealed and tamper-evident. This verification is
+          performed server-side against the original signing record.
+        </p>
       </footer>
     </div>
   );
@@ -447,6 +456,88 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
       <Button variant="secondary" size="sm" onClick={onRetry}>
         Retry
       </Button>
+    </div>
+  );
+}
+
+// ─── About this certificate ───────────────────────────────────────────────────
+// Shown below the verification result on all states.
+// Links to the public documentation for the evidence model, acceptance statement,
+// and OTP verification spec so relying parties can independently audit the model.
+// When `metadata` is provided (from the verify API response), each card shows
+// the actual governing document version rather than generic copy.
+
+function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
+  // Resolve the terms URL: if we have a specific version, link to the versioned page.
+  const termsUrl = metadata?.termsVersionAtCreation
+    ? `/legal/terms/v${metadata.termsVersionAtCreation}`
+    : '/legal/terms';
+
+  const evidenceModelUrl = metadata?.evidenceModelVersion
+    ? `/security/evidence-model`
+    : '/security/evidence-model';
+
+  return (
+    <div className="px-6 py-5 border-b border-[--color-border]">
+      <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-3">
+        Legal and verification framework
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <a
+          href={evidenceModelUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col gap-1 rounded-lg border border-[--color-border] bg-white px-3 py-2.5 hover:border-[--color-accent]/40 hover:bg-blue-50/30 transition-colors"
+        >
+          <div className="flex items-center justify-between gap-1">
+            <span className="font-medium text-[--color-text-primary]">Evidence model</span>
+            {metadata?.evidenceModelVersion && (
+              <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                v{metadata.evidenceModelVersion}
+              </span>
+            )}
+          </div>
+          <span className="text-[--color-text-muted] leading-relaxed">
+            How the SHA-256 hash chain is constructed and how to verify independently
+          </span>
+        </a>
+        <a
+          href="/legal/acceptance-statement"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col gap-1 rounded-lg border border-[--color-border] bg-white px-3 py-2.5 hover:border-[--color-accent]/40 hover:bg-blue-50/30 transition-colors"
+        >
+          <div className="flex items-center justify-between gap-1">
+            <span className="font-medium text-[--color-text-primary]">Acceptance statement</span>
+            {metadata?.acceptanceStatementVersion && (
+              <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                v{metadata.acceptanceStatementVersion}
+              </span>
+            )}
+          </div>
+          <span className="text-[--color-text-muted] leading-relaxed">
+            Exact wording shown to the recipient and eIDAS positioning
+          </span>
+        </a>
+        <a
+          href={termsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col gap-1 rounded-lg border border-[--color-border] bg-white px-3 py-2.5 hover:border-[--color-accent]/40 hover:bg-blue-50/30 transition-colors"
+        >
+          <div className="flex items-center justify-between gap-1">
+            <span className="font-medium text-[--color-text-primary]">Terms of service</span>
+            {metadata?.termsVersionAtCreation && (
+              <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                v{metadata.termsVersionAtCreation}
+              </span>
+            )}
+          </div>
+          <span className="text-[--color-text-muted] leading-relaxed">
+            Terms in effect when the sender created this deal
+          </span>
+        </a>
+      </div>
     </div>
   );
 }
