@@ -155,6 +155,10 @@ async function buildService(overrides: {
     offerSnapshot: {
       findUniqueOrThrow: jest.fn<() => Promise<unknown>>().mockResolvedValue(snapshot),
     },
+    // Legacy event — no acceptanceStatementHash in payload → statement check N/A
+    signingEvent: {
+      findFirst: jest.fn<() => Promise<unknown>>().mockResolvedValue({ payload: {} }),
+    },
   };
 
   const builder = {

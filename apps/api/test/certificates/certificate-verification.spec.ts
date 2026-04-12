@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
-import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
+import { CertificatePayloadBuilder, computeCertificateHash, computeCanonicalAcceptanceHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
@@ -13,6 +13,7 @@ const CERT_ID = 'cert-1';
 const RECORD_ID = 'record-1';
 const ISSUED_AT = new Date('2024-06-01T12:00:00.000Z');
 const SESSION_ID = 'session-1';
+const OFFER_ID = 'offer-1';
 
 function makePayload() {
   return {
@@ -53,7 +54,12 @@ function makeBuiltCert() {
 
 describe('CertificateService.verify()', () => {
   let service: CertificateService;
-  let db: { acceptanceCertificate: { findUnique: jest.Mock<(...args: any[]) => any> }; acceptanceRecord: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any>; findUnique: jest.Mock<(...args: any[]) => any> }; offerSnapshot: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any> } };
+  let db: {
+    acceptanceCertificate: { findUnique: jest.Mock<(...args: any[]) => any> };
+    acceptanceRecord: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any>; findUnique: jest.Mock<(...args: any[]) => any> };
+    offerSnapshot: { findUniqueOrThrow: jest.Mock<(...args: any[]) => any> };
+    signingEvent: { findFirst: jest.Mock<(...args: any[]) => any> };
+  };
   let builder: { build: jest.Mock<(...args: any[]) => any> };
   let eventService: { verifyChain: jest.Mock<(...args: any[]) => any> };
 
@@ -62,6 +68,7 @@ describe('CertificateService.verify()', () => {
       acceptanceCertificate: { findUnique: jest.fn() },
       acceptanceRecord: { findUniqueOrThrow: jest.fn(), findUnique: jest.fn() },
       offerSnapshot: { findUniqueOrThrow: jest.fn() },
+      signingEvent: { findFirst: jest.fn() },
     };
     builder = { build: jest.fn() };
     eventService = { verifyChain: jest.fn() };
@@ -79,9 +86,15 @@ describe('CertificateService.verify()', () => {
     service = module.get(CertificateService);
   });
 
-  function stubCert(storedHash: string) {
+  // ── Stub helpers ─────────────────────────────────────────────────────────────
+
+  // Legacy cert (canonicalHash=null). After Phase 1, these return:
+  //   valid=false, integrityChecksPass=true (when hash+chain pass)
+  // because LEGACY_CERTIFICATE advisory anomaly is present.
+  function stubLegacyCert(storedHash: string) {
     db.acceptanceCertificate.findUnique.mockResolvedValue({
       id: CERT_ID,
+      offerId: OFFER_ID,
       acceptanceRecordId: RECORD_ID,
       issuedAt: ISSUED_AT,
       certificateHash: storedHash,
@@ -110,20 +123,98 @@ describe('CertificateService.verify()', () => {
       contentHash: computeSnapshotHash(snapshotHashInput),
       documents: [],
     });
+    // Legacy event — no acceptanceStatementHash in payload → statement check is N/A
+    db.signingEvent.findFirst.mockResolvedValue({ payload: {} });
   }
 
-  it('returns valid=true when hash and event chain are both intact', async () => {
+  // Backward-compat alias used by legacy tests.
+  const stubCert = stubLegacyCert;
+
+  // Modern cert (canonicalHash computed from real evidence). All checks pass →
+  // valid=true, integrityChecksPass=true, advisoryAnomalies=[].
+  function stubModernCert(storedHash: string) {
+    const acceptedAt = '2024-06-01T11:59:00.000Z';
+    const { hash: canonicalHash } = computeCanonicalAcceptanceHash({
+      acceptedAt,
+      dealId: OFFER_ID,
+      ipAddress: null,
+      recipientEmail: 'bob@client.com',
+      userAgent: null,
+    });
+    db.acceptanceCertificate.findUnique.mockResolvedValue({
+      id: CERT_ID,
+      offerId: OFFER_ID,
+      acceptanceRecordId: RECORD_ID,
+      issuedAt: ISSUED_AT,
+      certificateHash: storedHash,
+      canonicalHash,
+    });
+    db.acceptanceRecord.findUniqueOrThrow.mockResolvedValue({
+      id: RECORD_ID,
+      sessionId: SESSION_ID,
+      snapshotId: 'snap-1',
+      verifiedEmail: 'bob@client.com',
+      acceptedAt: new Date(acceptedAt),
+      ipAddress: null,
+      userAgent: null,
+    });
+    const snapshotHashInput = {
+      title: makePayload().offer.title,
+      message: null as null,
+      senderName: makePayload().sender.name,
+      senderEmail: makePayload().sender.email,
+      expiresAt: null as null,
+      documents: [] as Array<{ filename: string; sha256Hash: string; storageKey: string }>,
+    };
+    db.offerSnapshot.findUniqueOrThrow.mockResolvedValue({
+      id: 'snap-1',
+      ...snapshotHashInput,
+      contentHash: computeSnapshotHash(snapshotHashInput),
+      documents: [],
+    });
+    // Modern event — no acceptanceStatementHash field yet (Phase 3 not emitted)
+    db.signingEvent.findFirst.mockResolvedValue({ payload: {} });
+  }
+
+  // ── Phase 1 regression: modern cert (canonical hash set) returns valid=true ────
+  it('returns valid=true when modern cert — hash, canonical hash, and event chain all intact', async () => {
     const built = makeBuiltCert();
-    stubCert(built.certificateHash);
+    stubModernCert(built.certificateHash);
     builder.build.mockResolvedValue(built);
     eventService.verifyChain.mockResolvedValue({ valid: true });
 
     const result = await service.verify(CERT_ID);
 
     expect(result.valid).toBe(true);
+    expect(result.integrityChecksPass).toBe(true);
     expect(result.certificateHashMatch).toBe(true);
+    expect(result.canonicalHashMatch).toBe(true);
     expect(result.eventChainValid).toBe(true);
+    expect(result.advisoryAnomalies).toHaveLength(0);
+    expect(result.integrityAnomalies).toHaveLength(0);
     expect(result.brokenAtSequence).toBeUndefined();
+  });
+
+  // ── Phase 1 regression: legacy cert returns valid=false, integrityChecksPass=true ─
+  it('legacy cert (canonicalHash=null) returns valid=false with integrityChecksPass=true', async () => {
+    const built = makeBuiltCert();
+    stubLegacyCert(built.certificateHash);
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    // Crypto checks all pass — no tampering detected
+    expect(result.integrityChecksPass).toBe(true);
+    expect(result.certificateHashMatch).toBe(true);
+    expect(result.canonicalHashMatch).toBeUndefined(); // not checked for legacy certs
+    expect(result.integrityAnomalies).toHaveLength(0);
+    // Advisory anomaly for missing canonical hash makes valid=false
+    expect(result.valid).toBe(false);
+    expect(result.advisoryAnomalies).toHaveLength(1);
+    expect(result.advisoryAnomalies[0]).toContain('LEGACY_CERTIFICATE');
+    // Backward-compat union field
+    expect(result.anomaliesDetected).toHaveLength(1);
   });
 
   it('returns valid=false when stored hash does not match recomputed hash', async () => {
@@ -165,6 +256,23 @@ describe('CertificateService.verify()', () => {
     expect(result.valid).toBe(false);
     expect(result.certificateHashMatch).toBe(false);
     expect(result.eventChainValid).toBe(false);
+  });
+
+  // ── Phase 1 regression: tampered modern cert — integrityChecksPass=false ──────
+  it('modern cert with tampered hash returns valid=false, integrityChecksPass=false, integrityAnomalies non-empty', async () => {
+    const built = makeBuiltCert();
+    stubModernCert('tampered' + '0'.repeat(57)); // stored hash does not match recomputed
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.valid).toBe(false);
+    expect(result.integrityChecksPass).toBe(false);
+    expect(result.certificateHashMatch).toBe(false);
+    expect(result.advisoryAnomalies).toHaveLength(0); // not a legacy cert
+    expect(result.integrityAnomalies.length).toBeGreaterThan(0);
+    expect(result.anomaliesDetected.length).toBeGreaterThan(0);
   });
 
   it('throws NotFoundException when certificate does not exist', async () => {
@@ -259,5 +367,59 @@ describe('CertificateService.generateForAcceptance()', () => {
     expect(createArgs.data.certificateHash).toBe(built.certificateHash);
     expect(createArgs.data.offerId).toBe('offer-1');
     expect(createArgs.data.acceptanceRecordId).toBe(RECORD_ID);
+  });
+});
+
+// ─── CertificateService.getExportForJob() — Phase 5 (MEDIUM-6) ────────────────
+// Verifies that the certificateHash returned in the export payload is the value
+// RECOMPUTED by the builder from current evidence, NOT the raw stored value.
+// A tampered stored hash must not appear in the exported payload.
+
+describe('CertificateService.getExportForJob()', () => {
+  let service: CertificateService;
+  let db: {
+    acceptanceCertificate: { findUnique: jest.Mock<(...args: any[]) => any> };
+  };
+  let builder: { build: jest.Mock<(...args: any[]) => any> };
+
+  beforeEach(async () => {
+    db = {
+      acceptanceCertificate: { findUnique: jest.fn() },
+    };
+    builder = { build: jest.fn() };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        CertificateService,
+        { provide: 'PRISMA', useValue: db },
+        { provide: CertificatePayloadBuilder, useValue: builder },
+        { provide: SigningEventService, useValue: { verifyChain: jest.fn() } },
+        { provide: DealEventService, useValue: { emit: () => Promise.resolve() } },
+      ],
+    }).compile();
+
+    service = module.get(CertificateService);
+  });
+
+  it('returns recomputed certificateHash from builder, not the stored value', async () => {
+    const storedHash   = 'stored-' + '0'.repeat(57);  // tampered or stale stored value
+    const recomputedHash = makeBuiltCert().certificateHash;   // correct recomputed value
+
+    db.acceptanceCertificate.findUnique.mockResolvedValue({
+      id: CERT_ID,
+      acceptanceRecordId: RECORD_ID,
+      issuedAt: ISSUED_AT,
+      certificateHash: storedHash,   // stored (potentially tampered)
+      pdfStorageKey: null,
+    });
+
+    const built = makeBuiltCert();
+    builder.build.mockResolvedValue(built);
+
+    const result = await service.getExportForJob(CERT_ID);
+
+    // Must return the recomputed hash, not the potentially-tampered stored one
+    expect(result.certificateHash).toBe(recomputedHash);
+    expect(result.certificateHash).not.toBe(storedHash);
   });
 });

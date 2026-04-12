@@ -381,13 +381,22 @@ export async function exportCertificate(id: string): Promise<{ certificateId: st
 
 export interface CertificateVerification {
   certificateId: string;
+  // Strict: true only when all integrity checks pass AND no advisory anomalies.
   valid: boolean;
+  // True when all cryptographic checks pass, even if advisory anomalies exist
+  // (e.g. LEGACY_CERTIFICATE). Use to show "integrity OK but limited guarantees"
+  // rather than the same red "Verification failed" as a tampered certificate.
+  integrityChecksPass: boolean;
   certificateHashMatch: boolean;
+  canonicalHashMatch?: boolean;
+  statementHashMatch?: boolean;
   reconstructedHash: string;
   storedHash: string;
   snapshotIntegrity: boolean;
   eventChainIntegrity: boolean;
-  anomaliesDetected: boolean;
+  integrityAnomalies: string[];
+  advisoryAnomalies: string[];
+  anomaliesDetected: string[];
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────

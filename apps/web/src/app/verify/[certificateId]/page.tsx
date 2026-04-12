@@ -24,6 +24,9 @@ const VERIFY_TIMEOUT_MS = 5_000;
 type PageState =
   | { phase: 'loading' }
   | { phase: 'valid'; result: CertificateVerification }
+  // Crypto checks all pass but advisory anomalies exist (e.g. LEGACY_CERTIFICATE).
+  // Shown in amber — not a green "valid" tick, but also not the red "tampered" state.
+  | { phase: 'legacy'; result: CertificateVerification }
   | { phase: 'invalid'; result: CertificateVerification }
   | { phase: 'not-found' }
   | { phase: 'timeout' }
@@ -44,7 +47,14 @@ export default function CertificateVerifyPage() {
 
     Promise.race([verifyCertificate(certificateId), timeout])
       .then((result) => {
-        setState({ phase: result.valid ? 'valid' : 'invalid', result });
+        if (result.valid) {
+          setState({ phase: 'valid', result });
+        } else if (result.integrityChecksPass) {
+          // Crypto checks pass but advisory anomalies present (legacy cert, etc.)
+          setState({ phase: 'legacy', result });
+        } else {
+          setState({ phase: 'invalid', result });
+        }
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.message === '__timeout__') {
@@ -81,6 +91,13 @@ export default function CertificateVerifyPage() {
           {state.phase === 'loading' && <LoadingState />}
           {state.phase === 'valid' && (
             <ValidState
+              result={state.result}
+              showDetails={showDetails}
+              onToggleDetails={() => setShowDetails((v) => !v)}
+            />
+          )}
+          {state.phase === 'legacy' && (
+            <LegacyState
               result={state.result}
               showDetails={showDetails}
               onToggleDetails={() => setShowDetails((v) => !v)}
@@ -152,7 +169,7 @@ function ValidState({
         </div>
       </div>
 
-      {result.anomaliesDetected && (
+      {result.anomaliesDetected?.length > 0 && (
         <div className="mx-6 mb-5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-xs text-amber-800">
@@ -189,6 +206,92 @@ function ValidState({
               <CheckRow label="Acceptance event chain" ok={result.eventChainIntegrity} />
             </div>
             <TechRow label="Verification hash" value={result.reconstructedHash} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Legacy certificate state ─────────────────────────────────────────────────
+// Shown when integrityChecksPass=true but valid=false due to advisory anomalies
+// (e.g. LEGACY_CERTIFICATE — certificate predates the canonical hash field).
+// Displayed in amber: the crypto checks that DO exist all pass, but the certificate
+// lacks modern full-fingerprint guarantees.
+function LegacyState({
+  result,
+  showDetails,
+  onToggleDetails,
+}: {
+  result: CertificateVerification;
+  showDetails: boolean;
+  onToggleDetails: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-amber-50 to-white overflow-hidden shadow-sm">
+      <div className="px-8 pt-10 pb-8 text-center">
+        <div
+          className="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center
+                     ring-4 ring-amber-200 shadow-lg shadow-amber-200/60 mx-auto mb-5"
+          aria-hidden="true"
+        >
+          <AlertTriangle className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-amber-900 mb-4">Legacy certificate</h1>
+        <div className="space-y-2 max-w-xs mx-auto">
+          <p className="text-sm text-amber-800 font-medium">
+            All available integrity checks passed.
+          </p>
+          <p className="text-sm text-amber-700">
+            This certificate was issued before full canonical fingerprinting was introduced.
+            Some modern verification guarantees are unavailable.
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-6 mb-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+        <p className="text-xs text-amber-800">
+          The acceptance record has not been tampered with. However, the 5-field canonical
+          fingerprint (acceptedAt, dealId, ipAddress, recipientEmail, userAgent) was not
+          captured at issuance and cannot be independently verified.
+        </p>
+      </div>
+
+      <VerificationExplanation tint="amber" />
+
+      <div className="border-t border-amber-200 px-6 py-3">
+        <button
+          type="button"
+          onClick={onToggleDetails}
+          className="w-full flex items-center justify-between text-xs text-amber-700 hover:text-amber-900 transition-colors py-0.5"
+        >
+          <span>Show technical verification details</span>
+          {showDetails
+            ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+            : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
+        </button>
+        {showDetails && (
+          <div className="mt-4 space-y-4">
+            <div className="divide-y divide-amber-100 bg-white/60 rounded-xl border border-amber-200">
+              <HashRow label="Certificate ID" value={result.certificateId} />
+              <HashRow label="Certificate hash" value={result.storedHash} />
+            </div>
+            <div>
+              <CheckRow label="Certificate hash match" ok={result.certificateHashMatch} />
+              <CheckRow label="Document snapshot integrity" ok={result.snapshotIntegrity} />
+              <CheckRow label="Acceptance event chain" ok={result.eventChainIntegrity} />
+            </div>
+            <TechRow label="Verification hash" value={result.reconstructedHash} />
+            {result.advisoryAnomalies?.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1">
+                  Advisory notices
+                </p>
+                {result.advisoryAnomalies.map((a, i) => (
+                  <p key={i} className="text-xs text-amber-800 mt-1">{a}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -273,11 +376,13 @@ function InvalidState({
 
 // Shared explanation of how verification works — rendered in both ValidState and
 // InvalidState above the technical toggle, below the plain-language summary.
-function VerificationExplanation({ tint }: { tint: 'green' | 'red' }) {
+function VerificationExplanation({ tint }: { tint: 'green' | 'red' | 'amber' }) {
   const colors =
     tint === 'green'
       ? 'border-green-200 bg-green-50/40 text-green-800'
-      : 'border-red-200 bg-red-50/40 text-red-800';
+      : tint === 'amber'
+        ? 'border-amber-200 bg-amber-50/40 text-amber-800'
+        : 'border-red-200 bg-red-50/40 text-red-800';
 
   return (
     <div className={`mx-6 mb-5 rounded-lg border px-4 py-3 ${colors}`}>

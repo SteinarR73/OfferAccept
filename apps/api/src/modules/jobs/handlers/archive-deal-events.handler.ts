@@ -78,11 +78,15 @@ export class ArchiveDealEventsHandler {
       orderBy: { createdAt: 'asc' },
       take: this.batchSize,
       select: {
-        id: true,
-        dealId: true,
-        eventType: true,
-        metadata: true,
-        createdAt: true,
+        id:                true,
+        dealId:            true,
+        eventType:         true,
+        metadata:          true,
+        createdAt:         true,
+        // Phase 4 / MEDIUM-4: chain fields preserved through archival
+        sequenceNumber:    true,
+        previousEventHash: true,
+        eventHash:         true,
       },
     });
 
@@ -112,11 +116,15 @@ export class ArchiveDealEventsHandler {
       // skipDuplicates maps to ON CONFLICT DO NOTHING in PostgreSQL.
       await tx.dealEventArchive.createMany({
         data: eligibleRows.map((row) => ({
-          id:        row.id,
-          dealId:    row.dealId,
-          eventType: row.eventType,
-          metadata:  row.metadata ?? undefined,
-          createdAt: row.createdAt,
+          id:                row.id,
+          dealId:            row.dealId,
+          eventType:         row.eventType,
+          metadata:          row.metadata ?? undefined,
+          createdAt:         row.createdAt,
+          // Phase 4: preserve chain fields — null for legacy events, set for chained events
+          sequenceNumber:    row.sequenceNumber ?? undefined,
+          previousEventHash: row.previousEventHash ?? undefined,
+          eventHash:         row.eventHash ?? undefined,
         })),
         skipDuplicates: true, // INSERT … ON CONFLICT DO NOTHING
       });

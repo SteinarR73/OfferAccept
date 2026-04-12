@@ -76,10 +76,20 @@ export class CertificatePayloadBuilder {
       },
     });
 
-    // Load recipient for the name (name is not in AcceptanceRecord)
-    const recipient = await this.db.offerRecipient.findUniqueOrThrow({
-      where: { id: record.recipientId },
-    });
+    // Load recipient for the name if not frozen in AcceptanceRecord.
+    // Phase 2 (HIGH-2): AcceptanceRecord.recipientName is set at acceptance time and
+    // is the canonical source of truth. Legacy records (null) fall back to reading
+    // OfferRecipient.name directly — this fallback is correct for existing certificates.
+    let recipientName: string;
+    if (record.recipientName !== null && record.recipientName !== undefined) {
+      recipientName = record.recipientName;
+    } else {
+      const recipient = await this.db.offerRecipient.findUniqueOrThrow({
+        where: { id: record.recipientId },
+        select: { name: true },
+      });
+      recipientName = recipient.name;
+    }
 
     const { snapshot } = record;
 
@@ -105,7 +115,7 @@ export class CertificatePayloadBuilder {
         email: snapshot.senderEmail,
       },
       recipient: {
-        name: recipient.name,
+        name: recipientName,
         verifiedEmail: record.verifiedEmail,
       },
       documents: sortedDocs.map((d) => ({

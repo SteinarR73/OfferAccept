@@ -258,6 +258,35 @@ describe('AcceptanceService.accept() — happy path', () => {
     );
   });
 
+  // ── Phase 3 (HIGH-3): acceptanceStatementHash in OFFER_ACCEPTED payload ────────
+  it('OFFER_ACCEPTED payload includes acceptanceStatementHash = SHA-256(acceptanceStatement)', async () => {
+    const { createHash } = await import('crypto');
+    const { service, db } = await buildService(createMockDb());
+
+    await service.accept(makeSession() as never, CHALLENGE_ID, DEFAULT_CONTEXT);
+
+    // The signing event payload is passed to signingEvent.create inside append().
+    // Reconstruct the expected SHA-256 from the statement that acceptance.service.ts builds.
+    // The statement is built from snapshot + recipient data in the mock (makeSnapshot + makeRecipient).
+    const createCall = (db.signingEvent.create as jest.Mock<any>).mock.calls[0][0] as {
+      data: { payload: Record<string, unknown> };
+    };
+    const payload = createCall.data.payload as Record<string, unknown>;
+
+    expect(typeof payload['acceptanceStatementHash']).toBe('string');
+    expect(payload['acceptanceStatementHash']).toMatch(/^[a-f0-9]{64}$/);
+
+    // The hash must equal SHA-256 of the statement stored in the AcceptanceRecord.
+    // acceptanceRecord.create was called with `acceptanceStatement`; extract it.
+    const recordCreateCall = (db.acceptanceRecord.create as jest.Mock<any>).mock.calls[0][0] as {
+      data: { acceptanceStatement: string };
+    };
+    const statement = recordCreateCall.data.acceptanceStatement;
+    const expectedHash = createHash('sha256').update(statement, 'utf8').digest('hex');
+
+    expect(payload['acceptanceStatementHash']).toBe(expectedHash);
+  });
+
   it('deletes reminder schedule atomically inside the acceptance transaction', async () => {
     // The deleteMany must execute inside the same $transaction as the CAS and
     // AcceptanceRecord creation so the reminder sweep sees a consistent state:

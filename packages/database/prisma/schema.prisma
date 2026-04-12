@@ -685,6 +685,11 @@ model AcceptanceRecord {
   userAgent       String?
   locale          String?  // from Accept-Language header or Intl API
   timezone        String?  // from Intl.DateTimeFormat().resolvedOptions().timeZone
+  // Recipient name frozen at acceptance time (Phase 2 / HIGH-2).
+  // OfferRecipient.name is mutable; freezing it here ensures the certificate
+  // always shows the name the recipient saw, even if the sender later edits it.
+  // Nullable for backward compatibility — legacy records fall back to recipient.name.
+  recipientName   String?
 
   // Snapshot binding — copied at creation for certificate independence.
   // Allows regenerating the certificate without reading OfferSnapshot.
@@ -1025,9 +1030,18 @@ model DealEvent {
   metadata  Json?
   createdAt DateTime      @default(now())
 
+  // ── Hash chain (Phase 4 / MEDIUM-4) ───────────────────────────────────────
+  // Forms a verifiable linked-list within each deal.
+  // Nullable for backward compatibility — events created before this migration
+  // have null chain fields and are treated as a pre-chain boundary by verifyChain.
+  sequenceNumber    Int?    // 1-based, unique per (dealId). Null for legacy events.
+  previousEventHash String? // eventHash of the immediately preceding event, or null (genesis)
+  eventHash         String? // SHA-256 of the event content + chain link
+
   offer Offer @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   // Used for timeline queries (ASC) and activity feed queries (DESC)
+  @@unique([dealId, sequenceNumber])
   @@index([dealId])
   @@index([createdAt])
   @@map("deal_events")
@@ -1046,6 +1060,11 @@ model DealEventArchive {
   metadata   Json?
   createdAt  DateTime
   archivedAt DateTime      @default(now())
+
+  // Hash chain fields preserved from DealEvent (nullable — legacy events have null)
+  sequenceNumber    Int?
+  previousEventHash String?
+  eventHash         String?
 
   @@index([dealId, createdAt])
   @@index([archivedAt])

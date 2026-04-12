@@ -41,9 +41,21 @@ import { DealEventService } from '../deal-events/deal-events.service';
 //   Mutable tables (Offer, User, Organization) are never consulted.
 
 export interface VerificationResult {
-  // Top-level validity: true only when ALL checks pass.
+  // ── Top-level validity ────────────────────────────────────────────────────
+  // Strict invariant: valid === (integrityChecksPass && advisoryAnomalies.length === 0)
+  // true ONLY when every cryptographic check passes AND no advisory anomalies exist.
+  // Callers that only check `valid` are correct: a legacy cert without canonicalHash
+  // returns valid=false so it is never silently treated as fully trusted.
   valid: boolean;
   certificateId: string;
+
+  // ── Integrity summary ─────────────────────────────────────────────────────
+  // True when all cryptographic checks pass (hash, canonical, snapshot, chain).
+  // May be true while valid=false when advisory anomalies (e.g. LEGACY_CERTIFICATE)
+  // are present but no actual tampering is detected.
+  // Use this to distinguish "crypto intact but incomplete guarantees" from
+  // "evidence of tampering" — the distinction matters for legacy certificate UI.
+  integrityChecksPass: boolean;
 
   // ── Hash check ────────────────────────────────────────────────────────────
   // Reconstructed from stored immutable evidence using the stored issuedAt.
@@ -58,6 +70,12 @@ export interface VerificationResult {
   // before this field was introduced (backward compatibility).
   canonicalHashMatch?: boolean;
 
+  // ── Statement hash check ─────────────────────────────────────────────────
+  // SHA-256 of the acceptance statement text, stored in the OFFER_ACCEPTED
+  // event payload at acceptance time. Undefined for events that pre-date this
+  // field (acceptanceStatementHash not present in legacy event payloads).
+  statementHashMatch?: boolean;
+
   // ── Snapshot integrity ────────────────────────────────────────────────────
   // OfferSnapshot.contentHash is recomputed from raw OfferSnapshotDocument rows.
   // Detects tampering with the frozen offer content independent of the certificate.
@@ -69,9 +87,13 @@ export interface VerificationResult {
   eventChainValid: boolean;
   brokenAtSequence?: number;  // sequence number of the first broken link, if any
 
-  // ── Anomaly summary ───────────────────────────────────────────────────────
-  // Human-readable list of all detected problems. Empty when valid=true.
-  anomaliesDetected: string[];
+  // ── Anomaly lists — split by severity ─────────────────────────────────────
+  // integrityAnomalies: tampering signals — any entry here sets integrityChecksPass=false
+  // advisoryAnomalies:  informational flags — set valid=false but not integrityChecksPass
+  // anomaliesDetected:  union of both; kept for backward compatibility
+  integrityAnomalies: string[];
+  advisoryAnomalies:  string[];
+  anomaliesDetected:  string[];   // === [...integrityAnomalies, ...advisoryAnomalies]
 }
 
 @Injectable()
@@ -219,7 +241,8 @@ export class CertificateService {
       },
     });
 
-    const anomalies: string[] = [];
+    const integrityAnomalies: string[] = [];
+    const advisoryAnomalies: string[] = [];
 
     // ── Step 3A: Recompute certificate hash from evidence ─────────────────────
     // builder.build() performs its own independent reads (AcceptanceRecord,
@@ -237,7 +260,7 @@ export class CertificateService {
     const certificateHashMatch = reconstructedHash === storedHash;
 
     if (!certificateHashMatch) {
-      anomalies.push(
+      integrityAnomalies.push(
         `Certificate hash mismatch: stored hash does not match hash recomputed from evidence. ` +
         `This indicates the certificate record or its source evidence may have been tampered with.`,
       );
@@ -245,8 +268,8 @@ export class CertificateService {
 
     // ── Step 3B / 4B: Canonical acceptance hash ───────────────────────────────
     // Recompute from the independently fetched acceptance record (step 2).
-    // When canonicalHash is null the certificate predates this field; no stored
-    // value exists to compare against so the check does not apply.
+    // When canonicalHash is null the certificate predates this field; an advisory
+    // anomaly is recorded but this does not set integrityChecksPass=false.
     let canonicalHashMatch: boolean | undefined;
     if (cert.canonicalHash !== null) {
       const { hash: recomputedCanonical } = computeCanonicalAcceptanceHash({
@@ -259,7 +282,7 @@ export class CertificateService {
       canonicalHashMatch = recomputedCanonical === cert.canonicalHash;
 
       if (!canonicalHashMatch) {
-        anomalies.push(
+        integrityAnomalies.push(
           `Canonical acceptance hash mismatch: the 5-field acceptance fingerprint ` +
           `(acceptedAt, dealId, ipAddress, recipientEmail, userAgent) does not match ` +
           `the value stored at issuance. Core acceptance evidence may have been altered.`,
@@ -268,9 +291,6 @@ export class CertificateService {
     }
 
     // ── Step 3C / 4C: Snapshot content integrity ──────────────────────────────
-    // Load snapshot and raw documents from immutable tables. Recompute the content
-    // hash from the documents; compare against the snapshot's stored contentHash.
-    // snapshotId comes from the independently fetched record (step 2).
     const snapshot = await this.db.offerSnapshot.findUniqueOrThrow({
       where: { id: record.snapshotId },
       include: { documents: true },
@@ -292,53 +312,94 @@ export class CertificateService {
     const snapshotIntegrity = recomputedSnapshotHash === snapshot.contentHash;
 
     if (!snapshotIntegrity) {
-      anomalies.push(
+      integrityAnomalies.push(
         `Snapshot integrity failure: the stored content hash does not match the hash recomputed ` +
         `from the frozen offer documents. The offer content may have been modified after sending.`,
       );
     }
 
     // ── Step 3D / 4D: Signing event chain ─────────────────────────────────────
-    // sessionId comes from the independently fetched record (step 2).
     const chainResult = await this.eventService.verifyChain(record.sessionId);
 
     if (!chainResult.valid) {
-      anomalies.push(
+      integrityAnomalies.push(
         `Signing event chain broken at sequence ${chainResult.brokenAtSequence}. ` +
         `An event may have been inserted, deleted, or modified.`,
       );
     }
 
-    // Legacy certificates (canonicalHash === null) pre-date the 5-field fingerprint
-    // field introduced in migration 20260328_certificate_canonical_hash.  There is
-    // no stored value to compare against, so the check cannot be performed.
-    //
-    // We treat the absence as N/A rather than a failure so that older certificates
-    // continue to verify successfully on their three remaining checks.  However we
-    // do NOT silently skip the gap: an informational anomaly is added so that
-    // callers, audit tooling, and the public verify UI can surface the limitation
-    // rather than presenting an unqualified "✅ All checks passed" to the user.
+    // ── Step 3E / 4E: Acceptance statement hash ───────────────────────────────
+    // Checks whether the acceptance statement stored in AcceptanceRecord matches
+    // the hash recorded in the OFFER_ACCEPTED signing event payload.
+    // Only performed when the event was recorded after Phase 3 hardening
+    // (i.e. acceptanceStatementHash field exists in the event payload).
+    // If the field is absent the check is N/A (legacy event) — advisory only.
+    let statementHashMatch: boolean | undefined;
+    const acceptedEvent = await this.db.signingEvent.findFirst({
+      where: { sessionId: record.sessionId, eventType: 'OFFER_ACCEPTED' },
+      select: { payload: true },
+    });
+    if (acceptedEvent) {
+      const eventPayload = acceptedEvent.payload as Record<string, unknown> | null;
+      const storedStatementHash = eventPayload?.['acceptanceStatementHash'] as string | undefined;
+      if (storedStatementHash !== undefined) {
+        // Modern event: verify the statement text matches the stored hash.
+        const { createHash } = await import('crypto');
+        const record2 = await this.db.acceptanceRecord.findUniqueOrThrow({
+          where: { id: cert.acceptanceRecordId },
+          select: { acceptanceStatement: true },
+        });
+        const recomputedStatementHash = createHash('sha256')
+          .update(record2.acceptanceStatement, 'utf8')
+          .digest('hex');
+        statementHashMatch = recomputedStatementHash === storedStatementHash;
+        if (!statementHashMatch) {
+          integrityAnomalies.push(
+            `Acceptance statement hash mismatch: the text of the acceptance statement in the ` +
+            `acceptance record does not match the hash committed into the signing event chain. ` +
+            `The acceptance statement may have been altered after acceptance.`,
+          );
+        }
+      }
+    }
+
+    // ── Legacy certificate advisory ───────────────────────────────────────────
+    // Certificates issued before canonicalHash was introduced (migration
+    // 20260328_certificate_canonical_hash) lack the 5-field fingerprint.
+    // This is an advisory condition: the crypto checks that DO exist still pass,
+    // but the certificate cannot be fully independently verified by a third party.
+    // Advisory anomalies set valid=false but do NOT set integrityChecksPass=false.
     if (cert.canonicalHash === null) {
-      anomalies.push(
+      advisoryAnomalies.push(
         'LEGACY_CERTIFICATE: This certificate was issued before the canonical acceptance ' +
         'fingerprint was introduced. The 5-field binding (acceptedAt, dealId, ipAddress, ' +
         'recipientEmail, userAgent) cannot be independently verified. ' +
         'All other integrity checks (certificateHash, snapshotIntegrity, eventChain) remain valid.',
       );
     }
-    const canonicalHashOk = canonicalHashMatch ?? true;
+
+    // Canonical hash passes if present and matching, or N/A for legacy certs.
+    const canonicalHashOk = canonicalHashMatch !== false; // undefined (legacy) or true
+    const integrityChecksPass =
+      certificateHashMatch && canonicalHashOk && snapshotIntegrity && chainResult.valid &&
+      statementHashMatch !== false; // undefined (legacy) or true
+    const anomaliesDetected = [...integrityAnomalies, ...advisoryAnomalies];
 
     return {
-      valid: certificateHashMatch && canonicalHashOk && snapshotIntegrity && chainResult.valid,
+      valid: integrityChecksPass && advisoryAnomalies.length === 0,
       certificateId,
+      integrityChecksPass,
       certificateHashMatch,
       reconstructedHash,
       storedHash,
       canonicalHashMatch,
+      statementHashMatch,
       snapshotIntegrity,
       eventChainValid: chainResult.valid,
       brokenAtSequence: chainResult.brokenAtSequence,
-      anomaliesDetected: anomalies,
+      integrityAnomalies,
+      advisoryAnomalies,
+      anomaliesDetected,
     };
   }
 
@@ -463,7 +524,10 @@ export class CertificateService {
 
     return {
       certificateId: cert.id,
-      certificateHash: cert.certificateHash,
+      // Phase 5 (MEDIUM-6): use the recomputed hash from the builder, not the stored value.
+      // The stored certificateHash could be stale if the row was tampered with after issuance.
+      // The builder recomputes from immutable evidence, so this is always authoritative.
+      certificateHash: built.certificateHash,
       issuedAt: cert.issuedAt.toISOString(),
       pdfStorageKey: cert.pdfStorageKey,
       payload: built.payload,

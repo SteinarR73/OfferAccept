@@ -238,6 +238,129 @@ describe('CertificatePayloadBuilder.build()', () => {
   });
 });
 
+// ─── Phase 2 (HIGH-2): recipientName frozen in AcceptanceRecord ───────────────
+
+describe('CertificatePayloadBuilder.build() — recipient name freezing (Phase 2)', () => {
+  const SNAPSHOT = {
+    id: 'snapshot-1',
+    offerId: 'offer-1',
+    title: 'Test Offer',
+    message: null,
+    senderName: 'Alice',
+    senderEmail: 'alice@co.com',
+    expiresAt: null,
+    frozenAt: new Date('2024-05-31T10:00:00.000Z'),
+    contentHash: 'a'.repeat(64),
+    documents: [],
+  };
+
+  const BASE_RECORD = {
+    id: RECORD_ID,
+    recipientId: 'recipient-1',
+    snapshotId: 'snapshot-1',
+    acceptanceStatement: 'I agree.',
+    verifiedEmail: 'bob@client.com',
+    emailVerifiedAt: new Date('2024-06-01T11:55:00.000Z'),
+    acceptedAt: new Date('2024-06-01T11:59:00.000Z'),
+    ipAddress: null,
+    userAgent: null,
+    locale: null,
+    timezone: null,
+    snapshot: SNAPSHOT,
+  };
+
+  it('uses frozen recipientName when set — does not read OfferRecipient', async () => {
+    const findUniqueOrThrow = jest.fn();
+    const db = {
+      acceptanceRecord: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue({
+          ...BASE_RECORD,
+          recipientName: 'Bob Client (frozen)',
+        }),
+      },
+      offerRecipient: { findUniqueOrThrow },
+    };
+    const builder = new CertificatePayloadBuilder(db as never);
+    const result = await builder.build(RECORD_ID, CERTIFICATE_ID, ISSUED_AT);
+
+    expect(result.payload.recipient.name).toBe('Bob Client (frozen)');
+    expect(findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it('post-acceptance name edit in OfferRecipient does not affect certificate hash', async () => {
+    // Step 1: certificate built at acceptance time with frozen name.
+    const frozenName = 'Bob Client';
+    const dbAtAcceptance = {
+      acceptanceRecord: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue({
+          ...BASE_RECORD,
+          recipientName: frozenName,
+        }),
+      },
+      offerRecipient: { findUniqueOrThrow: jest.fn() },
+    };
+    const hashAtAcceptance = (await new CertificatePayloadBuilder(dbAtAcceptance as never)
+      .build(RECORD_ID, CERTIFICATE_ID, ISSUED_AT)).certificateHash;
+
+    // Step 2: OfferRecipient.name is changed by sender after acceptance.
+    // recipientName in AcceptanceRecord stays frozen.
+    const dbAfterEdit = {
+      acceptanceRecord: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue({
+          ...BASE_RECORD,
+          recipientName: frozenName, // unchanged frozen value
+        }),
+      },
+      offerRecipient: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue({ name: 'Bob CHANGED' }),
+      },
+    };
+    const hashAfterEdit = (await new CertificatePayloadBuilder(dbAfterEdit as never)
+      .build(RECORD_ID, CERTIFICATE_ID, ISSUED_AT)).certificateHash;
+
+    // Hash must be identical — the edit to OfferRecipient did not affect it.
+    expect(hashAfterEdit).toBe(hashAtAcceptance);
+  });
+
+  it('legacy record (recipientName=null) falls back to OfferRecipient.name', async () => {
+    const db = {
+      acceptanceRecord: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue({
+          ...BASE_RECORD,
+          recipientName: null, // legacy — not yet frozen
+        }),
+      },
+      offerRecipient: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue({ name: 'Legacy Recipient' }),
+      },
+    };
+    const builder = new CertificatePayloadBuilder(db as never);
+    const result = await builder.build(RECORD_ID, CERTIFICATE_ID, ISSUED_AT);
+
+    expect(result.payload.recipient.name).toBe('Legacy Recipient');
+    expect(db.offerRecipient.findUniqueOrThrow).toHaveBeenCalled();
+  });
+
+  it('tampering the frozen recipientName in AcceptanceRecord produces a different hash', async () => {
+    const originalRecord = { ...BASE_RECORD, recipientName: 'Original Name' };
+    const tamperedRecord = { ...BASE_RECORD, recipientName: 'Tampered Name' };
+
+    const makeDbWith = (record: typeof originalRecord) => ({
+      acceptanceRecord: {
+        findUniqueOrThrow: jest.fn<any>().mockResolvedValue(record),
+      },
+      offerRecipient: { findUniqueOrThrow: jest.fn() },
+    });
+
+    const hashOriginal = (await new CertificatePayloadBuilder(makeDbWith(originalRecord) as never)
+      .build(RECORD_ID, CERTIFICATE_ID, ISSUED_AT)).certificateHash;
+    const hashTampered = (await new CertificatePayloadBuilder(makeDbWith(tamperedRecord) as never)
+      .build(RECORD_ID, CERTIFICATE_ID, ISSUED_AT)).certificateHash;
+
+    expect(hashOriginal).not.toBe(hashTampered);
+  });
+});
+
 // ─── computeCanonicalAcceptanceHash ───────────────────────────────────────────
 
 describe('computeCanonicalAcceptanceHash', () => {

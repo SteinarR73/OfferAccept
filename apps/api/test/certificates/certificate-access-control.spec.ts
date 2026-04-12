@@ -65,7 +65,7 @@ type MockDb = {
   acceptanceCertificate: { findUnique: AnyMock; create: AnyMock };
   acceptanceRecord: { findUniqueOrThrow: AnyMock; findUnique: AnyMock };
   offerSnapshot: { findUniqueOrThrow: AnyMock };
-  signingEvent: { findMany: AnyMock };
+  signingEvent: { findMany: AnyMock; findFirst: AnyMock };
 };
 
 function makeMockDb(): MockDb {
@@ -73,7 +73,11 @@ function makeMockDb(): MockDb {
     acceptanceCertificate: { findUnique: jest.fn(), create: jest.fn() },
     acceptanceRecord: { findUniqueOrThrow: jest.fn(), findUnique: jest.fn() },
     offerSnapshot: { findUniqueOrThrow: jest.fn() },
-    signingEvent: { findMany: jest.fn<() => Promise<[]>>().mockResolvedValue([]) },
+    signingEvent: {
+      findMany: jest.fn<() => Promise<[]>>().mockResolvedValue([]),
+      // Legacy event — no acceptanceStatementHash → statement check N/A
+      findFirst: jest.fn<() => Promise<unknown>>().mockResolvedValue({ payload: {} }),
+    },
   };
 }
 
@@ -240,7 +244,10 @@ describe('CertificateService.verify() — public endpoint safety', () => {
     // verify() signature has no callerOrgId/callerRole — this is by design
     const result = await service.verify(CERT_ID);
 
-    expect(result.valid).toBe(true);
+    // Phase 1 invariant: canonicalHash=null makes this a legacy cert → valid=false,
+    // but integrityChecksPass=true (no tampering — just incomplete guarantees).
+    expect(result.valid).toBe(false);
+    expect(result.integrityChecksPass).toBe(true);
     expect(result.certificateHashMatch).toBe(true);
     expect(result.eventChainValid).toBe(true);
 

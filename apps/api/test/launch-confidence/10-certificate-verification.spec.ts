@@ -155,6 +155,10 @@ function makeDb(
     offerSnapshot: {
       findUniqueOrThrow: jest.fn<any>().mockResolvedValue(snapshot),
     },
+    // Legacy event — no acceptanceStatementHash field → statement check is N/A
+    signingEvent: {
+      findFirst: jest.fn<any>().mockResolvedValue({ payload: {} }),
+    },
   };
 }
 
@@ -291,11 +295,16 @@ describe('TEST 10 — Certificate Verification', () => {
 
     const result = await svc.verify(CERT_ID);
 
-    // canonicalHashMatch should be undefined (N/A, not a failure)
+    // canonicalHashMatch is undefined (N/A — not counted as a failure)
     expect(result.canonicalHashMatch).toBeUndefined();
 
-    // All other checks pass — still valid overall
-    expect(result.valid).toBe(true);
+    // Phase 1 invariant: LEGACY_CERTIFICATE advisory anomaly → valid=false
+    // but integrityChecksPass=true (no tampering detected, incomplete guarantees only)
+    expect(result.valid).toBe(false);
+    expect(result.integrityChecksPass).toBe(true);
+    expect(result.advisoryAnomalies).toHaveLength(1);
+    expect(result.advisoryAnomalies[0]).toContain('LEGACY_CERTIFICATE');
+    expect(result.integrityAnomalies).toHaveLength(0);
   });
 
   it('throws NotFoundException when certificate does not exist', async () => {

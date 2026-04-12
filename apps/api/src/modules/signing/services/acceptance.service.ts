@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { PrismaClient, SigningSession, AcceptanceRecord, Prisma } from '@prisma/client';
 import { offerStateMachine } from '../../offers/domain/offer.state-machine';
 import { recipientStateMachine } from '../../offers/domain/offer-recipient.state-machine';
@@ -150,6 +151,10 @@ export class AcceptanceService {
             locale: context.locale,
             timezone: context.timezone,
             snapshotContentHash: snapshot.contentHash,
+            // Freeze the recipient name as-of acceptance. OfferRecipient.name is mutable
+            // (the sender can edit it). By capturing it here, the certificate will always
+            // reflect the name the recipient saw at the time they accepted.
+            recipientName: recipient.name,
           },
         });
       } catch (err) {
@@ -173,6 +178,14 @@ export class AcceptanceService {
 
       // OFFER_ACCEPTED is the terminal event in the signing chain.
       // No further events will be appended to this session after this.
+      //
+      // acceptanceStatementHash (Phase 3 / HIGH-3): SHA-256 of the exact
+      // acceptance statement text shown to the recipient. Stored in the event
+      // payload so verify() can confirm the statement has not been altered.
+      const acceptanceStatementHash = createHash('sha256')
+        .update(acceptanceStatement, 'utf8')
+        .digest('hex');
+
       await this.eventService.append(
         {
           sessionId: session.id,
@@ -182,6 +195,7 @@ export class AcceptanceService {
             verifiedEmail: challenge.deliveryAddress,
             acceptedAt: acceptedAt.toISOString(),
             snapshotContentHash: snapshot.contentHash,
+            acceptanceStatementHash,
           },
           ...context,
         },
