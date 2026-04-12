@@ -122,6 +122,15 @@ export interface VerificationResult {
   // Legal document versions governing this certificate. Returned alongside
   // integrity results — not part of the hashed payload (backward compatible).
   metadata: CertificateMetadata;
+
+  // ── Human-readable summary ───────────────────────────────────────────────
+  // Plain-text fields for display on the public verify page.
+  // All values sourced from immutable tables only.
+  summary: {
+    offerTitle:     string;
+    recipientEmail: string;
+    acceptedAt:     string;  // ISO-8601
+  };
 }
 
 @Injectable()
@@ -450,6 +459,11 @@ export class CertificateService {
         // evidenceModelVersion: static constant identifying the current hash algorithm
         // and event chain verification spec. Not stored per-certificate.
         evidenceModelVersion:       EVIDENCE_MODEL_VERSION,
+      },
+      summary: {
+        offerTitle:     snapshot.title,
+        recipientEmail: record.verifiedEmail,
+        acceptedAt:     record.acceptedAt.toISOString(),
       },
     };
   }

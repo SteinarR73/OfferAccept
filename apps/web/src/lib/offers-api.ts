@@ -427,6 +427,12 @@ export interface CertificateVerification {
   anomaliesDetected: string[];
   // Legal document versions governing this certificate.
   metadata?: CertificateMetadata;
+  // Human-readable summary for the verify page Section 1.
+  summary?: {
+    offerTitle:     string;
+    recipientEmail: string;
+    acceptedAt:     string;  // ISO-8601
+  };
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────

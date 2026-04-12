@@ -21,26 +21,26 @@ export function FirstDealEmptyState() {
 
       {/* Heading */}
       <h2 className="text-xl font-semibold text-[--color-text-primary] mb-2">
-        No deals yet
+        No offers yet
       </h2>
       <p className="text-sm text-[--color-text-secondary] max-w-xs mb-8">
-        Send your first deal in under 2 minutes.
+        Send an offer for acceptance. A verifiable certificate will be generated automatically.
       </p>
 
       {/* Primary CTA */}
-      <Link href="/dashboard/deals/new">
+      <Link href="/dashboard/offers/new">
         <Button
           variant="primary"
           size="md"
           rightIcon={<ArrowRight className="w-4 h-4" aria-hidden="true" />}
         >
-          Create your first deal
+          Create offer
         </Button>
       </Link>
 
       {/* Soft footnote */}
       <p className="text-xs text-[--color-text-muted] mt-5 max-w-xs">
-        You&apos;ll be able to track deal activity and acceptance here.
+        You&apos;ll be able to track offer activity and acceptance here.
       </p>
 
       {/* How it works — 3-step mini guide */}
@@ -62,7 +62,7 @@ export function FirstDealEmptyState() {
 }
 
 const STEPS = [
-  { label: 'Add details', detail: 'Name your deal, attach a document, and set the recipient.' },
-  { label: 'Send it', detail: 'Your customer receives a secure link — no account needed.' },
+  { label: 'Add details', detail: 'Name your offer, attach a document, and set the recipient.' },
+  { label: 'Send it', detail: 'Your recipient receives a secure link — no account needed.' },
   { label: 'Get accepted', detail: 'They confirm via email verification. A tamper-proof certificate is issued.' },
 ];

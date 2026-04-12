@@ -350,6 +350,20 @@ describe('CertificateService.verify()', () => {
     expect(result.metadata.termsVersionAtCreation).toBeNull();
   });
 
+  it('verify() includes summary with offerTitle, recipientEmail, and acceptedAt', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.summary).toBeDefined();
+    expect(result.summary.offerTitle).toBe('Test Offer');
+    expect(result.summary.recipientEmail).toBe('bob@client.com');
+    expect(result.summary.acceptedAt).toBe('2024-06-01T11:59:00.000Z');
+  });
+
   it('verify() returns null acceptanceStatementVersion for legacy acceptance records', async () => {
     const built = makeBuiltCert();
     // Use legacy stub (no acceptanceStatementVersion set), then override to null

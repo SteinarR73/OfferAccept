@@ -24,19 +24,19 @@ export default function DealsPage() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col gap-6">
+    <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
       {/* ── Header ───────────────────────────────────────────────────────────── */}
       <PageHeader
-        title="Deals"
-        description="Send, track, and manage your deals."
+        title="Offers"
+        description="Send, track, and manage your offers."
         action={
-          <Link href="/dashboard/deals/new">
+          <Link href="/dashboard/offers/new">
             <Button
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />}
             >
-              New deal
+              Create offer
             </Button>
           </Link>
         }
@@ -45,12 +45,12 @@ export default function DealsPage() {
       {/* ── Pipeline overview ─────────────────────────────────────────────────── */}
       <DealsPipeline offers={offers} loading={loading} />
 
-      {/* ── Deals table ───────────────────────────────────────────────────────── */}
+      {/* ── Offers table ───────────────────────────────────────────────────────── */}
       <OfferTable
         offers={offers}
         loading={loading}
-        headingLabel="Deals"
-        columnLabels={{ title: 'Deal name', recipient: 'Customer' }}
+        headingLabel="Offers"
+        columnLabels={{ title: 'Offer name', recipient: 'Recipient' }}
       />
     </div>
   );

@@ -215,6 +215,11 @@ export class CertificatesController {
       // Legal document versions governing this certificate.
       // Versions are not sensitive — they are public document identifiers.
       metadata: result.metadata,
+      // Human-readable summary for Section 1 of the verify page.
+      // offerTitle and acceptedAt are not sensitive.
+      // recipientEmail is the verified acceptance address and is surfaced
+      // intentionally so that relying parties can confirm who accepted.
+      summary: result.summary,
     };
   }
 

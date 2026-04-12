@@ -34,18 +34,18 @@ export default function DashboardPage() {
   const hasDeals = !loading && offers.length > 0;
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+    <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
 
       {/* ── Header ───────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-[--color-text-primary]">Overview</h1>
-        <Link href="/dashboard/deals/new">
+        <h1 className="text-[length:var(--font-size-h1)] font-semibold text-[--color-text-primary]">Dashboard</h1>
+        <Link href="/dashboard/offers/new">
           <Button
             variant="primary"
             size="sm"
             leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />}
           >
-            Send deal
+            Create offer
           </Button>
         </Link>
       </div>

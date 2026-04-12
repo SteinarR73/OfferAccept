@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Briefcase, CreditCard, Settings, Users,
-  LogOut, Menu, X, ChevronRight, Search,
+  Award, LogOut, Menu, X, ChevronRight, Search, HelpCircle,
 } from 'lucide-react';
 import { isAuthenticated, logout } from '../../lib/auth';
 import { getMe } from '../../lib/offers-api';
@@ -19,12 +19,17 @@ import { cn } from '../../lib/cn';
 
 interface NavItem { href: string; label: string; icon: ReactNode; exact?: boolean; }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',              label: 'Overview',  icon: <LayoutDashboard className="w-4 h-4" aria-hidden="true" />, exact: true },
-  { href: '/dashboard/deals',        label: 'Deals',     icon: <Briefcase       className="w-4 h-4" aria-hidden="true" /> },
-  { href: '/dashboard/customers',    label: 'Customers', icon: <Users           className="w-4 h-4" aria-hidden="true" /> },
-  { href: '/dashboard/billing',      label: 'Billing',   icon: <CreditCard      className="w-4 h-4" aria-hidden="true" /> },
-  { href: '/dashboard/settings',     label: 'Settings',  icon: <Settings        className="w-4 h-4" aria-hidden="true" /> },
+const NAV_ITEMS_PRIMARY: NavItem[] = [
+  { href: '/dashboard',              label: 'Dashboard',    icon: <LayoutDashboard className="w-4 h-4" aria-hidden="true" />, exact: true },
+  { href: '/dashboard/deals',        label: 'Offers',       icon: <Briefcase       className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/customers',    label: 'Recipients',   icon: <Users           className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/certificates', label: 'Certificates', icon: <Award           className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/billing',      label: 'Billing',      icon: <CreditCard      className="w-4 h-4" aria-hidden="true" /> },
+];
+
+const NAV_ITEMS_SECONDARY: NavItem[] = [
+  { href: '/dashboard/settings', label: 'Settings', icon: <Settings    className="w-4 h-4" aria-hidden="true" /> },
+  { href: '/dashboard/support',  label: 'Support',  icon: <HelpCircle  className="w-4 h-4" aria-hidden="true" /> },
 ];
 
 // ─── Breadcrumb builder ────────────────────────────────────────────────────────
@@ -32,13 +37,15 @@ const NAV_ITEMS: NavItem[] = [
 function buildBreadcrumb(pathname: string) {
   const segments = pathname.split('/').filter(Boolean);
   const LABELS: Record<string, string> = {
-    dashboard: 'Overview',
-    deals: 'Deals',
-    offers: 'Deals',
-    new: 'New deal',
-    customers: 'Customers',
+    dashboard: 'Dashboard',
+    deals: 'Offers',
+    offers: 'Offers',
+    new: 'New offer',
+    customers: 'Recipients',
+    certificates: 'Certificates',
     billing: 'Billing',
     settings: 'Settings',
+    support: 'Support',
   };
 
   const items = segments.map((seg, i) => {
@@ -107,7 +114,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           )}
         >
           {/* Logo */}
-          <div className="flex items-center justify-between h-14 px-4 border-b border-white/5 flex-shrink-0">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-white/5 flex-shrink-0">
             <Link
               href="/dashboard"
               className="flex items-center gap-2 font-semibold text-white/90 text-sm rounded focus-visible:ring-2 focus-visible:ring-[--color-accent]"
@@ -128,9 +135,36 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
 
           {/* Nav */}
-          <nav aria-label="Sidebar navigation" className="flex-1 overflow-y-auto py-3 px-2">
+          <nav aria-label="Sidebar navigation" className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-4">
+            {/* Primary nav */}
             <ul role="list" className="flex flex-col gap-0.5">
-              {NAV_ITEMS.map((item) => {
+              {NAV_ITEMS_PRIMARY.map((item) => {
+                const active = item.exact ? pathname === item.href : pathname?.startsWith(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        'focus-visible:ring-2 focus-visible:ring-[--color-accent]',
+                        active
+                          ? 'bg-[--color-sidebar-active-bg] text-[--color-sidebar-active-text]'
+                          : 'text-[--color-sidebar-text] hover:bg-white/5 hover:text-white',
+                      )}
+                    >
+                      <span className={cn('flex-shrink-0', active ? 'text-[--color-sidebar-active-text]' : 'text-slate-500')}>
+                        {item.icon}
+                      </span>
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            {/* Secondary nav */}
+            <ul role="list" className="flex flex-col gap-0.5 border-t border-white/5 pt-3">
+              {NAV_ITEMS_SECONDARY.map((item) => {
                 const active = item.exact ? pathname === item.href : pathname?.startsWith(item.href);
                 return (
                   <li key={item.href}>
@@ -172,7 +206,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* ── Main content ────────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Mobile top bar */}
-          <header className="lg:hidden flex items-center h-14 px-4 bg-[--color-sidebar-bg] border-b border-white/5 flex-shrink-0 gap-3">
+          <header className="lg:hidden flex items-center h-16 px-4 bg-[--color-sidebar-bg] border-b border-white/5 flex-shrink-0 gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
               aria-expanded={sidebarOpen}
@@ -194,7 +228,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </button>
           </header>
 
-          <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <main id="main-content" className="flex-1 overflow-y-auto p-8">
             {/* Breadcrumb */}
             {breadcrumb.length > 1 && (
               <nav aria-label="Breadcrumb" className="mb-5">

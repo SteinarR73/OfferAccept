@@ -165,15 +165,32 @@ function ValidState({
         >
           <CheckCircle2 className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-green-800 mb-4">Certificate valid</h1>
+        <h1 className="text-2xl font-bold text-green-800 mb-4">Acceptance verified</h1>
+
+        {/* Section 1 — Acceptance summary */}
+        {result.summary && (
+          <div className="bg-white/60 rounded-xl border border-green-200 px-4 py-3 mb-4 text-left max-w-xs mx-auto space-y-1.5">
+            <div className="flex justify-between gap-2 text-xs">
+              <span className="text-green-700 font-medium">Offer</span>
+              <span className="text-green-900 font-semibold text-right">{result.summary.offerTitle}</span>
+            </div>
+            <div className="flex justify-between gap-2 text-xs">
+              <span className="text-green-700 font-medium">Recipient</span>
+              <span className="text-green-900 font-semibold text-right">{result.summary.recipientEmail}</span>
+            </div>
+            <div className="flex justify-between gap-2 text-xs">
+              <span className="text-green-700 font-medium">Accepted</span>
+              <span className="text-green-900 font-semibold text-right">
+                {new Date(result.summary.acceptedAt).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Plain-language summary */}
         <div className="space-y-2 max-w-xs mx-auto">
           <p className="text-sm text-green-800 font-medium">
             This acceptance record has not been altered since it was issued.
-          </p>
-          <p className="text-sm text-green-700">
-            The certificate hash matches the acceptance record. No alterations have been detected.
           </p>
         </div>
       </div>
@@ -534,8 +551,37 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
             )}
           </div>
           <span className="text-[--color-text-muted] leading-relaxed">
-            Terms in effect when the sender created this deal
+            Terms in effect when the sender created this offer
           </span>
+        </a>
+      </div>
+    </div>
+
+    {/* Section 4 — Independent verification links */}
+    <div className="px-6 py-5">
+      <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-3">
+        Independent verification
+      </p>
+      <p className="text-xs text-[--color-text-secondary] mb-3 leading-relaxed">
+        OfferAccept uses SHA-256 with a canonical 5-field payload. You can reproduce the
+        hash independently using any standard tool.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <a
+          href="/security/evidence-model#independent-verification"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-md border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-[--color-text-primary] hover:bg-gray-50 transition-colors"
+        >
+          Verification guide
+        </a>
+        <a
+          href="https://emn178.github.io/online-tools/sha256.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-md border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-[--color-text-primary] hover:bg-gray-50 transition-colors"
+        >
+          SHA-256 online tool ↗
         </a>
       </div>
     </div>
