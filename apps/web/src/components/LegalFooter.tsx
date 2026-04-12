@@ -19,35 +19,35 @@ export function LegalFooter() {
             href="/legal/terms"
             className="hover:text-gray-700 transition-colors"
           >
-            Vilkår for bruk
+            Terms of service
           </Link>
           <span className="text-[--color-border] select-none" aria-hidden="true">·</span>
           <Link
             href="/legal/gdpr"
             className="hover:text-gray-700 transition-colors"
           >
-            Personvern & GDPR
+            Privacy & GDPR
           </Link>
           <span className="text-[--color-border] select-none" aria-hidden="true">·</span>
           <Link
             href="/security/evidence-model"
             className="hover:text-gray-700 transition-colors"
           >
-            Bevismodell
+            Evidence model
           </Link>
           <span className="text-[--color-border] select-none" aria-hidden="true">·</span>
           <Link
             href="/legal/acceptance-statement"
             className="hover:text-gray-700 transition-colors"
           >
-            Aksepterklæring
+            Acceptance statement
           </Link>
           <span className="text-[--color-border] select-none" aria-hidden="true">·</span>
           <a
             href="mailto:legal@offeraccept.com"
             className="hover:text-gray-700 transition-colors"
           >
-            Kontakt
+            Contact
           </a>
         </nav>
       </div>

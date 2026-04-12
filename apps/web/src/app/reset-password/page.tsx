@@ -3,11 +3,11 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { resetPassword } from '../../../lib/offers-api';
-import { Card, CardSection } from '../../../components/ui/Card';
-import { Input } from '../../../components/ui/Input';
-import { Button } from '../../../components/ui/Button';
-import { Alert } from '../../../components/ui/Alert';
+import { resetPassword } from '../../lib/offers-api';
+import { Card, CardSection } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Alert } from '../../components/ui/Alert';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
