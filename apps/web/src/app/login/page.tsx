@@ -91,20 +91,20 @@ export default function LoginPage() {
           <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
             OA
           </span>
-          <span className="font-semibold text-gray-900">OfferAccept</span>
+          <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>
         </div>
         <Card className="w-full max-w-sm text-center px-6 py-8">
-          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-5 h-5 text-green-600" />
+          <div className="w-12 h-12 rounded-full bg-[--color-success-light] flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-5 h-5 text-[--color-success]" />
           </div>
-          <h1 className="text-lg font-semibold text-gray-900 mb-2">Check your inbox</h1>
+          <h1 className="text-lg font-semibold text-[--color-text-primary] mb-2">Check your inbox</h1>
           <p className="text-sm text-[--color-text-muted]">
             We sent a verification link to <strong>{signupEmail}</strong>. Click the link
             to activate your account.
           </p>
           <Link
             href="/login"
-            className="mt-6 inline-block text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="mt-6 inline-block text-sm text-[--color-accent] hover:text-[--color-accent-hover] font-medium"
           >
             Go to sign in →
           </Link>
@@ -121,12 +121,12 @@ export default function LoginPage() {
           <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
             OA
           </span>
-          <span className="font-semibold text-gray-900">OfferAccept</span>
+          <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>
         </div>
 
         <Card className="w-full max-w-sm">
           <div className="px-6 pt-6 pb-2 text-center">
-            <h1 className="text-lg font-semibold text-gray-900">Create your account</h1>
+            <h1 className="text-lg font-semibold text-[--color-text-primary]">Create your account</h1>
             <p className="mt-1 text-sm text-[--color-text-muted]">
               Secure deal management with tamper-proof certificates
             </p>
@@ -201,7 +201,7 @@ export default function LoginPage() {
                     href="/legal/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700 font-medium underline"
+                    className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium underline"
                   >
                     Terms of Service
                   </Link>{' '}
@@ -210,7 +210,7 @@ export default function LoginPage() {
                     href="/legal/gdpr"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700 font-medium underline"
+                    className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium underline"
                   >
                     Privacy & GDPR Statement
                   </Link>
@@ -238,7 +238,7 @@ export default function LoginPage() {
 
         <p className="mt-5 text-xs text-[--color-text-muted]">
           Already have an account?{' '}
-          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link href="/login" className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium">
             Sign in
           </Link>
         </p>
@@ -254,12 +254,12 @@ export default function LoginPage() {
         <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
           OA
         </span>
-        <span className="font-semibold text-gray-900">OfferAccept</span>
+        <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>
       </div>
 
       <Card className="w-full max-w-sm">
         <div className="px-6 pt-6 pb-2 text-center">
-          <h1 className="text-lg font-semibold text-gray-900">Welcome back</h1>
+          <h1 className="text-lg font-semibold text-[--color-text-primary]">Welcome back</h1>
           <p className="mt-1 text-sm text-[--color-text-muted]">Secure deal management</p>
         </div>
 
@@ -292,7 +292,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
               />
               <div className="flex justify-end">
-                <Link href="/forgot-password" className="text-xs text-[--color-text-muted] hover:text-gray-700 transition-colors">
+                <Link href="/forgot-password" className="text-xs text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -312,7 +312,7 @@ export default function LoginPage() {
 
       <p className="mt-5 text-xs text-[--color-text-muted]">
         Don&apos;t have an account?{' '}
-        <Link href="/login?mode=signup" className="text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/login?mode=signup" className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium">
           Create one
         </Link>
       </p>

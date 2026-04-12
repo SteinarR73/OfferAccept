@@ -3,8 +3,8 @@ import { Spinner } from './Spinner';
 
 const VARIANT = {
   primary:   'bg-[--color-accent] text-white hover:bg-[--color-accent-hover] focus-visible:ring-[--color-accent] shadow-sm hover:shadow-md',
-  secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus-visible:ring-[--color-accent] shadow-sm',
-  ghost:     'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-[--color-accent]',
+  secondary: 'bg-white text-[--color-text-secondary] border border-[--color-border] hover:bg-[--color-bg] focus-visible:ring-[--color-accent] shadow-sm',
+  ghost:     'text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary] focus-visible:ring-[--color-accent]',
   danger:    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm',
 } as const;
 
@@ -15,7 +15,7 @@ const SIZE = {
 } as const;
 
 const BASE =
-  'inline-flex items-center justify-center rounded-lg font-medium transition-colors ' +
+  'inline-flex items-center justify-center rounded-lg font-medium transition-colors cursor-pointer ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ' +
   'disabled:opacity-50 disabled:cursor-not-allowed select-none btn-lift';
 

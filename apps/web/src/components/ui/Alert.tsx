@@ -47,7 +47,7 @@ export function Alert({ variant, title, children, dismissible, onDismiss, classN
           onClick={handleDismiss}
           aria-label="Dismiss"
           className={cn(
-            'flex-shrink-0 rounded p-0.5 opacity-60 hover:opacity-100 transition-opacity',
+            'flex-shrink-0 rounded p-0.5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current',
           )}
         >

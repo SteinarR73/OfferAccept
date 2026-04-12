@@ -101,9 +101,9 @@ export default function BillingPage() {
       {loading ? (
         <Card className="mb-6">
           <div className="p-5 space-y-3">
-            <div className="skeleton h-4 w-32 rounded bg-gray-200" />
-            <div className="skeleton h-3 w-48 rounded bg-gray-100" />
-            <div className="skeleton h-2 w-full rounded bg-gray-100" />
+            <div className="skeleton h-4 w-32 rounded bg-[--color-surface]" />
+            <div className="skeleton h-3 w-48 rounded bg-[--color-bg]" />
+            <div className="skeleton h-2 w-full rounded bg-[--color-bg]" />
           </div>
         </Card>
       ) : sub && (
@@ -128,8 +128,8 @@ export default function BillingPage() {
             )}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Deals this month</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-[--color-text-secondary]">Deals this month</span>
+                <span className="font-semibold text-[--color-text-primary]">
                   {sub.monthlyOfferCount} / {limit ?? '∞'}
                 </span>
               </div>
@@ -140,10 +140,10 @@ export default function BillingPage() {
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-label={`${usagePct}% of monthly deal limit used`}
-                  className="h-2 bg-gray-100 rounded-full overflow-hidden"
+                  className="h-2 bg-[--color-surface] rounded-full overflow-hidden"
                 >
                   <div
-                    className={cn('h-full rounded-full transition-all duration-500', usagePct >= 90 ? 'bg-red-500' : usagePct >= 70 ? 'bg-amber-500' : 'bg-blue-500')}
+                    className={cn('h-full rounded-full transition-all duration-500', usagePct >= 90 ? 'bg-[--color-error]' : usagePct >= 70 ? 'bg-[--color-warning]' : 'bg-[--color-accent]')}
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
@@ -167,7 +167,7 @@ export default function BillingPage() {
       )}
 
       {/* ── Plan comparison ────────────────────────────────────────────────── */}
-      <h2 className="text-sm font-semibold text-gray-900 mb-3">Available plans</h2>
+      <h2 className="text-sm font-semibold text-[--color-text-primary] mb-3">Available plans</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {PLAN_ORDER.map((plan) => {
           const meta = PLAN_META[plan];
@@ -179,27 +179,27 @@ export default function BillingPage() {
               key={plan}
               className={cn(
                 'flex flex-col rounded-xl border p-5 bg-white transition-shadow',
-                isCurrent ? 'border-blue-500 ring-1 ring-blue-500 shadow-md' : 'border-gray-200 hover:shadow-sm',
+                isCurrent ? 'border-[--color-accent] ring-1 ring-[--color-accent] shadow-md' : 'border-[--color-border] hover:shadow-sm',
               )}
             >
               <div className="mb-4">
                 <PlanBadge plan={plan} />
-                <p className="mt-2 text-2xl font-bold text-gray-900">{meta.price}</p>
+                <p className="mt-2 text-2xl font-bold text-[--color-text-primary]">{meta.price}</p>
               </div>
               <ul className="flex-1 space-y-2 mb-5">
                 {meta.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
-                    <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <li key={f} className="flex items-start gap-2 text-xs text-[--color-text-secondary]">
+                    <Check className="w-3.5 h-3.5 text-[--color-success] flex-shrink-0 mt-0.5" aria-hidden="true" />
                     {f}
                   </li>
                 ))}
               </ul>
               {isCurrent ? (
-                <span className="text-xs text-center text-blue-700 font-semibold py-1.5">Current plan</span>
+                <span className="text-xs text-center text-[--color-accent-text] font-semibold py-1.5">Current plan</span>
               ) : plan === 'ENTERPRISE' ? (
                 <a
                   href="mailto:sales@offeraccept.com"
-                  className="text-xs text-center text-blue-600 hover:text-blue-700 font-medium py-1.5 transition-colors"
+                  className="text-xs text-center text-[--color-accent] hover:text-[--color-accent-hover] font-medium py-1.5 transition-colors"
                 >
                   Contact sales →
                 </a>

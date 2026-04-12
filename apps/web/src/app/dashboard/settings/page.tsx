@@ -146,24 +146,24 @@ function TeamTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton w-7 h-7 rounded-full bg-gray-200" />
+                <div className="skeleton w-7 h-7 rounded-full bg-[--color-surface]" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="skeleton h-2.5 w-40 rounded bg-gray-200" />
-                  <div className="skeleton h-2 w-24 rounded bg-gray-100" />
+                  <div className="skeleton h-2.5 w-40 rounded bg-[--color-surface]" />
+                  <div className="skeleton h-2 w-24 rounded bg-[--color-bg]" />
                 </div>
-                <div className="skeleton h-5 w-16 rounded-full bg-gray-100" />
+                <div className="skeleton h-5 w-16 rounded-full bg-[--color-bg]" />
               </div>
             ))}
           </div>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <ul className="divide-y divide-[--color-border-subtle]">
             {members.map((member) => (
               <li key={member.userId} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold flex-shrink-0 uppercase">
+                <div className="w-7 h-7 rounded-full bg-[--color-accent-light] text-[--color-accent-text] flex items-center justify-center text-xs font-semibold flex-shrink-0 uppercase">
                   {(member.email ?? member.userId).slice(0, 1)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 truncate">{member.email ?? member.userId}</p>
+                  <p className="text-xs font-medium text-[--color-text-primary] truncate">{member.email ?? member.userId}</p>
                   {member.createdAt && (
                     <p className="text-[11px] text-[--color-text-muted] mt-0.5">
                       Joined {new Date(member.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -180,7 +180,7 @@ function TeamTab() {
                     loading={removing === member.userId}
                     onClick={() => handleRemove(member.userId)}
                     aria-label={`Remove ${member.email ?? member.userId}`}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-1"
+                    className="text-[--color-error] hover:text-[--color-error] hover:bg-[--color-error-light] ml-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -203,7 +203,7 @@ function TeamTab() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                <label className="block text-xs font-medium text-[--color-text-primary] mb-1">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as InviteRole)}
@@ -301,10 +301,10 @@ function ApiKeysTab() {
           <div className="space-y-2">
             <p className="font-semibold text-xs">API key created — copy it now. It won't be shown again.</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 font-mono text-xs bg-green-100 rounded px-2 py-1 break-all">{newKeyCreated.key}</code>
+              <code className="flex-1 font-mono text-xs bg-[--color-success-light] rounded px-2 py-1 break-all">{newKeyCreated.key}</code>
               <button
                 onClick={() => copyKey(newKeyCreated.key)}
-                className="flex-shrink-0 text-green-700 hover:text-green-900 transition-colors"
+                className="flex-shrink-0 text-[--color-success-text] hover:opacity-80 transition-opacity cursor-pointer"
                 aria-label="Copy API key"
               >
                 {copied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
@@ -334,7 +334,7 @@ function ApiKeysTab() {
         />
 
         {showForm && isAdmin && (
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+          <div className="px-5 py-4 border-b border-[--color-border-subtle] bg-[--color-bg]">
             <form onSubmit={handleCreate} className="flex items-end gap-3">
               <div className="flex-1">
                 <Input
@@ -356,23 +356,23 @@ function ApiKeysTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton h-3 w-32 rounded bg-gray-200" />
+                <div className="skeleton h-3 w-32 rounded bg-[--color-surface]" />
                 <div className="flex-1">
-                  <div className="skeleton h-2.5 w-48 rounded bg-gray-100" />
+                  <div className="skeleton h-2.5 w-48 rounded bg-[--color-bg]" />
                 </div>
-                <div className="skeleton h-6 w-16 rounded bg-gray-100" />
+                <div className="skeleton h-6 w-16 rounded bg-[--color-bg]" />
               </div>
             ))}
           </div>
         ) : keys.length === 0 ? (
           <p className="px-5 py-6 text-xs text-[--color-text-muted] text-center">No API keys yet. Create one to get started.</p>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <ul className="divide-y divide-[--color-border-subtle]">
             {keys.map((key) => (
               <li key={key.id} className="flex items-center gap-3 px-5 py-3">
-                <Key className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" aria-hidden="true" />
+                <Key className="w-3.5 h-3.5 text-[--color-text-muted] flex-shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900">{key.name}</p>
+                  <p className="text-xs font-medium text-[--color-text-primary]">{key.name}</p>
                   <p className="text-[11px] text-[--color-text-muted] mt-0.5 font-mono">{key.prefix}••••••••</p>
                 </div>
                 {key.lastUsedAt ? (
@@ -389,7 +389,7 @@ function ApiKeysTab() {
                     loading={deleting === key.id}
                     onClick={() => handleDelete(key.id)}
                     aria-label={`Delete ${key.name}`}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    className="text-[--color-error] hover:text-[--color-error] hover:bg-[--color-error-light]"
                   >
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -518,7 +518,7 @@ function WebhooksTab() {
         />
 
         {showForm && isAdmin && (
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+          <div className="px-5 py-4 border-b border-[--color-border-subtle] bg-[--color-bg]">
             <form onSubmit={handleSave} className="space-y-4">
               <Input
                 label="Endpoint URL"
@@ -530,7 +530,7 @@ function WebhooksTab() {
                 autoFocus
               />
               <div>
-                <p className="text-xs font-medium text-gray-700 mb-2">Events to subscribe</p>
+                <p className="text-xs font-medium text-[--color-text-primary] mb-2">Events to subscribe</p>
                 <div className="flex flex-wrap gap-2">
                   {WEBHOOK_EVENTS.map((evt) => (
                     <button
@@ -538,10 +538,10 @@ function WebhooksTab() {
                       type="button"
                       onClick={() => toggleEvent(evt)}
                       className={cn(
-                        'px-2.5 py-1 rounded-full text-xs border transition-colors',
+                        'px-2.5 py-1 rounded-full text-xs border transition-colors cursor-pointer',
                         formEvents.includes(evt)
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'bg-white border-gray-200 text-gray-600 hover:border-blue-400',
+                          ? 'bg-[--color-accent] border-[--color-accent] text-white'
+                          : 'bg-white border-[--color-border] text-[--color-text-secondary] hover:border-[--color-accent]',
                       )}
                     >
                       {evt}
@@ -563,9 +563,9 @@ function WebhooksTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton h-3 w-56 rounded bg-gray-200" />
+                <div className="skeleton h-3 w-56 rounded bg-[--color-surface]" />
                 <div className="flex-1">
-                  <div className="skeleton h-2.5 w-32 rounded bg-gray-100" />
+                  <div className="skeleton h-2.5 w-32 rounded bg-[--color-bg]" />
                 </div>
               </div>
             ))}
@@ -573,16 +573,16 @@ function WebhooksTab() {
         ) : webhooks.length === 0 && !showForm ? (
           <p className="px-5 py-6 text-xs text-[--color-text-muted] text-center">No webhooks configured yet.</p>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <ul className="divide-y divide-[--color-border-subtle]">
             {webhooks.map((wh) => (
               <li key={wh.id} className="px-5 py-3">
                 <div className="flex items-start gap-3">
-                  <Webhook className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <Webhook className="w-3.5 h-3.5 text-[--color-text-muted] flex-shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-900 truncate font-mono">{wh.url}</p>
+                    <p className="text-xs font-medium text-[--color-text-primary] truncate font-mono">{wh.url}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {wh.events.map((evt) => (
-                        <span key={evt} className="text-[10px] bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{evt}</span>
+                        <span key={evt} className="text-[10px] bg-[--color-surface] text-[--color-text-secondary] rounded px-1.5 py-0.5">{evt}</span>
                       ))}
                     </div>
                   </div>
@@ -593,7 +593,7 @@ function WebhooksTab() {
                           variant="ghost"
                           size="sm"
                           onClick={() => startEdit(wh)}
-                          className="text-gray-500 hover:text-gray-700"
+                          className="text-[--color-text-secondary] hover:text-[--color-text-primary]"
                         >
                           Edit
                         </Button>
@@ -603,7 +603,7 @@ function WebhooksTab() {
                           loading={deleting === wh.id}
                           onClick={() => handleDelete(wh.id)}
                           aria-label={`Delete webhook ${wh.url}`}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="text-[--color-error] hover:text-[--color-error] hover:bg-[--color-error-light]"
                         >
                           <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </Button>
@@ -668,8 +668,8 @@ function DpaTab() {
         <CardSection>
           {loading ? (
             <div className="space-y-2">
-              <div className="skeleton h-3 w-48 rounded bg-gray-200" />
-              <div className="skeleton h-2.5 w-64 rounded bg-gray-100" />
+              <div className="skeleton h-3 w-48 rounded bg-[--color-surface]" />
+              <div className="skeleton h-2.5 w-64 rounded bg-[--color-bg]" />
             </div>
           ) : status?.accepted ? (
             <div className="flex items-start gap-3">
@@ -758,16 +758,16 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="Manage your account." />
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200 mb-6">
+      <div className="flex gap-1 border-b border-[--color-border] mb-6">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px',
+              'flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px cursor-pointer',
               activeTab === tab.id
                 ? 'border-[--color-accent] text-[--color-accent]'
-                : 'border-transparent text-[--color-text-secondary] hover:text-gray-900 hover:border-gray-300',
+                : 'border-transparent text-[--color-text-secondary] hover:text-[--color-text-primary] hover:border-[--color-border]',
             )}
             aria-selected={activeTab === tab.id}
             role="tab"

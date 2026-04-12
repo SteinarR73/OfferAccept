@@ -57,28 +57,28 @@ export function DealStatusList({ offers, loading }: DealStatusListProps) {
 
   return (
     <Card>
-      <CardHeader title="Deals" border />
+      <CardHeader title="Offers" border />
 
       {offers.length === 0 ? (
         <EmptyState
           icon={<FileText className="w-5 h-5" aria-hidden="true" />}
-          title="No deals yet"
-          description="Send your first deal to get started."
+          title="No offers yet"
+          description="Send your first offer to get started."
           className="py-10"
         />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm" aria-label="Deal status list">
+          <table className="w-full text-sm" aria-label="Offer status list">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Deal</th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Recipient</th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Last activity</th>
-                <th className="px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider sr-only">Action</th>
+              <tr className="border-b border-[--color-border-subtle]">
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider">Offer</th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider hidden sm:table-cell">Recipient</th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider hidden md:table-cell">Last activity</th>
+                <th className="px-5 py-3 text-right text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider sr-only">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-[--color-border-subtle]">
               {offers.map((offer) => (
                 <DealRow key={offer.id} offer={offer} />
               ))}
@@ -98,13 +98,13 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
   return (
     <tr className={cn(
-      'group transition-colors hover:bg-gray-50',
+      'group transition-colors hover:bg-[--color-bg]',
     )}>
       {/* Deal name */}
       <td className="px-5 py-3.5">
         <Link
           href={`/dashboard/deals/${offer.id}`}
-          className="font-medium text-gray-900 hover:text-blue-600 transition-colors line-clamp-1 focus-visible:outline-none focus-visible:text-blue-600"
+          className="font-medium text-[--color-text-primary] hover:text-[--color-accent] transition-colors line-clamp-1 focus-visible:outline-none focus-visible:text-[--color-accent]"
         >
           {offer.title}
         </Link>
@@ -112,7 +112,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
       {/* Recipient */}
       <td className="px-5 py-3.5 hidden sm:table-cell">
-        <span className="text-gray-500 text-xs truncate max-w-[160px] block">
+        <span className="text-[--color-text-secondary] text-xs truncate max-w-[160px] block">
           {recipientLabel}
         </span>
       </td>
@@ -126,7 +126,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
       {/* Last activity */}
       <td className="px-5 py-3.5 hidden md:table-cell">
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-[--color-text-muted]">
           {formatRelative(offer.updatedAt)}
         </span>
       </td>
@@ -135,8 +135,8 @@ function DealRow({ offer }: { offer: OfferItem }) {
       <td className="px-5 py-3.5 text-right">
         <Link
           href={`/dashboard/deals/${offer.id}`}
-          className="text-xs font-medium text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100"
-          aria-label={`View deal: ${offer.title}`}
+          className="text-xs font-medium text-[--color-accent] hover:text-[--color-accent-hover] opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100"
+          aria-label={`View offer: ${offer.title}`}
         >
           View →
         </Link>
@@ -150,16 +150,16 @@ function DealRow({ offer }: { offer: OfferItem }) {
 export function DealStatusListSkeleton() {
   return (
     <Card>
-      <div className="px-5 py-4 border-b border-gray-100">
-        <div className="h-3 w-12 rounded bg-gray-200 animate-pulse" />
+      <div className="px-5 py-4 border-b border-[--color-border-subtle]">
+        <div className="h-3 w-12 rounded bg-[--color-surface] animate-pulse" />
       </div>
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-[--color-border-subtle]">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-            <div className="flex-1 h-3 rounded bg-gray-200 animate-pulse" />
-            <div className="w-24 h-3 rounded bg-gray-100 animate-pulse hidden sm:block" />
-            <div className="w-16 h-5 rounded-full bg-gray-100 animate-pulse" />
-            <div className="w-12 h-2.5 rounded bg-gray-100 animate-pulse hidden md:block" />
+            <div className="flex-1 h-3 rounded bg-[--color-surface] animate-pulse" />
+            <div className="w-24 h-3 rounded bg-[--color-bg] animate-pulse hidden sm:block" />
+            <div className="w-16 h-5 rounded-full bg-[--color-bg] animate-pulse" />
+            <div className="w-12 h-2.5 rounded bg-[--color-bg] animate-pulse hidden md:block" />
           </div>
         ))}
       </div>

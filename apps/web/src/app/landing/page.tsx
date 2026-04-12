@@ -194,7 +194,7 @@ function HowItWorks() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {STEPS.map((step) => (
           <div key={step.n} className="flex flex-col items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
               {step.n}
             </div>
             <h3 className="font-semibold text-gray-900 text-sm">{step.title}</h3>
@@ -267,17 +267,17 @@ function CertificatePreview() {
         {/* Mock certificate card */}
         <div className="max-w-lg mx-auto rounded-xl border border-gray-200 bg-white shadow-md overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-green-50">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[--color-border-subtle] bg-[--color-success-light]">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-[--color-success] flex items-center justify-center">
                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 011.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-green-800">Acceptance Certificate</span>
+              <span className="text-sm font-semibold text-[--color-success-text]">Acceptance Certificate</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white text-[9px] font-bold">OA</span>
+              <span className="w-6 h-6 rounded-md bg-[--color-accent] flex items-center justify-center text-white text-[9px] font-bold">OA</span>
               <span className="text-xs text-gray-500 font-medium">OfferAccept</span>
             </div>
           </div>
@@ -314,7 +314,7 @@ function CertificatePreview() {
             <div>
               <Link
                 href="/verify"
-                className="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                className="text-xs text-[--color-accent] font-medium hover:text-[--color-accent-hover] transition-colors"
               >
                 Verify a certificate →
               </Link>
@@ -332,11 +332,11 @@ function CertificatePreview() {
 
 function PricingBand() {
   return (
-    <section className="bg-blue-600 py-16">
+    <section className="bg-[--color-accent] py-16">
       <div className="max-w-2xl mx-auto px-6 text-center">
         <h2 className="text-2xl font-bold text-white mb-2">Start free — 3 deals per month</h2>
-        <p className="text-blue-200 text-sm mb-6">No credit card required. Upgrade any time as you grow.</p>
-        <p className="text-blue-100 text-sm mb-6">
+        <p className="text-white/80 text-sm mb-6">No credit card required. Upgrade any time as you grow.</p>
+        <p className="text-white/70 text-sm mb-6">
           Need more?{' '}
           <Link href="/contact" className="underline underline-offset-2 hover:text-white transition-colors">
             See paid plans →
@@ -344,7 +344,7 @@ function PricingBand() {
         </p>
         <Link
           href="/login?mode=signup"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-blue-600 font-semibold text-sm hover:bg-blue-50 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-[--color-accent] font-semibold text-sm hover:bg-[--color-accent-light] transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[--color-accent]"
         >
           Get started for free
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

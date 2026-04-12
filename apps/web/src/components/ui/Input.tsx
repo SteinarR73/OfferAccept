@@ -1,10 +1,10 @@
 import { cn } from '@/lib/cn';
 
 const BASE_INPUT =
-  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 ' +
-  'placeholder-gray-400 transition-colors ' +
+  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-[--color-text-primary] ' +
+  'placeholder:text-[--color-text-muted] transition-colors ' +
   'focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent ' +
-  'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed read-only:bg-gray-50';
+  'disabled:bg-[--color-bg] disabled:text-[--color-text-muted] disabled:cursor-not-allowed read-only:bg-[--color-bg]';
 
 // ── Input ─────────────────────────────────────────────────────────────────────
 
@@ -32,14 +32,14 @@ export function Input({
   return (
     <div className={cn('flex flex-col gap-1', wrapperClassName)}>
       {label && (
-        <label htmlFor={inputId} className="text-xs font-medium text-gray-700">
+        <label htmlFor={inputId} className="text-xs font-medium text-[--color-text-primary]">
           {label}
-          {required && <span className="ml-0.5 text-red-500" aria-hidden="true">*</span>}
+          {required && <span className="ml-0.5 text-[--color-error]" aria-hidden="true">*</span>}
         </label>
       )}
       <div className="relative flex items-center">
         {leftAddon && (
-          <span className="absolute left-3 flex items-center text-gray-400 pointer-events-none">
+          <span className="absolute left-3 flex items-center text-[--color-text-muted] pointer-events-none">
             {leftAddon}
           </span>
         )}
@@ -49,13 +49,13 @@ export function Input({
           required={required}
           className={cn(
             BASE_INPUT,
-            error ? 'border-red-400 focus:ring-red-500' : 'border-gray-200',
+            error ? 'border-[--color-error-border] focus:ring-[--color-error]' : 'border-[--color-border]',
             leftAddon != null ? 'pl-9' : undefined,
             className,
           )}
         />
       </div>
-      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+      {error && <p className="text-xs text-[--color-error] mt-0.5">{error}</p>}
       {!error && hint && <p className="text-xs text-[--color-text-muted] mt-0.5">{hint}</p>}
     </div>
   );
@@ -85,9 +85,9 @@ export function Textarea({
   return (
     <div className={cn('flex flex-col gap-1', wrapperClassName)}>
       {label && (
-        <label htmlFor={inputId} className="text-xs font-medium text-gray-700">
+        <label htmlFor={inputId} className="text-xs font-medium text-[--color-text-primary]">
           {label}
-          {required && <span className="ml-0.5 text-red-500" aria-hidden="true">*</span>}
+          {required && <span className="ml-0.5 text-[--color-error]" aria-hidden="true">*</span>}
         </label>
       )}
       <textarea
@@ -101,7 +101,7 @@ export function Textarea({
           className,
         )}
       />
-      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+      {error && <p className="text-xs text-[--color-error] mt-0.5">{error}</p>}
       {!error && hint && <p className="text-xs text-[--color-text-muted] mt-0.5">{hint}</p>}
     </div>
   );
