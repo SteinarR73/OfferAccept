@@ -38,9 +38,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   // Build commands — stable because router/onClose/logout don't change
   const commands: PaletteCommand[] = [
     {
-      id: 'new-deal',
-      label: 'New deal',
-      description: 'Create a new deal',
+      id: 'new-offer',
+      label: 'New offer',
+      description: 'Create a new offer',
       icon: <Plus className="w-4 h-4" aria-hidden="true" />,
       action: () => { router.push('/dashboard/deals/new'); onClose(); },
       keywords: ['create', 'draft'],
@@ -53,11 +53,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       keywords: ['overview', 'home'],
     },
     {
-      id: 'deals',
-      label: 'Go to Deals',
+      id: 'offers',
+      label: 'Go to Offers',
       icon: <FileText className="w-4 h-4" aria-hidden="true" />,
       action: () => { router.push('/dashboard/deals'); onClose(); },
-      keywords: ['list', 'all deals'],
+      keywords: ['list', 'all offers'],
     },
     {
       id: 'billing',
@@ -148,12 +148,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
       {/* Panel */}
       <div
-        className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-palette-in border border-gray-200"
+        className="relative w-full max-w-lg bg-[--color-surface] rounded-2xl shadow-2xl overflow-hidden animate-palette-in border border-[--color-border]"
         onKeyDown={handleKeyDown}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 border-b border-gray-100">
-          <Search className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-3 px-4 border-b border-[--color-border-subtle]">
+          <Search className="w-4 h-4 text-[--color-text-muted] flex-shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
@@ -165,9 +165,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             placeholder="Type a command or search…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 py-4 text-sm text-gray-900 bg-transparent placeholder:text-gray-400 outline-none"
+            className="flex-1 py-4 text-sm text-[--color-text-primary] bg-transparent placeholder:text-[--color-text-muted] outline-none"
           />
-          <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 font-mono">
+          <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-[--color-text-muted] border border-[--color-border] rounded px-1.5 py-0.5 font-mono">
             esc
           </kbd>
         </div>
@@ -191,53 +191,53 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 onMouseEnter={() => setActiveIdx(i)}
                 className={cn(
                   'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors',
-                  i === activeIdx ? 'bg-blue-50' : 'hover:bg-gray-50',
+                  i === activeIdx ? 'bg-[--color-focus]' : 'hover:bg-[--color-hover]',
                 )}
               >
                 <span className={cn(
                   'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center',
-                  i === activeIdx ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500',
+                  i === activeIdx ? 'bg-[--color-accent] text-white' : 'bg-[--color-neutral-surface] text-[--color-text-secondary]',
                 )}>
                   {cmd.icon}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className={cn(
                     'text-sm font-medium',
-                    i === activeIdx ? 'text-blue-900' : 'text-gray-900',
+                    i === activeIdx ? 'text-[--color-accent-text]' : 'text-[--color-text-primary]',
                   )}>
                     {cmd.label}
                   </p>
                   {cmd.description && (
-                    <p className="text-xs text-gray-400 truncate">{cmd.description}</p>
+                    <p className="text-xs text-[--color-text-muted] truncate">{cmd.description}</p>
                   )}
                 </div>
                 {i === activeIdx && (
-                  <ArrowRight className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" aria-hidden="true" />
+                  <ArrowRight className="w-3.5 h-3.5 text-[--color-accent] flex-shrink-0" aria-hidden="true" />
                 )}
               </li>
             ))}
           </ul>
         ) : (
           <div className="py-10 text-center">
-            <p className="text-sm text-gray-400">No commands match "{query}"</p>
+            <p className="text-sm text-[--color-text-muted]">No commands match "{query}"</p>
           </div>
         )}
 
         {/* Footer hint */}
-        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-gray-100 bg-gray-50/50">
-          <span className="flex items-center gap-1 text-[11px] text-gray-400">
-            <kbd className="font-mono border border-gray-200 rounded px-1 py-0.5 bg-white text-[10px]">↑↓</kbd>
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-[--color-border-subtle] bg-[--color-bg]">
+          <span className="flex items-center gap-1 text-[11px] text-[--color-text-muted]">
+            <kbd className="font-mono border border-[--color-border] rounded px-1 py-0.5 bg-[--color-surface] text-[10px]">↑↓</kbd>
             navigate
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-gray-400">
-            <kbd className="font-mono border border-gray-200 rounded px-1 py-0.5 bg-white text-[10px]">↵</kbd>
+          <span className="flex items-center gap-1 text-[11px] text-[--color-text-muted]">
+            <kbd className="font-mono border border-[--color-border] rounded px-1 py-0.5 bg-[--color-surface] text-[10px]">↵</kbd>
             select
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-gray-400">
-            <kbd className="font-mono border border-gray-200 rounded px-1 py-0.5 bg-white text-[10px]">esc</kbd>
+          <span className="flex items-center gap-1 text-[11px] text-[--color-text-muted]">
+            <kbd className="font-mono border border-[--color-border] rounded px-1 py-0.5 bg-[--color-surface] text-[10px]">esc</kbd>
             close
           </span>
-          <span className="ml-auto flex items-center gap-1 text-[11px] text-gray-400">
+          <span className="ml-auto flex items-center gap-1 text-[11px] text-[--color-text-muted]">
             <Command className="w-3 h-3" aria-hidden="true" />
             <kbd className="font-mono text-[10px]">K</kbd>
           </span>

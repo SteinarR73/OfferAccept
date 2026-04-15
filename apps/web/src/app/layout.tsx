@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/g
 import './globals.css';
 import { ToastProvider } from '../lib/toast';
 import { ToastContainer } from '../components/ui/Toast';
+import { RouteProgressBar } from '../components/ui/RouteProgressBar';
 import { ConditionalFooter } from '../components/ConditionalFooter';
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${jakartaSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans antialiased bg-[--color-bg] text-[--color-text-primary]">
         <ToastProvider>
+          <RouteProgressBar />
           <div className="min-h-screen flex flex-col">
             {children}
             <ConditionalFooter />

@@ -22,13 +22,41 @@ import { AcceptanceStatusCard } from '../../../../components/deals/AcceptanceSta
 import { DealActivityLog } from '../../../../components/deals/DealActivityLog';
 import { DeliveryTimeline } from '../../../../components/dashboard/DeliveryTimeline';
 import { CertificateShowcase } from '../../../../components/dashboard/CertificateShowcase';
+import { OfferLifecycleCard, type OfferLifecycleState } from '../../../../components/deals/OfferLifecycleCard';
 
 export const dynamic = 'force-dynamic';
 
-// ─── Extended type (API may return certificateId) ─────────────────────────────
+// ─── Extended type ────────────────────────────────────────────────────────────
+// The API may return lifecycle timestamps beyond the base OfferItem shape.
+// All fields are optional — if absent we derive sensible fallbacks.
 
 interface OfferItemExtended extends OfferItem {
   certificateId?: string;
+  sentAt?: string | null;
+  openedAt?: string | null;
+  acceptedAt?: string | null;
+  certificateIssuedAt?: string | null;
+}
+
+// ─── Lifecycle state derivation ───────────────────────────────────────────────
+// Uses precise API timestamps when available; falls back to status-based inference.
+
+function deriveLifecycleState(offer: OfferItemExtended): OfferLifecycleState {
+  const isSent     = offer.status !== 'DRAFT';
+  const isAccepted = offer.status === 'ACCEPTED';
+
+  return {
+    // sentAt: prefer explicit API field, fall back to updatedAt when status proves it was sent
+    sentAt: offer.sentAt ?? (isSent ? offer.updatedAt : null),
+    // openedAt: no status-based fallback — only show if API returns it
+    openedAt: offer.openedAt ?? null,
+    // acceptedAt: use updatedAt as proxy when status is ACCEPTED and no explicit timestamp
+    acceptedAt: offer.acceptedAt ?? (isAccepted ? offer.updatedAt : null),
+    // certificateIssuedAt: any cert present means it was issued
+    certificateIssuedAt: offer.certificateIssuedAt ?? (offer.certificateId ? offer.updatedAt : null),
+    // verificationUrl: derive from certificateId
+    verificationUrl: offer.certificateId ? `/verify/${offer.certificateId}` : null,
+  };
 }
 
 // ─── DealDetailPage ────────────────────────────────────────────────────────────
@@ -42,8 +70,8 @@ export default function DealDetailPage() {
     getOffer(id)
       .then((data) => setOffer(data as OfferItemExtended))
       .catch((err: { statusCode?: number }) => {
-        if (err.statusCode === 404) setError('Deal not found.');
-        else setError('Could not load deal. Please try again.');
+        if (err.statusCode === 404) setError('Offer not found.');
+        else setError('Could not load offer. Please try again.');
       });
   }, [id]);
 
@@ -95,18 +123,21 @@ export default function DealDetailPage() {
   if (error) {
     return (
       <div className="max-w-6xl mx-auto">
-        <PageHeader title="Deal" backHref="/dashboard/deals" backLabel="All deals" />
+        <PageHeader title="Offer" backHref="/dashboard/deals" backLabel="All offers" />
         <Alert variant="error">{error}</Alert>
       </div>
     );
   }
 
-  if (!offer) return <SpinnerPage label="Loading deal…" />;
+  if (!offer) return <SpinnerPage label="Loading offer…" />;
 
   const isAccepted = offer.status === 'ACCEPTED';
   const isDeclined = offer.status === 'DECLINED';
   const isRevoked  = offer.status === 'REVOKED';
   const isExpired  = offer.status === 'EXPIRED';
+  const isDraft    = offer.status === 'DRAFT';
+
+  const lifecycleState = deriveLifecycleState(offer);
 
   return (
     <div className="max-w-6xl mx-auto space-y-5">
@@ -115,38 +146,50 @@ export default function DealDetailPage() {
       <PageHeader
         title={offer.title}
         backHref="/dashboard/deals"
-        backLabel="All deals"
+        backLabel="All offers"
         action={<OfferStatusBadge status={offer.status} />}
       />
 
       {/* ── Terminal status alerts ──────────────────────────────────────────── */}
       {isRevoked && (
         <Alert variant="warning">
-          This deal has been revoked. The deal link is no longer valid.
+          This offer has been revoked. The acceptance link is no longer valid.
         </Alert>
       )}
       {isExpired && (
         <Alert variant="warning">
-          This deal has expired. Create a new deal to re-engage the customer.
+          This offer has expired. Create a new offer to re-engage the recipient.
         </Alert>
       )}
       {isDeclined && (
-        <Alert variant="error">The customer declined this deal.</Alert>
+        <Alert variant="error">The recipient declined this offer.</Alert>
       )}
 
-      {/* ── Certificate (ACCEPTED + certificateId) ─────────────────────────── */}
+      {/* ── Lifecycle card — visible for any non-draft offer ───────────────── */}
+      {!isDraft && (
+        <OfferLifecycleCard
+          offerTitle={offer.title}
+          recipientName={offer.recipient?.name ?? undefined}
+          recipientEmail={offer.recipient?.email ?? undefined}
+          state={lifecycleState}
+        />
+      )}
+
+      {/* ── Certificate showcase (ACCEPTED + certificateId) ────────────────── */}
       {isAccepted && offer.certificateId && (
         <CertificateShowcase certificateId={offer.certificateId} />
       )}
+
+      {/* ── Certificate pending banner ─────────────────────────────────────── */}
       {isAccepted && !offer.certificateId && (
-        <div className="rounded-2xl border-2 border-green-300 bg-gradient-to-b from-green-50 to-emerald-50/30 p-8 mb-5 animate-scale-in text-center">
+        <div className="rounded-2xl border border-[--color-success-border] bg-[--color-success-light] p-8 animate-scale-in text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-green-200 animate-pulse-ring shadow-lg shadow-green-200/60">
+            <div className="w-16 h-16 rounded-full bg-[--color-success] flex items-center justify-center ring-4 ring-[--color-success-border] animate-pulse-ring">
               <CheckCircle2 className="w-8 h-8 text-white" aria-hidden="true" />
             </div>
           </div>
-          <h2 className="text-lg font-bold text-green-800 mb-1">Deal accepted</h2>
-          <p className="text-sm text-green-700">Certificate generation is in progress — refresh in a moment.</p>
+          <h2 className="text-lg font-bold text-[--color-success-text] mb-1">Offer accepted</h2>
+          <p className="text-sm text-[--color-success-text]/80">Certificate generation is in progress — refresh in a moment.</p>
         </div>
       )}
 

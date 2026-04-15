@@ -192,7 +192,7 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[--color-accent] accent-[--color-accent] flex-shrink-0"
+                  className="mt-0.5 w-4 h-4 rounded border-[--color-border] text-[--color-accent] accent-[--color-accent] flex-shrink-0"
                   required
                 />
                 <span className="text-xs text-[--color-text-secondary] leading-relaxed">

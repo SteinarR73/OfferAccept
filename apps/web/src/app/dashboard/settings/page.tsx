@@ -146,12 +146,12 @@ function TeamTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton w-7 h-7 rounded-full bg-[--color-surface]" />
+                <div className="skeleton-shimmer w-7 h-7 rounded-full bg-[--color-surface]" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="skeleton h-2.5 w-40 rounded bg-[--color-surface]" />
-                  <div className="skeleton h-2 w-24 rounded bg-[--color-bg]" />
+                  <div className="skeleton-shimmer h-2.5 w-40 rounded bg-[--color-surface]" />
+                  <div className="skeleton-shimmer h-2 w-24 rounded bg-[--color-bg]" />
                 </div>
-                <div className="skeleton h-5 w-16 rounded-full bg-[--color-bg]" />
+                <div className="skeleton-shimmer h-5 w-16 rounded-full bg-[--color-bg]" />
               </div>
             ))}
           </div>
@@ -356,11 +356,11 @@ function ApiKeysTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton h-3 w-32 rounded bg-[--color-surface]" />
+                <div className="skeleton-shimmer h-3 w-32 rounded bg-[--color-surface]" />
                 <div className="flex-1">
-                  <div className="skeleton h-2.5 w-48 rounded bg-[--color-bg]" />
+                  <div className="skeleton-shimmer h-2.5 w-48 rounded bg-[--color-bg]" />
                 </div>
-                <div className="skeleton h-6 w-16 rounded bg-[--color-bg]" />
+                <div className="skeleton-shimmer h-6 w-16 rounded bg-[--color-bg]" />
               </div>
             ))}
           </div>
@@ -563,9 +563,9 @@ function WebhooksTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton h-3 w-56 rounded bg-[--color-surface]" />
+                <div className="skeleton-shimmer h-3 w-56 rounded bg-[--color-surface]" />
                 <div className="flex-1">
-                  <div className="skeleton h-2.5 w-32 rounded bg-[--color-bg]" />
+                  <div className="skeleton-shimmer h-2.5 w-32 rounded bg-[--color-bg]" />
                 </div>
               </div>
             ))}
@@ -668,8 +668,8 @@ function DpaTab() {
         <CardSection>
           {loading ? (
             <div className="space-y-2">
-              <div className="skeleton h-3 w-48 rounded bg-[--color-surface]" />
-              <div className="skeleton h-2.5 w-64 rounded bg-[--color-bg]" />
+              <div className="skeleton-shimmer h-3 w-48 rounded bg-[--color-surface]" />
+              <div className="skeleton-shimmer h-2.5 w-64 rounded bg-[--color-bg]" />
             </div>
           ) : status?.accepted ? (
             <div className="flex items-start gap-3">

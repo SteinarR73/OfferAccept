@@ -5,7 +5,7 @@ const VARIANT = {
   primary:   'bg-[--color-accent] text-white hover:bg-[--color-accent-hover] focus-visible:ring-[--color-accent] shadow-sm hover:shadow-md',
   secondary: 'bg-white text-[--color-text-secondary] border border-[--color-border] hover:bg-[--color-bg] focus-visible:ring-[--color-accent] shadow-sm',
   ghost:     'text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary] focus-visible:ring-[--color-accent]',
-  danger:    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm',
+  danger:    'bg-[--color-error] text-white hover:bg-[--color-error-text] focus-visible:ring-[--color-error] shadow-sm',
 } as const;
 
 const SIZE = {

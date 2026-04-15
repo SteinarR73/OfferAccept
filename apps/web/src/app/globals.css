@@ -40,10 +40,13 @@
 }
 
 /* ── Utility classes ────────────────────────────────────────────── */
-.animate-fade-in      { animation: fade-in 0.25s ease-out both; }
-.animate-slide-left   { animation: slide-in-left 0.2s ease-out both; }
-.animate-progress-bar { animation: progress-bar 0.8s ease-out both; }
-.skeleton             { animation: pulse-skeleton 1.5s ease-in-out infinite; }
+.animate-fade-in      { animation: fade-in var(--duration-enter) var(--ease-decelerate) both; }
+.animate-slide-left   { animation: slide-in-left var(--duration-hover) var(--ease-decelerate) both; }
+.animate-progress-bar { animation: progress-bar 0.8s var(--ease-decelerate) both; }
+
+/* .skeleton is deprecated — use .skeleton-shimmer everywhere.        */
+/* Kept as a no-op alias so any remaining usages degrade gracefully.  */
+.skeleton { animation: none; }
 
 /* Stagger children */
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
@@ -55,14 +58,14 @@
   from { opacity: 0; transform: translateX(16px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-.animate-slide-right { animation: slide-in-right 0.2s ease-out both; }
+.animate-slide-right { animation: slide-in-right var(--duration-hover) var(--ease-decelerate) both; }
 
 /* ── Scale-in for certificate moment ───────────────────────────── */
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.93); }
   to   { opacity: 1; transform: scale(1); }
 }
-.animate-scale-in { animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in { animation: scale-in var(--duration-slow) var(--ease-spring) both; }
 
 /* ── Acceptance moment: pulsing ring ─────────────────────────────── */
 @keyframes pulse-ring {
@@ -103,20 +106,24 @@
   from { opacity: 0; transform: scale(0.96) translateY(-8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
-.animate-backdrop-in { animation: backdrop-in 0.15s ease-out both; }
-.animate-palette-in  { animation: palette-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-backdrop-in { animation: backdrop-in var(--duration-hover) var(--ease-decelerate) both; }
+.animate-palette-in  { animation: palette-in var(--duration-enter) var(--ease-spring) both; }
 
 /* ── Table hover row ────────────────────────────────────────────── */
 .table-row-hover:hover       { background-color: var(--color-bg); }
 .table-row-hover:focus-within { background-color: var(--color-accent-light); }
 
 /* ── Micro-interactions ─────────────────────────────────────────── */
-.btn-lift { transition: box-shadow 0.15s ease, transform 0.15s ease; }
+/* All timings reference tokens — do not use raw ms values here.    */
+.btn-lift { transition: box-shadow var(--duration-hover) var(--ease-standard), transform var(--duration-hover) var(--ease-standard); }
 .btn-lift:hover:not(:disabled)  { box-shadow: 0 4px 10px rgb(0 0 0 / 0.12); transform: translateY(-1px); }
 .btn-lift:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
 
-.card-hover { transition: box-shadow 0.2s ease; }
+.card-hover { transition: box-shadow var(--duration-hover) var(--ease-standard); }
 .card-hover:hover { box-shadow: var(--shadow-md); }
+
+/* Focus ring — instant (80ms) so keyboard nav feels snappy */
+.focus-instant { transition: outline var(--duration-instant) var(--ease-standard); }
 
 /* ── Reduced-motion: honour OS preference ───────────────────────── */
 @media (prefers-reduced-motion: reduce) {

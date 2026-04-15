@@ -21,30 +21,32 @@ function formatRelative(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Verb label — short, action-first, present tense where natural
 const EVENT_LABEL: Record<DealEventType, string> = {
-  deal_created:          'Deal created',
-  deal_sent:             'Deal sent',
-  deal_opened:           'Opened by recipient',
-  otp_verified:          'Identity verified',
-  deal_accepted:         'Deal accepted',
-  certificate_generated: 'Certificate issued',
-  deal_reminder_sent:    'Reminder sent',
-  deal_revoked:          'Deal revoked',
-  deal_expired:          'Deal expired',
-  deal_declined:         'Deal declined',
+  'deal.created':          'Offer created',
+  'deal.sent':             'Offer sent',
+  'deal.opened':           'Offer opened',
+  'otp.verified':          'Identity verified',
+  'deal.accepted':         'Offer accepted',
+  'certificate.issued':    'Certificate issued',
+  'deal.reminder_sent':    'Reminder sent',
+  'deal.revoked':          'Offer revoked',
+  'deal.expired':          'Offer expired',
+  'deal.declined':         'Offer declined',
 };
 
+// Semantic accent dot per event type
 const EVENT_DOT: Record<DealEventType, string> = {
-  deal_created:          'bg-gray-400',
-  deal_sent:             'bg-blue-500',
-  deal_opened:           'bg-indigo-400',
-  otp_verified:          'bg-indigo-500',
-  deal_accepted:         'bg-green-500',
-  certificate_generated: 'bg-emerald-600',
-  deal_reminder_sent:    'bg-orange-400',
-  deal_revoked:          'bg-purple-500',
-  deal_expired:          'bg-amber-400',
-  deal_declined:         'bg-red-500',
+  'deal.created':          'bg-[--color-neutral-text]',
+  'deal.sent':             'bg-[--color-info]',
+  'deal.opened':           'bg-[--color-info]',
+  'otp.verified':          'bg-[--color-accent]',
+  'deal.accepted':         'bg-[--color-success]',
+  'certificate.issued':    'bg-[--color-accent]',
+  'deal.reminder_sent':    'bg-[--color-warning]',
+  'deal.revoked':          'bg-[--color-purple]',
+  'deal.expired':          'bg-[--color-warning]',
+  'deal.declined':         'bg-[--color-error]',
 };
 
 // ─── ActivityFeed ─────────────────────────────────────────────────────────────
@@ -71,31 +73,31 @@ export function ActivityFeed({ maxItems = 8 }: ActivityFeedProps) {
         <EmptyState
           icon={<Activity className="w-5 h-5" aria-hidden="true" />}
           title="No activity yet"
-          description="Create and send your first deal to see activity here."
+          description="Create and send your first offer to see live activity here."
+          hint="Events like opens, verifications, and acceptances will appear here in real time."
           className="py-8"
         />
       ) : (
-        <ul className="divide-y divide-gray-50" aria-label="Deal activity feed">
+        <ul className="divide-y divide-[--color-border-subtle]" aria-label="Offer activity feed">
           {events.map((event) => (
             <li key={event.id}>
               <Link
                 href={`/dashboard/deals/${event.dealId}`}
-                className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:bg-blue-50"
+                className="flex items-start gap-3 px-5 py-3 hover:bg-[--color-hover] transition-colors focus-visible:outline-none focus-visible:bg-[--color-focus]"
               >
-                {/* Status dot */}
+                {/* Semantic accent dot */}
                 <span
-                  className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${EVENT_DOT[event.eventType] ?? 'bg-gray-400'}`}
+                  className={`w-2 h-2 rounded-full flex-shrink-0 mt-[5px] ${EVENT_DOT[event.eventType] ?? 'bg-[--color-neutral-text]'}`}
                   aria-hidden="true"
                 />
 
-                {/* Text */}
+                {/* Verb + deal title on separate lines */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 leading-snug">
-                    {EVENT_LABEL[event.eventType] ?? event.eventType}
-                    {' '}
-                    <span className="font-normal text-[--color-text-secondary] truncate">
-                      — {event.dealTitle}
-                    </span>
+                  <p className="text-xs font-semibold text-[--color-text-primary] leading-snug">
+                    {EVENT_LABEL[event.eventType] ?? event.eventType.replace(/[._]/g, ' ')}
+                  </p>
+                  <p className="text-[11px] text-[--color-text-secondary] mt-0.5 truncate leading-snug">
+                    {event.dealTitle}
                   </p>
                   <p className="text-[11px] text-[--color-text-muted] mt-0.5">
                     {formatRelative(event.createdAt)}
@@ -115,15 +117,16 @@ export function ActivityFeed({ maxItems = 8 }: ActivityFeedProps) {
 export function ActivityFeedSkeleton() {
   return (
     <Card className="h-fit">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <div className="skeleton h-3 w-16 rounded bg-gray-200" />
+      <div className="px-5 py-4 border-b border-[--color-border-subtle]">
+        <div className="skeleton-shimmer h-3 w-16 rounded" />
       </div>
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-start gap-3 px-5 py-3 border-b border-gray-50 last:border-0">
-          <div className="skeleton w-2 h-2 rounded-full bg-gray-200 flex-shrink-0 mt-1.5" />
+        <div key={i} className="flex items-start gap-3 px-5 py-3 border-b border-[--color-border-subtle] last:border-0">
+          <div className="skeleton-shimmer w-2 h-2 rounded-full flex-shrink-0 mt-[5px]" />
           <div className="flex-1 space-y-1.5">
-            <div className="skeleton h-2.5 w-48 rounded bg-gray-200" />
-            <div className="skeleton h-2 w-12 rounded bg-gray-100" />
+            <div className="skeleton-shimmer h-2.5 w-24 rounded" />
+            <div className="skeleton-shimmer h-2.5 w-40 rounded" />
+            <div className="skeleton-shimmer h-2 w-12 rounded" />
           </div>
         </div>
       ))}

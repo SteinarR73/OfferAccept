@@ -13,18 +13,21 @@ export function FirstDealEmptyState() {
     <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-fade-in">
       {/* Icon */}
       <div
-        className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-6"
+        className="w-16 h-16 rounded-2xl bg-[--color-accent-light] border border-[--color-accent-light] flex items-center justify-center mb-6"
         aria-hidden="true"
       >
-        <FileText className="w-8 h-8 text-blue-500" />
+        <FileText className="w-8 h-8 text-[--color-accent]" />
       </div>
 
       {/* Heading */}
-      <h2 className="text-xl font-semibold text-[--color-text-primary] mb-2">
+      <h2 className="text-xl font-bold tracking-tight text-[--color-text-primary] mb-2">
         No offers yet
       </h2>
-      <p className="text-sm text-[--color-text-secondary] max-w-xs mb-8">
-        Send an offer for acceptance. A verifiable certificate will be generated automatically.
+      <p className="text-sm text-[--color-text-secondary] max-w-sm mb-1 leading-relaxed">
+        Create your first offer to send a document for acceptance.
+      </p>
+      <p className="text-sm text-[--color-text-muted] max-w-sm mb-8 leading-relaxed">
+        You&apos;ll receive a tamper-evident certificate once it&apos;s accepted.
       </p>
 
       {/* Primary CTA */}
@@ -38,9 +41,9 @@ export function FirstDealEmptyState() {
         </Button>
       </Link>
 
-      {/* Soft footnote */}
-      <p className="text-xs text-[--color-text-muted] mt-5 max-w-xs">
-        You&apos;ll be able to track offer activity and acceptance here.
+      {/* Secondary hint */}
+      <p className="text-xs text-[--color-text-muted] mt-4 max-w-xs">
+        No account required for recipients — they accept via a secure email link.
       </p>
 
       {/* How it works — 3-step mini guide */}
@@ -48,7 +51,7 @@ export function FirstDealEmptyState() {
         {STEPS.map((s, i) => (
           <div key={s.label} className="flex-1">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+              <span className="w-5 h-5 rounded-full bg-[--color-accent] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                 {i + 1}
               </span>
               <span className="text-xs font-semibold text-[--color-text-primary]">{s.label}</span>

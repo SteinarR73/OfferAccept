@@ -128,7 +128,7 @@ function CustomerInfoCard({
               <Mail className="w-3 h-3" aria-hidden="true" />
               Email
             </dt>
-            <dd className="text-sm text-gray-900 truncate max-w-[200px]">{email}</dd>
+            <dd className="text-sm text-[--color-text-primary] truncate max-w-[200px]">{email}</dd>
           </div>
 
           <div>
@@ -136,10 +136,10 @@ function CustomerInfoCard({
               <TrendingUp className="w-3 h-3" aria-hidden="true" />
               Deals
             </dt>
-            <dd className="text-2xl font-bold text-gray-900 tabular-nums">
+            <dd className="text-2xl font-bold text-[--color-text-primary] tabular-nums">
               {dealCount}
               {acceptedCount > 0 && (
-                <span className="text-xs font-normal text-green-700 ml-2">
+                <span className="text-xs font-normal text-[--color-success-text] ml-2">
                   {acceptedCount} accepted
                 </span>
               )}
@@ -151,7 +151,7 @@ function CustomerInfoCard({
               <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-1">
                 Last accepted
               </dt>
-              <dd className="text-sm text-gray-700 truncate max-w-[180px]">{lastAcceptedTitle}</dd>
+              <dd className="text-sm text-[--color-text-secondary] truncate max-w-[180px]">{lastAcceptedTitle}</dd>
             </div>
           )}
 
@@ -161,7 +161,7 @@ function CustomerInfoCard({
                 <Clock className="w-3 h-3" aria-hidden="true" />
                 Last activity
               </dt>
-              <dd className="text-sm text-gray-700">
+              <dd className="text-sm text-[--color-text-secondary]">
                 {new Date(lastActivity).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',

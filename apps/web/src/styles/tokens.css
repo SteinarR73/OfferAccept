@@ -49,13 +49,32 @@
   --color-info-text:      #1d4ed8;   /* blue-700  */
 
   /* ── 3. Surface & text ─────────────────────────────────────────── */
-  --color-bg:               #ffffff;   /* page background — white  */
-  --color-surface:          #f8fafc;   /* card / panel surface — light gray */
+  --color-bg:               #f8fafc;   /* page canvas — slate-50   */
+  --color-surface:          #ffffff;   /* card / panel surface — white */
   --color-border:           #e2e8f0;   /* slate-200 */
   --color-border-subtle:    #f1f5f9;   /* slate-100 */
   --color-text-primary:     #0f172a;   /* slate-950 */
   --color-text-secondary:   #475569;   /* slate-600 */
   --color-text-muted:       #94a3b8;   /* slate-400 */
+
+  /* Neutral state (gray badges, muted surfaces) */
+  --color-neutral-surface:  #f1f5f9;   /* slate-100 */
+  --color-neutral-text:     #475569;   /* slate-600 */
+
+  /* Purple (Revoked status) */
+  --color-purple:           #9333ea;   /* purple-600 */
+  --color-purple-surface:   #faf5ff;   /* purple-50  */
+  --color-purple-text:      #7e22ce;   /* purple-700 */
+  --color-purple-border:    #e9d5ff;   /* purple-200 */
+
+  /* Interactive surface states */
+  --color-hover:            #f1f5f9;   /* slate-100: row / list-item hover */
+  --color-focus:            #ecfdf5;   /* accent-light: focus-within highlight */
+
+  /* Semantic soft (lower-chroma) surfaces — used by lifecycle/timeline components */
+  --color-success-soft:     #f0fdf4;   /* = --color-success-light  (green-50)  */
+  --color-accent-soft:      #ecfdf5;   /* = --color-accent-light   (emerald-50)*/
+  --color-muted-surface:    #f1f5f9;   /* = --color-neutral-surface (slate-100)*/
 
   /* ── 4. Layout chrome ──────────────────────────────────────────── */
   --sidebar-width:               15rem;
@@ -116,19 +135,42 @@
   --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
-  /* ── 8. Transitions ────────────────────────────────────────────── */
-  /* Use these in component style attributes or utility classes to   */
-  /* keep motion consistent across the design system.               */
-  --transition-fast:      150ms ease;
-  --transition-base:      200ms ease;
-  --transition-slow:      300ms ease;
-  --transition-colors:    color var(--transition-fast),
-                          background-color var(--transition-fast),
-                          border-color var(--transition-fast),
-                          fill var(--transition-fast),
-                          stroke var(--transition-fast);
-  --transition-shadow:    box-shadow var(--transition-base);
-  --transition-transform: transform var(--transition-base);
-  --transition-opacity:   opacity var(--transition-base);
+  /* ── 8. Motion system ──────────────────────────────────────────── */
+  /*                                                                 */
+  /* Duration scale — use the named tokens, not raw ms values.      */
+  /*   instant  (80ms)  — focus rings, immediate feedback           */
+  /*   hover   (120ms)  — hover colour/shadow changes               */
+  /*   enter   (180ms)  — modals, sheets, command palette           */
+  /*   base    (200ms)  — general transitions                       */
+  /*   leave   (140ms)  — dropdown / popover exit (faster than in)  */
+  /*   slow    (300ms)  — page-level, skeleton fade                 */
+  --duration-instant:   80ms;
+  --duration-hover:    120ms;
+  --duration-leave:    140ms;
+  --duration-enter:    180ms;
+  --duration-base:     200ms;
+  --duration-slow:     300ms;
+
+  /* Easing curves */
+  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);       /* default */
+  --ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);       /* entering */
+  --ease-accelerate:  cubic-bezier(0.4, 0, 1, 1);       /* exiting */
+  --ease-spring:      cubic-bezier(0.16, 1, 0.3, 1);    /* spring bounce */
+
+  /* Composite shorthands (backward-compatible aliases kept below) */
+  --transition-hover:     var(--duration-hover) var(--ease-standard);
+  --transition-enter:     var(--duration-enter) var(--ease-decelerate);
+  --transition-leave:     var(--duration-leave) var(--ease-accelerate);
+  --transition-fast:      var(--duration-hover) var(--ease-standard);
+  --transition-base:      var(--duration-base) var(--ease-standard);
+  --transition-slow:      var(--duration-slow) var(--ease-standard);
+  --transition-colors:    color var(--transition-hover),
+                          background-color var(--transition-hover),
+                          border-color var(--transition-hover),
+                          fill var(--transition-hover),
+                          stroke var(--transition-hover);
+  --transition-shadow:    box-shadow var(--transition-hover);
+  --transition-transform: transform var(--transition-hover);
+  --transition-opacity:   opacity var(--transition-hover);
 
 }

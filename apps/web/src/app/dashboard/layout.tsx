@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           id="sidebar"
           aria-label="Main navigation"
           className={cn(
-            'fixed inset-y-0 left-0 z-50 flex flex-col w-60 bg-[--color-sidebar-bg] border-r border-white/5',
+            'fixed inset-y-0 left-0 z-50 flex flex-col w-[--sidebar-width] bg-[--color-sidebar-bg] border-r border-white/5',
             'transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           )}
@@ -193,6 +193,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Org + logout */}
           <div className="flex-shrink-0 border-t border-white/5 p-3 flex flex-col gap-2">
             <OrgSelector />
+
+            {/* ⌘K discovery hint */}
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] group"
+              aria-label="Open command palette"
+            >
+              <Search className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+              <span className="flex-1 text-left">Search</span>
+              <kbd className="hidden lg:flex items-center gap-0.5 font-mono text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors">
+                <span>⌘</span><span>K</span>
+              </kbd>
+            </button>
+
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent]"
@@ -237,13 +251,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     const isLast = i === breadcrumb.length - 1;
                     return (
                       <li key={i} className="flex items-center gap-1">
-                        {i > 0 && <ChevronRight className="w-3 h-3 text-gray-300" aria-hidden="true" />}
+                        {i > 0 && <ChevronRight className="w-3 h-3 text-[--color-text-muted]" aria-hidden="true" />}
                         {isLast || !item.href ? (
-                          <span className="text-xs text-gray-500 font-medium" aria-current={isLast ? 'page' : undefined}>
+                          <span className="text-xs text-[--color-text-secondary] font-medium" aria-current={isLast ? 'page' : undefined}>
                             {item.label}
                           </span>
                         ) : (
-                          <Link href={item.href} className="text-xs text-[--color-text-muted] hover:text-gray-700 transition-colors font-medium">
+                          <Link href={item.href} className="text-xs text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors font-medium">
                             {item.label}
                           </Link>
                         )}

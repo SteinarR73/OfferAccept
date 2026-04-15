@@ -101,9 +101,9 @@ export default function BillingPage() {
       {loading ? (
         <Card className="mb-6">
           <div className="p-5 space-y-3">
-            <div className="skeleton h-4 w-32 rounded bg-[--color-surface]" />
-            <div className="skeleton h-3 w-48 rounded bg-[--color-bg]" />
-            <div className="skeleton h-2 w-full rounded bg-[--color-bg]" />
+            <div className="skeleton-shimmer h-4 w-32 rounded bg-[--color-surface]" />
+            <div className="skeleton-shimmer h-3 w-48 rounded bg-[--color-bg]" />
+            <div className="skeleton-shimmer h-2 w-full rounded bg-[--color-bg]" />
           </div>
         </Card>
       ) : sub && (

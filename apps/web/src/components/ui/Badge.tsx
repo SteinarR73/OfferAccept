@@ -1,21 +1,21 @@
 import { cn } from '@/lib/cn';
 
 const VARIANT = {
-  gray:   'bg-gray-100 text-gray-600',
-  blue:   'bg-blue-100 text-blue-700',
-  green:  'bg-green-100 text-green-700',
-  red:    'bg-red-100 text-red-600',
-  amber:  'bg-amber-100 text-amber-700',
-  purple: 'bg-purple-100 text-purple-700',
+  gray:   'bg-[--color-neutral-surface] text-[--color-neutral-text]',
+  blue:   'bg-[--color-info-light] text-[--color-info-text]',
+  green:  'bg-[--color-success-light] text-[--color-success-text]',
+  red:    'bg-[--color-error-light] text-[--color-error-text]',
+  amber:  'bg-[--color-warning-light] text-[--color-warning-text]',
+  purple: 'bg-[--color-purple-surface] text-[--color-purple-text]',
 } as const;
 
 const DOT = {
-  gray:   'bg-gray-400',
-  blue:   'bg-blue-500',
-  green:  'bg-green-500',
-  red:    'bg-red-500',
-  amber:  'bg-amber-500',
-  purple: 'bg-purple-500',
+  gray:   'bg-[--color-neutral-text]',
+  blue:   'bg-[--color-info]',
+  green:  'bg-[--color-success]',
+  red:    'bg-[--color-error]',
+  amber:  'bg-[--color-warning]',
+  purple: 'bg-[--color-purple]',
 } as const;
 
 const SIZE = {

@@ -448,7 +448,7 @@ function OfferView({
         <Button variant="primary" size="md" onClick={onContinue} leftIcon={<Shield className="w-4 h-4" aria-hidden="true" />}>
           Continue to accept
         </Button>
-        <Button variant="ghost" size="md" onClick={onDecline} className="text-gray-500">
+        <Button variant="ghost" size="md" onClick={onDecline} className="text-[--color-text-secondary]">
           Decline
         </Button>
       </div>
@@ -585,12 +585,12 @@ function AcceptanceView({
         By clicking <strong>I Accept</strong>, you agree to the following:
       </p>
 
-      <p className="text-xs text-gray-500 mb-2">
+      <p className="text-xs text-[--color-text-muted] mb-2">
         This statement was provided by{' '}
-        <span className="font-medium text-gray-700">{ctx.senderName}</span>.
+        <span className="font-medium text-[--color-text-secondary]">{ctx.senderName}</span>.
       </p>
-      <div className="border-l-4 border-blue-500 bg-blue-50 px-5 py-4 rounded-r-xl mb-6">
-        <p className="text-sm text-gray-800 italic leading-relaxed">{ctx.acceptanceStatement}</p>
+      <div className="border-l-4 border-[--color-accent] bg-[--color-accent-soft] px-5 py-4 rounded-r-xl mb-6">
+        <p className="text-sm text-[--color-text-primary] italic leading-relaxed">{ctx.acceptanceStatement}</p>
       </div>
 
       <div className="flex gap-3">
@@ -599,11 +599,11 @@ function AcceptanceView({
           size="md"
           onClick={() => onAccept(challengeId)}
           leftIcon={<CheckCircle className="w-4 h-4" aria-hidden="true" />}
-          className="bg-green-600 hover:bg-green-700 focus:ring-green-500"
+          className="bg-[--color-success] hover:bg-[--color-success-text] focus-visible:ring-[--color-success]"
         >
           I Accept
         </Button>
-        <Button variant="ghost" size="md" onClick={onDecline} className="text-gray-500" aria-label="Decline this deal">
+        <Button variant="ghost" size="md" onClick={onDecline} className="text-[--color-text-secondary]" aria-label="Decline this deal">
           Decline
         </Button>
       </div>
@@ -621,8 +621,8 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
 
       {/* ── Animated checkmark icon ─────────────────────────────────────────── */}
       <div
-        className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center mb-7
-                   ring-4 ring-green-200 animate-pulse-ring shadow-xl shadow-green-200/60"
+        className="w-24 h-24 rounded-full bg-[--color-success] flex items-center justify-center mb-7
+                   ring-4 ring-[--color-success-border] animate-pulse-ring shadow-xl"
         aria-hidden="true"
       >
         <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14">

@@ -180,7 +180,7 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setConfirmRevoke(true)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-[--color-error] hover:text-[--color-error-text] hover:bg-[--color-error-light]"
                 leftIcon={<XCircle className="w-3.5 h-3.5" aria-hidden="true" />}
               >
                 Revoke

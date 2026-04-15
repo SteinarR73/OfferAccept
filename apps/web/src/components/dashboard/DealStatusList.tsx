@@ -63,7 +63,9 @@ export function DealStatusList({ offers, loading }: DealStatusListProps) {
         <EmptyState
           icon={<FileText className="w-5 h-5" aria-hidden="true" />}
           title="No offers yet"
-          description="Send your first offer to get started."
+          description="Send your first offer to collect verifiable acceptance."
+          hint="Recipients don't need an account — they accept via a secure email link."
+          action={{ label: 'Create offer', href: '/dashboard/offers/new' }}
           className="py-10"
         />
       ) : (
@@ -151,15 +153,15 @@ export function DealStatusListSkeleton() {
   return (
     <Card>
       <div className="px-5 py-4 border-b border-[--color-border-subtle]">
-        <div className="h-3 w-12 rounded bg-[--color-surface] animate-pulse" />
+        <div className="skeleton-shimmer h-3 w-12 rounded" />
       </div>
       <div className="divide-y divide-[--color-border-subtle]">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-            <div className="flex-1 h-3 rounded bg-[--color-surface] animate-pulse" />
-            <div className="w-24 h-3 rounded bg-[--color-bg] animate-pulse hidden sm:block" />
-            <div className="w-16 h-5 rounded-full bg-[--color-bg] animate-pulse" />
-            <div className="w-12 h-2.5 rounded bg-[--color-bg] animate-pulse hidden md:block" />
+            <div className="skeleton-shimmer flex-1 h-3 rounded" />
+            <div className="skeleton-shimmer w-24 h-3 rounded hidden sm:block" />
+            <div className="skeleton-shimmer w-16 h-5 rounded-full" />
+            <div className="skeleton-shimmer w-12 h-2.5 rounded hidden md:block" />
           </div>
         ))}
       </div>

@@ -495,6 +495,7 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
     : '/security/evidence-model';
 
   return (
+    <>
     <div className="px-6 py-5 border-b border-[--color-border]">
       <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-3">
         Legal and verification framework
@@ -585,6 +586,7 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
         </a>
       </div>
     </div>
+    </>
   );
 }
 
