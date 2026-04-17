@@ -34,6 +34,12 @@ const envSchema = z
     // Per-command timeout (ms). Commands exceeding this are aborted and fail-open.
     REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(100).max(5000).default(500),
     JWT_SECRET: z.string().min(32),
+    // Comma-separated list of previous JWT signing secrets for key rotation.
+    // Verification is attempted with JWT_SECRET first (newest), then each entry
+    // in this list in order (oldest last). Signing always uses JWT_SECRET.
+    // Format: "old-secret-1,old-secret-2"
+    // Leave unset when no rotation is in progress.
+    JWT_SECRETS: z.string().optional(),
     // Access token TTL (short-lived, delivered as HttpOnly cookie).
     // Must be a value parseable by the jsonwebtoken 'expiresIn' option (e.g. '15m', '1h').
     JWT_ACCESS_TTL: z.string().default('15m'),

@@ -1,0 +1,124 @@
+╔══════════════════════════════════════════════════════════════╗
+║            Authority Engine — Launch Gate Report             ║
+║                   2026-04-17 17:52:36 UTC                    ║
+╚══════════════════════════════════════════════════════════════╝
+
+AI Cost Gates:
+  A1  [ PASS ] (P1) Token Ceiling
+  A2  [ PASS ] (P1) Cost Guardrail
+
+Abuse Protection:
+  B1  [ PASS ] (P1) Link Guessing Protection
+  B2  [ PASS ] (P1) Public Verify Rate Limit
+
+Database Gates:
+  D1  [ FAIL ] (P0) DB Provider Validation
+  ✗ schema.prisma datasource provider is postgresql (not sqlite)
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\schema.prisma'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:28:23)
+  ✗ DATABASE_URL reads from env — no hardcoded sqlite file path
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\schema.prisma'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:34:23)
+  D2  [ FAIL ] (P0) Migration Consistency
+  ✗ migrations directory exists and contains migration folders
+    Error: expect(received).toBe(expected) // Object.is equality
+    
+    Expected: true
+  ✗ every migration folder contains a migration.sql file
+    Error: ENOENT: no such file or directory, scandir 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\migrations'
+        at Object.readdirSync (node:fs:1590:26)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:64:24)
+  ✗ migrations are lexicographically ordered (no timestamp collisions)
+    Error: ENOENT: no such file or directory, scandir 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\migrations'
+        at Object.readdirSync (node:fs:1590:26)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:73:24)
+  ✗ CI workflow runs prisma migrate deploy before gate tests
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\.github\workflows\ci.yml'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:86:19)
+  ✗ schema.prisma immutable tables are append-only (no UPDATE in migration files)
+    Error: ENOENT: no such file or directory, scandir 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\migrations'
+        at Object.readdirSync (node:fs:1590:26)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:92:24)
+  D3  [ FAIL ] (P1) Query Latency Check
+  ✗ OfferRecipient has index on tokenHash for O(1) token lookup
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\schema.prisma'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:117:23)
+  ✗ Offer table has index on organizationId for dashboard list queries
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\schema.prisma'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:123:23)
+  ✗ AcceptanceCertificate has index on certificateId for public verification
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\schema.prisma'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:128:23)
+  ✗ SigningEvent has index on sessionId for event chain queries
+    Error: ENOENT: no such file or directory, open 'C:\Users\steir\OfferAccept\apps\packages\database\prisma\schema.prisma'
+        at Object.readFileSync (node:fs:440:20)
+        at Object.<anonymous> (C:\Users\steir\OfferAccept\apps\api\test\authority-engine\gates\03-database.spec.ts:134:23)
+
+Financial Gates:
+  F1  [ FAIL ] (P0) Offer-Count Atomicity
+  ✗ monthly billing reset is idempotent via lastUsageReset timestamp guard
+    Error: expect(received).toContain(expected) // indexOf
+    
+    Expected substring: "lastUsageReset"
+  F2  [ PASS ] (P0) Idempotency Protection
+  F3  [ PASS ] (P0) Stripe Webhook Signature Validation
+
+Observability:
+  O1  [ PASS ] (P1) Health Endpoint
+  O2  [ PASS ] (P1) Structured Logging
+  O3  [ PASS ] (P2) Error Monitoring
+
+Product Behavior:
+  P1  [ FAIL ] (P0) Signing Flow Integrity
+  ✗ signing flow service implements all 6 state transitions
+    Error: expect(received).toContain(expected) // indexOf
+    
+    Expected substring: "loadOfferForSigning"
+  P2  [ PASS ] (P0) Certificate Hash Integrity
+
+Security Gates:
+  S1  [ FAIL ] (P0) Admin MFA Enforcement
+  ✗ support guard enforces MFA claim when REQUIRE_SUPPORT_MFA=true
+    Error: expect(received).toBe(expected) // Object.is equality
+    
+    Expected: true
+  S2  [ FAIL ] (P0) JWT Secret Rotation Support
+  ✗ guard verifies with rotation secrets only after primary secret fails
+    Error: expect(received).toBeGreaterThan(expected)
+    
+    Expected: > 2616
+  S3  [ PASS ] (P1) OTP Rate Limit
+
+Worker Gates:
+  W1  [ PASS ] (P1) Worker Isolation
+  W2  [ FAIL ] (P1) Job Retry Logic
+  ✗ job worker configures retryLimit on all queues
+    Error: expect(received).toContain(expected) // indexOf
+    
+    Expected substring: "retryLimit"
+  ✗ job worker uses exponential backoff (retryBackoff: true)
+    Error: expect(received).toContain(expected) // indexOf
+    
+    Expected substring: "retryBackoff"
+  ✗ retryDelay is set (minimum delay between retries — prevents tight retry loops)
+    Error: expect(received).toContain(expected) // indexOf
+    
+    Expected substring: "retryDelay"
+  ✗ job expiry is configured to prevent stale jobs from running after deployment
+    Error: expect(received).toContain(expected) // indexOf
+    
+    Expected substring: "expireIn"
+
+──────────────────────────────────────────────────────────────
+Summary: 12 PASS  |  8 FAIL  |  0 WARN  |  0 NOT RUN  (19.6s)
+
+╔══════════════════════════════════════════════════════════════╗
+║                        FINAL STATUS:                         ║
+║         ✗  BLOCKED — NOT SAFE FOR PRODUCTION DEPLOY          ║
+╚══════════════════════════════════════════════════════════════╝

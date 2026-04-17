@@ -1,0 +1,114 @@
+name: Authority Engine — Launch Gate
+
+# ─── Trigger ──────────────────────────────────────────────────────────────────
+# Runs on every push to main and every PR so gate regressions are caught before
+# merge. Can also be triggered manually via the Actions tab for staging validation.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment label (informational)"
+        required: false
+        default: "staging"
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10.20.0"
+
+jobs:
+  authority-engine:
+    name: Authority Engine — Launch Gate Report
+    runs-on: ubuntu-latest
+
+    # ── Services ───────────────────────────────────────────────────────────────
+    # The gate suite is primarily static analysis + unit-level service tests,
+    # so Postgres and Redis are not required. Gates that need a live DB (D2 full
+    # migration check) are handled by the existing test-api + gate-tests jobs.
+    # If runtime gates are added later, add postgres/redis services here.
+
+    env:
+      NODE_ENV: test
+      # Minimal env to satisfy NestJS bootstrap in test modules
+      DATABASE_URL: postgresql://offeraccept:offeraccept@localhost:5432/offeraccept_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+      JWT_SECRETS: ""
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL_DAYS: 30
+      COOKIE_SECURE: "false"
+      SIGNING_LINK_SECRET: ${{ secrets.CI_SIGNING_SECRET }}
+      WEB_BASE_URL: http://localhost:3000
+      EMAIL_FROM: test@localhost
+      EMAIL_PROVIDER: dev
+      STORAGE_PROVIDER: dev
+      WEBHOOK_SECRET_KEY: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+      AI_PROVIDER: none
+      BILLING_PROVIDER: none
+      RATE_LIMIT_BACKEND: memory
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
+      # ── Run the Authority Engine ───────────────────────────────────────────
+      - name: Run Authority Engine gate suite
+        id: gate-run
+        run: pnpm --filter ./apps/api run test:authority-engine
+        # Continue on failure so we always upload the report artifact
+        continue-on-error: true
+
+      # ── Upload report artifact ─────────────────────────────────────────────
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authority-engine-report
+          path: authority-engine-report.txt
+          retention-days: 30
+
+      # ── Print report to step summary ───────────────────────────────────────
+      - name: Print report to job summary
+        if: always()
+        run: |
+          if [ -f authority-engine-report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat authority-engine-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ── Fail the job if any P0/P1 gate failed ─────────────────────────────
+      - name: Enforce gate result
+        if: steps.gate-run.outcome == 'failure'
+        run: |
+          echo "❌ One or more P0/P1 gates FAILED. Deploy is BLOCKED."
+          echo "See the authority-engine-report artifact for details."
+          exit 1
+
+  # ── Depends-on gate ────────────────────────────────────────────────────────
+  # The build job must not proceed until the Authority Engine PASSES.
+  # This mirrors the existing pattern where build depends on gate-tests.
+  enforce-before-build:
+    name: Gate result enforced before build
+    runs-on: ubuntu-latest
+    needs: [authority-engine]
+    steps:
+      - name: Authority Engine passed
+        run: echo "✅ All P0 and P1 gates passed. Build may proceed."
