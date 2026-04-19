@@ -50,6 +50,10 @@ export default function NewDealWizardPage() {
   const router = useRouter();
   const params = useSearchParams();
 
+  // When navigated from the onboarding empty state or modal, show extra
+  // contextual hints for the document and recipient steps.
+  const isFirstDeal = params.get('firstDeal') === 'true';
+
   const [step, setStep] = useState(1);
   const [state, setState] = useState<WizardState>({
     dealName: params.get('name') ? '' : 'Deal',
@@ -172,6 +176,7 @@ export default function NewDealWizardPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="mb-6">
         <button
+          type="button"
           onClick={() => router.back()}
           className="flex items-center gap-1 text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors mb-4"
         >
@@ -198,15 +203,39 @@ export default function NewDealWizardPage() {
 
         {step === 1 && <StepDealName state={state} onChange={update} onNext={handleNext} />}
         {step === 2 && draftOfferId && (
-          <StepDocument
-            offerId={draftOfferId}
-            state={state}
-            onTemplateSelect={handleTemplateSelect}
-            onUploaded={(id, name) => setUploadedDocs((prev) => [...prev, { docId: id, filename: name }])}
-            onUploadingChange={setIsUploading}
-          />
+          <>
+            <StepDocument
+              offerId={draftOfferId}
+              state={state}
+              onTemplateSelect={handleTemplateSelect}
+              onUploaded={(id, name) => setUploadedDocs((prev) => [...prev, { docId: id, filename: name }])}
+              onUploadingChange={setIsUploading}
+            />
+            {isFirstDeal && (
+              <div className="mt-3 rounded-xl border border-(--color-border-subtle) bg-(--color-bg) px-4 py-3">
+                <p className="text-xs font-semibold text-(--color-text-primary) mb-1">About document snapshots</p>
+                <p className="text-xs text-(--color-text-secondary) leading-relaxed">
+                  We store an exact copy of whatever you upload now. If you change the document later,
+                  accepted deals will still reference the version that was accepted — keeping the record clean.
+                </p>
+              </div>
+            )}
+          </>
         )}
-        {step === 3 && <StepRecipient state={state} onChange={update} onNext={handleNext} />}
+        {step === 3 && (
+          <>
+            <StepRecipient state={state} onChange={update} onNext={handleNext} />
+            {isFirstDeal && (
+              <div className="mt-3 rounded-xl border border-(--color-border-subtle) bg-(--color-bg) px-4 py-3">
+                <p className="text-xs font-semibold text-(--color-text-primary) mb-1">What your recipient experiences</p>
+                <p className="text-xs text-(--color-text-secondary) leading-relaxed">
+                  They receive a single email with a secure link. No account, no app, no passwords.
+                  They review the document and confirm — the whole process takes under 60 seconds.
+                </p>
+              </div>
+            )}
+          </>
+        )}
         {step === 4 && <StepReview state={state} uploadedDocs={uploadedDocs} />}
       </div>
 
@@ -262,15 +291,15 @@ function StepIndicator({ current, total, label }: { current: number; total: numb
         </span>
         <span className="text-xs text-(--color-text-muted)">{label}</span>
       </div>
-      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border)' }}>
+      <div className="w-full h-1.5 rounded-full overflow-hidden bg-(--color-border)">
         <div
-          className="h-full rounded-full animate-progress-bar"
-          style={{
-            width: `${Math.max(pct, 8)}%`,
-            backgroundColor: 'var(--color-accent)',
-            transition: 'width var(--transition-slow)',
-          }}
+          className={cn(
+            'h-full rounded-full bg-(--color-accent) animate-progress-bar',
+            '[transition:width_var(--transition-slow)]',
+          )}
+          style={{ width: `${Math.max(pct, 8)}%` }}
           role="progressbar"
+          aria-label={`Step ${current} of ${total}`}
           aria-valuenow={current}
           aria-valuemin={1}
           aria-valuemax={total}
@@ -286,16 +315,11 @@ function StepIndicator({ current, total, label }: { current: number; total: numb
             <div key={n} className="flex flex-col items-center gap-0.5">
               <div
                 className={cn(
-                  'w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border',
-                  'transition-all',
+                  'w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border transition-all',
+                  done   && 'bg-(--color-accent) border-(--color-accent) text-white',
+                  active && 'bg-(--color-surface) border-(--color-accent) text-(--color-accent) shadow-[0_0_0_3px_var(--color-accent-light)]',
+                  !done && !active && 'bg-(--color-surface) border-(--color-border) text-(--color-text-muted)',
                 )}
-                style={
-                  done
-                    ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: '#fff' }
-                    : active
-                    ? { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-accent)', color: 'var(--color-accent)', boxShadow: '0 0 0 3px var(--color-accent-light)' }
-                    : { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }
-                }
                 aria-hidden="true"
               >
                 {done ? <Check className="w-2.5 h-2.5" /> : n}
@@ -615,11 +639,11 @@ function ReviewRow({
   muted?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <dl className="flex items-start justify-between gap-4">
       <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider shrink-0">{label}</dt>
       <dd className={cn('text-sm text-right', muted ? 'text-(--color-text-muted) italic' : 'font-medium text-(--color-text-primary)')}>
         {value}
       </dd>
-    </div>
+    </dl>
   );
 }
