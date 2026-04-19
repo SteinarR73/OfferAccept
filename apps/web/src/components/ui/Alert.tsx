@@ -5,10 +5,10 @@ import { cn } from '@/lib/cn';
 import { Info, CheckCircle, AlertTriangle, XCircle, X } from 'lucide-react';
 
 const STYLE = {
-  info:    { wrapper: 'bg-[--color-info-light] border-[--color-info-border] text-[--color-info-text]',       Icon: Info },
-  success: { wrapper: 'bg-[--color-success-light] border-[--color-success-border] text-[--color-success-text]', Icon: CheckCircle },
-  warning: { wrapper: 'bg-[--color-warning-light] border-[--color-warning-border] text-[--color-warning-text]', Icon: AlertTriangle },
-  error:   { wrapper: 'bg-[--color-error-light] border-[--color-error-border] text-[--color-error-text]',    Icon: XCircle },
+  info:    { wrapper: 'bg-(--color-info-light) border-(--color-info-border) text-(--color-info-text)',       Icon: Info },
+  success: { wrapper: 'bg-(--color-success-light) border-(--color-success-border) text-(--color-success-text)', Icon: CheckCircle },
+  warning: { wrapper: 'bg-(--color-warning-light) border-(--color-warning-border) text-(--color-warning-text)', Icon: AlertTriangle },
+  error:   { wrapper: 'bg-(--color-error-light) border-(--color-error-border) text-(--color-error-text)',    Icon: XCircle },
 } as const;
 
 interface AlertProps {

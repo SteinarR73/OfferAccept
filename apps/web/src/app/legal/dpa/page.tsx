@@ -12,7 +12,7 @@ export default function DpaPage() {
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
-            <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
+            <span className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
@@ -29,7 +29,7 @@ export default function DpaPage() {
           <a
             href="/legal/dpa?format=pdf"
             download="offeraccept-dpa-v1.0.pdf"
-            className="flex items-center gap-1.5 text-xs font-medium text-[--color-accent] hover:text-[--color-accent-hover] border border-[--color-accent] rounded-lg px-3 py-1.5 flex-shrink-0 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-(--color-accent) hover:text-(--color-accent-hover) border border-(--color-accent) rounded-lg px-3 py-1.5 flex-shrink-0 transition-colors"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
             Download PDF

@@ -146,7 +146,7 @@ export default function DocumentsPage() {
                       <td className="px-4 py-3.5 hidden sm:table-cell">
                         <Link
                           href={`/dashboard/deals/${offer.id}`}
-                          className="inline-flex items-center gap-1 text-sm text-[--color-accent] hover:underline focus-visible:ring-2 focus-visible:ring-blue-500 rounded truncate max-w-[180px]"
+                          className="inline-flex items-center gap-1 text-sm text-(--color-accent) hover:underline focus-visible:ring-2 focus-visible:ring-blue-500 rounded truncate max-w-[180px]"
                         >
                           <FileText className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
                           <span className="truncate">{offer.title}</span>

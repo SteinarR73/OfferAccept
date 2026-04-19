@@ -49,7 +49,7 @@ export function RouteProgressBar() {
     <div
       aria-hidden="true"
       style={{ width: `${width}%`, transition: width === 100 ? 'width 200ms ease-out' : 'width 200ms ease-in-out' }}
-      className="fixed top-0 left-0 h-[3px] z-[9999] bg-[--color-accent] opacity-90 pointer-events-none"
+      className="fixed top-0 left-0 h-[3px] z-[9999] bg-(--color-accent) opacity-90 pointer-events-none"
     />
   );
 }

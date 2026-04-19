@@ -145,7 +145,7 @@ export function DealActivityLog({ offer }: DealActivityLogProps) {
                 <p className="text-xs font-medium text-gray-900">{event.label}</p>
                 <time
                   dateTime={event.timestamp}
-                  className="text-[11px] text-[--color-text-muted] mt-0.5 block"
+                  className="text-[11px] text-(--color-text-muted) mt-0.5 block"
                 >
                   {formatDatetime(event.timestamp)}
                 </time>

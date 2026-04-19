@@ -146,26 +146,26 @@ function TeamTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton-shimmer w-7 h-7 rounded-full bg-[--color-surface]" />
+                <div className="skeleton-shimmer w-7 h-7 rounded-full bg-(--color-surface)" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="skeleton-shimmer h-2.5 w-40 rounded bg-[--color-surface]" />
-                  <div className="skeleton-shimmer h-2 w-24 rounded bg-[--color-bg]" />
+                  <div className="skeleton-shimmer h-2.5 w-40 rounded bg-(--color-surface)" />
+                  <div className="skeleton-shimmer h-2 w-24 rounded bg-(--color-bg)" />
                 </div>
-                <div className="skeleton-shimmer h-5 w-16 rounded-full bg-[--color-bg]" />
+                <div className="skeleton-shimmer h-5 w-16 rounded-full bg-(--color-bg)" />
               </div>
             ))}
           </div>
         ) : (
-          <ul className="divide-y divide-[--color-border-subtle]">
+          <ul className="divide-y divide-(--color-border-subtle)">
             {members.map((member) => (
               <li key={member.userId} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-7 h-7 rounded-full bg-[--color-accent-light] text-[--color-accent-text] flex items-center justify-center text-xs font-semibold flex-shrink-0 uppercase">
+                <div className="w-7 h-7 rounded-full bg-(--color-accent-light) text-(--color-accent-text) flex items-center justify-center text-xs font-semibold flex-shrink-0 uppercase">
                   {(member.email ?? member.userId).slice(0, 1)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-[--color-text-primary] truncate">{member.email ?? member.userId}</p>
+                  <p className="text-xs font-medium text-(--color-text-primary) truncate">{member.email ?? member.userId}</p>
                   {member.createdAt && (
-                    <p className="text-[11px] text-[--color-text-muted] mt-0.5">
+                    <p className="text-[11px] text-(--color-text-muted) mt-0.5">
                       Joined {new Date(member.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   )}
@@ -180,7 +180,7 @@ function TeamTab() {
                     loading={removing === member.userId}
                     onClick={() => handleRemove(member.userId)}
                     aria-label={`Remove ${member.email ?? member.userId}`}
-                    className="text-[--color-error] hover:text-[--color-error] hover:bg-[--color-error-light] ml-1"
+                    className="text-(--color-error) hover:text-(--color-error) hover:bg-(--color-error-light) ml-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -203,11 +203,11 @@ function TeamTab() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[--color-text-primary] mb-1">Role</label>
+                <label className="block text-xs font-medium text-(--color-text-primary) mb-1">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as InviteRole)}
-                  className="h-[38px] rounded-lg border border-[--color-border] text-xs px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent"
+                  className="h-[38px] rounded-lg border border-(--color-border) text-xs px-3 bg-white focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent"
                 >
                   {ROLE_OPTIONS.map((r) => (
                     <option key={r} value={r}>{r}</option>
@@ -301,10 +301,10 @@ function ApiKeysTab() {
           <div className="space-y-2">
             <p className="font-semibold text-xs">API key created — copy it now. It won't be shown again.</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 font-mono text-xs bg-[--color-success-light] rounded px-2 py-1 break-all">{newKeyCreated.key}</code>
+              <code className="flex-1 font-mono text-xs bg-(--color-success-light) rounded px-2 py-1 break-all">{newKeyCreated.key}</code>
               <button
                 onClick={() => copyKey(newKeyCreated.key)}
-                className="flex-shrink-0 text-[--color-success-text] hover:opacity-80 transition-opacity cursor-pointer"
+                className="flex-shrink-0 text-(--color-success-text) hover:opacity-80 transition-opacity cursor-pointer"
                 aria-label="Copy API key"
               >
                 {copied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
@@ -334,7 +334,7 @@ function ApiKeysTab() {
         />
 
         {showForm && isAdmin && (
-          <div className="px-5 py-4 border-b border-[--color-border-subtle] bg-[--color-bg]">
+          <div className="px-5 py-4 border-b border-(--color-border-subtle) bg-(--color-bg)">
             <form onSubmit={handleCreate} className="flex items-end gap-3">
               <div className="flex-1">
                 <Input
@@ -356,31 +356,31 @@ function ApiKeysTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton-shimmer h-3 w-32 rounded bg-[--color-surface]" />
+                <div className="skeleton-shimmer h-3 w-32 rounded bg-(--color-surface)" />
                 <div className="flex-1">
-                  <div className="skeleton-shimmer h-2.5 w-48 rounded bg-[--color-bg]" />
+                  <div className="skeleton-shimmer h-2.5 w-48 rounded bg-(--color-bg)" />
                 </div>
-                <div className="skeleton-shimmer h-6 w-16 rounded bg-[--color-bg]" />
+                <div className="skeleton-shimmer h-6 w-16 rounded bg-(--color-bg)" />
               </div>
             ))}
           </div>
         ) : keys.length === 0 ? (
-          <p className="px-5 py-6 text-xs text-[--color-text-muted] text-center">No API keys yet. Create one to get started.</p>
+          <p className="px-5 py-6 text-xs text-(--color-text-muted) text-center">No API keys yet. Create one to get started.</p>
         ) : (
-          <ul className="divide-y divide-[--color-border-subtle]">
+          <ul className="divide-y divide-(--color-border-subtle)">
             {keys.map((key) => (
               <li key={key.id} className="flex items-center gap-3 px-5 py-3">
-                <Key className="w-3.5 h-3.5 text-[--color-text-muted] flex-shrink-0" aria-hidden="true" />
+                <Key className="w-3.5 h-3.5 text-(--color-text-muted) flex-shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-[--color-text-primary]">{key.name}</p>
-                  <p className="text-[11px] text-[--color-text-muted] mt-0.5 font-mono">{key.prefix}••••••••</p>
+                  <p className="text-xs font-medium text-(--color-text-primary)">{key.name}</p>
+                  <p className="text-[11px] text-(--color-text-muted) mt-0.5 font-mono">{key.prefix}••••••••</p>
                 </div>
                 {key.lastUsedAt ? (
-                  <span className="text-[11px] text-[--color-text-muted] hidden sm:block flex-shrink-0">
+                  <span className="text-[11px] text-(--color-text-muted) hidden sm:block flex-shrink-0">
                     Last used {new Date(key.lastUsedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-[--color-text-muted] hidden sm:block flex-shrink-0">Never used</span>
+                  <span className="text-[11px] text-(--color-text-muted) hidden sm:block flex-shrink-0">Never used</span>
                 )}
                 {isAdmin && (
                   <Button
@@ -389,7 +389,7 @@ function ApiKeysTab() {
                     loading={deleting === key.id}
                     onClick={() => handleDelete(key.id)}
                     aria-label={`Delete ${key.name}`}
-                    className="text-[--color-error] hover:text-[--color-error] hover:bg-[--color-error-light]"
+                    className="text-(--color-error) hover:text-(--color-error) hover:bg-(--color-error-light)"
                   >
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -518,7 +518,7 @@ function WebhooksTab() {
         />
 
         {showForm && isAdmin && (
-          <div className="px-5 py-4 border-b border-[--color-border-subtle] bg-[--color-bg]">
+          <div className="px-5 py-4 border-b border-(--color-border-subtle) bg-(--color-bg)">
             <form onSubmit={handleSave} className="space-y-4">
               <Input
                 label="Endpoint URL"
@@ -530,7 +530,7 @@ function WebhooksTab() {
                 autoFocus
               />
               <div>
-                <p className="text-xs font-medium text-[--color-text-primary] mb-2">Events to subscribe</p>
+                <p className="text-xs font-medium text-(--color-text-primary) mb-2">Events to subscribe</p>
                 <div className="flex flex-wrap gap-2">
                   {WEBHOOK_EVENTS.map((evt) => (
                     <button
@@ -540,8 +540,8 @@ function WebhooksTab() {
                       className={cn(
                         'px-2.5 py-1 rounded-full text-xs border transition-colors cursor-pointer',
                         formEvents.includes(evt)
-                          ? 'bg-[--color-accent] border-[--color-accent] text-white'
-                          : 'bg-white border-[--color-border] text-[--color-text-secondary] hover:border-[--color-accent]',
+                          ? 'bg-(--color-accent) border-(--color-accent) text-white'
+                          : 'bg-white border-(--color-border) text-(--color-text-secondary) hover:border-(--color-accent)',
                       )}
                     >
                       {evt}
@@ -563,26 +563,26 @@ function WebhooksTab() {
           <div className="px-5 py-4 space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="skeleton-shimmer h-3 w-56 rounded bg-[--color-surface]" />
+                <div className="skeleton-shimmer h-3 w-56 rounded bg-(--color-surface)" />
                 <div className="flex-1">
-                  <div className="skeleton-shimmer h-2.5 w-32 rounded bg-[--color-bg]" />
+                  <div className="skeleton-shimmer h-2.5 w-32 rounded bg-(--color-bg)" />
                 </div>
               </div>
             ))}
           </div>
         ) : webhooks.length === 0 && !showForm ? (
-          <p className="px-5 py-6 text-xs text-[--color-text-muted] text-center">No webhooks configured yet.</p>
+          <p className="px-5 py-6 text-xs text-(--color-text-muted) text-center">No webhooks configured yet.</p>
         ) : (
-          <ul className="divide-y divide-[--color-border-subtle]">
+          <ul className="divide-y divide-(--color-border-subtle)">
             {webhooks.map((wh) => (
               <li key={wh.id} className="px-5 py-3">
                 <div className="flex items-start gap-3">
-                  <Webhook className="w-3.5 h-3.5 text-[--color-text-muted] flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <Webhook className="w-3.5 h-3.5 text-(--color-text-muted) flex-shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-[--color-text-primary] truncate font-mono">{wh.url}</p>
+                    <p className="text-xs font-medium text-(--color-text-primary) truncate font-mono">{wh.url}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {wh.events.map((evt) => (
-                        <span key={evt} className="text-[10px] bg-[--color-surface] text-[--color-text-secondary] rounded px-1.5 py-0.5">{evt}</span>
+                        <span key={evt} className="text-[10px] bg-(--color-surface) text-(--color-text-secondary) rounded px-1.5 py-0.5">{evt}</span>
                       ))}
                     </div>
                   </div>
@@ -593,7 +593,7 @@ function WebhooksTab() {
                           variant="ghost"
                           size="sm"
                           onClick={() => startEdit(wh)}
-                          className="text-[--color-text-secondary] hover:text-[--color-text-primary]"
+                          className="text-(--color-text-secondary) hover:text-(--color-text-primary)"
                         >
                           Edit
                         </Button>
@@ -603,7 +603,7 @@ function WebhooksTab() {
                           loading={deleting === wh.id}
                           onClick={() => handleDelete(wh.id)}
                           aria-label={`Delete webhook ${wh.url}`}
-                          className="text-[--color-error] hover:text-[--color-error] hover:bg-[--color-error-light]"
+                          className="text-(--color-error) hover:text-(--color-error) hover:bg-(--color-error-light)"
                         >
                           <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </Button>
@@ -668,18 +668,18 @@ function DpaTab() {
         <CardSection>
           {loading ? (
             <div className="space-y-2">
-              <div className="skeleton-shimmer h-3 w-48 rounded bg-[--color-surface]" />
-              <div className="skeleton-shimmer h-2.5 w-64 rounded bg-[--color-bg]" />
+              <div className="skeleton-shimmer h-3 w-48 rounded bg-(--color-surface)" />
+              <div className="skeleton-shimmer h-2.5 w-64 rounded bg-(--color-bg)" />
             </div>
           ) : status?.accepted ? (
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-[--color-success] flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <CheckCircle2 className="w-5 h-5 text-(--color-success) flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div>
-                <p className="text-sm font-medium text-[--color-text-primary]">
+                <p className="text-sm font-medium text-(--color-text-primary)">
                   DPA v{status.acceptedVersion} accepted
                 </p>
                 {status.acceptedAt && (
-                  <p className="text-xs text-[--color-text-muted] mt-0.5 flex items-center gap-1">
+                  <p className="text-xs text-(--color-text-muted) mt-0.5 flex items-center gap-1">
                     <Clock className="w-3 h-3" aria-hidden="true" />
                     {new Date(status.acceptedAt).toLocaleDateString('en-US', {
                       month: 'long', day: 'numeric', year: 'numeric',
@@ -690,7 +690,7 @@ function DpaTab() {
                   href="/legal/dpa"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-[--color-info] hover:underline mt-1 inline-block"
+                  className="text-xs text-(--color-info) hover:underline mt-1 inline-block"
                 >
                   View current DPA (v{status.currentVersion}) →
                 </a>
@@ -698,7 +698,7 @@ function DpaTab() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-[--color-text-secondary]">
+              <p className="text-sm text-(--color-text-secondary)">
                 Your organisation has not yet executed the DPA for the current version (v{status?.currentVersion ?? '1.0'}).
                 Review the agreement before accepting.
               </p>
@@ -706,20 +706,20 @@ function DpaTab() {
                 href="/legal/dpa"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-[--color-info] hover:underline"
+                className="text-xs text-(--color-info) hover:underline"
               >
                 Read the Data Processing Agreement →
               </a>
               {isAdmin && (
-                <div className="pt-2 space-y-3 border-t border-[--color-border-subtle]">
+                <div className="pt-2 space-y-3 border-t border-(--color-border-subtle)">
                   <label className="flex items-start gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={confirmed}
                       onChange={(e) => setConfirmed(e.target.checked)}
-                      className="mt-0.5 accent-[--color-accent]"
+                      className="mt-0.5 accent-(--color-accent)"
                     />
-                    <span className="text-xs text-[--color-text-secondary]">
+                    <span className="text-xs text-(--color-text-secondary)">
                       I have read and agree to the Data Processing Agreement on behalf of my organisation.
                       I confirm I have authority to bind the organisation to this agreement.
                     </span>
@@ -758,7 +758,7 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="Manage your account." />
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[--color-border] mb-6">
+      <div className="flex gap-1 border-b border-(--color-border) mb-6">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -766,8 +766,8 @@ export default function SettingsPage() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px cursor-pointer',
               activeTab === tab.id
-                ? 'border-[--color-accent] text-[--color-accent]'
-                : 'border-transparent text-[--color-text-secondary] hover:text-[--color-text-primary] hover:border-[--color-border]',
+                ? 'border-(--color-accent) text-(--color-accent)'
+                : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary) hover:border-(--color-border)',
             )}
             aria-selected={activeTab === tab.id}
             role="tab"

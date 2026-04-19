@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${jakartaSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans antialiased bg-[--color-bg] text-[--color-text-primary]">
+      <body className="font-sans antialiased bg-(--color-bg) text-(--color-text-primary)">
         <ToastProvider>
           <RouteProgressBar />
           <div className="min-h-screen flex flex-col">

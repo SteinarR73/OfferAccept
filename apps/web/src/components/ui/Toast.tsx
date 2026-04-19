@@ -8,14 +8,14 @@ import { useToastItems } from '@/lib/toast';
 
 const ICON = { success: CheckCircle, error: XCircle, info: Info } as const;
 const STYLE = {
-  success: 'bg-[--color-surface] border-[--color-success-border] text-[--color-success-text]',
-  error:   'bg-[--color-surface] border-[--color-error-border] text-[--color-error-text]',
-  info:    'bg-[--color-surface] border-[--color-info-border] text-[--color-info-text]',
+  success: 'bg-(--color-surface) border-(--color-success-border) text-(--color-success-text)',
+  error:   'bg-(--color-surface) border-(--color-error-border) text-(--color-error-text)',
+  info:    'bg-(--color-surface) border-(--color-info-border) text-(--color-info-text)',
 } as const;
 const ICON_COLOR = {
-  success: 'text-[--color-success]',
-  error:   'text-[--color-error]',
-  info:    'text-[--color-info]',
+  success: 'text-(--color-success)',
+  error:   'text-(--color-error)',
+  info:    'text-(--color-info)',
 } as const;
 
 function ToastItem({ id, variant, message }: { id: string; variant: keyof typeof STYLE; message: string }) {

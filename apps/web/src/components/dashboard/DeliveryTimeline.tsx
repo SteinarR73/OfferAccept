@@ -63,7 +63,7 @@ export function DeliveryTimeline({ offerId, offerStatus }: Props) {
           ))}
         </div>
       ) : attempts.length === 0 && !terminalStatus ? (
-        <p className="px-5 py-4 text-xs text-[--color-text-muted]">No delivery attempts yet.</p>
+        <p className="px-5 py-4 text-xs text-(--color-text-muted)">No delivery attempts yet.</p>
       ) : (
         <ol aria-label="Delivery timeline" className="px-5 py-3 space-y-4">
           {attempts.map((attempt) => (
@@ -78,7 +78,7 @@ export function DeliveryTimeline({ offerId, offerStatus }: Props) {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-900 font-medium">{formatDatetime(attempt.attemptedAt)}</p>
-                <p className="text-[11px] text-[--color-text-muted] mt-0.5 truncate">{attempt.recipientEmail}</p>
+                <p className="text-[11px] text-(--color-text-muted) mt-0.5 truncate">{attempt.recipientEmail}</p>
               </div>
               <Badge variant={outcomeVariant(attempt.outcome)} size="sm">
                 {outcomeLabel(attempt.outcome)}
@@ -92,7 +92,7 @@ export function DeliveryTimeline({ offerId, offerStatus }: Props) {
               <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1">
                 <p className="text-xs font-semibold text-green-700">Deal accepted</p>
-                <p className="text-[11px] text-[--color-text-muted] mt-0.5">Certificate generation initiated</p>
+                <p className="text-[11px] text-(--color-text-muted) mt-0.5">Certificate generation initiated</p>
               </div>
             </li>
           )}
@@ -108,7 +108,7 @@ export function DeliveryTimeline({ offerId, offerStatus }: Props) {
             <li className="flex items-start gap-3">
               <Clock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1">
-                <p className="text-xs text-[--color-text-muted]">Awaiting recipient action…</p>
+                <p className="text-xs text-(--color-text-muted)">Awaiting recipient action…</p>
               </div>
             </li>
           )}

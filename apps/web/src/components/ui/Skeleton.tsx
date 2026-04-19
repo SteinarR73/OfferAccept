@@ -32,7 +32,7 @@ export function Skeleton({ className, pill, circle }: SkeletonProps) {
 /** Matches a StatsCard */
 export function StatsCardSkeleton() {
   return (
-    <div className="bg-[--color-surface] rounded-xl border border-[--color-border] p-5 space-y-3" aria-hidden="true">
+    <div className="bg-(--color-surface) rounded-xl border border-(--color-border) p-5 space-y-3" aria-hidden="true">
       <Skeleton className="h-3 w-24" />
       <Skeleton className="h-7 w-16" />
       <Skeleton className="h-2.5 w-20" />
@@ -43,7 +43,7 @@ export function StatsCardSkeleton() {
 /** Matches an OfferTable row */
 export function OfferRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 px-5 py-3.5 border-b border-[--color-border-subtle] last:border-0" aria-hidden="true">
+    <div className="flex items-center gap-4 px-5 py-3.5 border-b border-(--color-border-subtle) last:border-0" aria-hidden="true">
       <Skeleton className="h-4 flex-1 max-w-[180px]" />
       <Skeleton className="h-3 w-32 hidden sm:block" />
       <Skeleton className="h-5 w-16 rounded-full" pill />
@@ -66,7 +66,7 @@ export function OfferTableBodySkeleton({ rows = 4 }: { rows?: number }) {
 /** Matches the ActivityFeed */
 export function ActivityItemSkeleton() {
   return (
-    <div className="flex items-center gap-3 px-5 py-3 border-b border-[--color-border-subtle] last:border-0" aria-hidden="true">
+    <div className="flex items-center gap-3 px-5 py-3 border-b border-(--color-border-subtle) last:border-0" aria-hidden="true">
       <Skeleton circle className="w-2 h-2 flex-shrink-0" />
       <div className="flex-1 space-y-1.5">
         <Skeleton className="h-3 w-36" />

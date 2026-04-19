@@ -182,14 +182,14 @@ export default function DealDetailPage() {
 
       {/* ── Certificate pending banner ─────────────────────────────────────── */}
       {isAccepted && !offer.certificateId && (
-        <div className="rounded-2xl border border-[--color-success-border] bg-[--color-success-light] p-8 animate-scale-in text-center">
+        <div className="rounded-2xl border border-(--color-success-border) bg-(--color-success-light) p-8 animate-scale-in text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-[--color-success] flex items-center justify-center ring-4 ring-[--color-success-border] animate-pulse-ring">
+            <div className="w-16 h-16 rounded-full bg-(--color-success) flex items-center justify-center ring-4 ring-(--color-success-border) animate-pulse-ring">
               <CheckCircle2 className="w-8 h-8 text-white" aria-hidden="true" />
             </div>
           </div>
-          <h2 className="text-lg font-bold text-[--color-success-text] mb-1">Offer accepted</h2>
-          <p className="text-sm text-[--color-success-text]/80">Certificate generation is in progress — refresh in a moment.</p>
+          <h2 className="text-lg font-bold text-(--color-success-text) mb-1">Offer accepted</h2>
+          <p className="text-sm text-(--color-success-text)/80">Certificate generation is in progress — refresh in a moment.</p>
         </div>
       )}
 

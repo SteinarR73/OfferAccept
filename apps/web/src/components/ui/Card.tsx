@@ -20,7 +20,7 @@ export function Card({ as: Tag = 'div', className, padding = 'none', children }:
   return (
     <Tag
       className={cn(
-        'bg-[--color-surface] rounded-xl border border-[--color-border] shadow-[var(--shadow-card)]',
+        'bg-(--color-surface) rounded-xl border border-(--color-border) shadow-[var(--shadow-card)]',
         PADDING[padding],
         className,
       )}
@@ -45,14 +45,14 @@ export function CardHeader({ title, description, action, border = false, classNa
     <div
       className={cn(
         'flex items-start justify-between gap-4 px-5 py-4',
-        border && 'border-b border-[--color-border-subtle]',
+        border && 'border-b border-(--color-border-subtle)',
         className,
       )}
     >
       <div className="min-w-0">
-        <h2 className="text-sm font-semibold text-[--color-text-primary] leading-snug">{title}</h2>
+        <h2 className="text-sm font-semibold text-(--color-text-primary) leading-snug">{title}</h2>
         {description && (
-          <p className="mt-0.5 text-xs text-[--color-text-muted] leading-relaxed">{description}</p>
+          <p className="mt-0.5 text-xs text-(--color-text-muted) leading-relaxed">{description}</p>
         )}
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
@@ -70,7 +70,7 @@ interface CardSectionProps {
 
 export function CardSection({ className, border = true, children }: CardSectionProps) {
   return (
-    <div className={cn('px-5 py-4', border && 'border-t border-[--color-border-subtle]', className)}>
+    <div className={cn('px-5 py-4', border && 'border-t border-(--color-border-subtle)', className)}>
       {children}
     </div>
   );
@@ -85,7 +85,7 @@ interface CardFooterProps {
 
 export function CardFooter({ className, children }: CardFooterProps) {
   return (
-    <div className={cn('px-5 py-3 border-t border-[--color-border-subtle] bg-[--color-bg]/50 rounded-b-xl', className)}>
+    <div className={cn('px-5 py-3 border-t border-(--color-border-subtle) bg-(--color-bg)/50 rounded-b-xl', className)}>
       {children}
     </div>
   );

@@ -26,14 +26,14 @@ export function EmptyState({ icon, title, description, hint, action, secondaryAc
   return (
     <div className={cn('flex flex-col items-center justify-center gap-4 py-12 text-center', className)}>
       {icon && (
-        <div className="w-12 h-12 rounded-2xl bg-[--color-neutral-surface] flex items-center justify-center text-[--color-text-muted]">
+        <div className="w-12 h-12 rounded-2xl bg-(--color-neutral-surface) flex items-center justify-center text-(--color-text-muted)">
           {icon}
         </div>
       )}
       <div className="max-w-xs">
-        <p className="text-sm font-semibold text-[--color-text-primary]">{title}</p>
+        <p className="text-sm font-semibold text-(--color-text-primary)">{title}</p>
         {description && (
-          <p className="mt-1.5 text-sm text-[--color-text-secondary] leading-relaxed">{description}</p>
+          <p className="mt-1.5 text-sm text-(--color-text-secondary) leading-relaxed">{description}</p>
         )}
       </div>
       {(action || secondaryAction) && (
@@ -59,7 +59,7 @@ export function EmptyState({ icon, title, description, hint, action, secondaryAc
         </div>
       )}
       {hint && (
-        <p className="text-xs text-[--color-text-muted] max-w-xs leading-relaxed -mt-1">{hint}</p>
+        <p className="text-xs text-(--color-text-muted) max-w-xs leading-relaxed -mt-1">{hint}</p>
       )}
     </div>
   );

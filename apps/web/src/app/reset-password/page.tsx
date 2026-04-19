@@ -21,11 +21,11 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
+      <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
         <Card className="w-full max-w-sm">
           <div className="px-6 py-8 text-center">
             <p className="text-sm font-semibold text-gray-900 mb-1">Invalid reset link</p>
-            <p className="text-sm text-[--color-text-muted]">
+            <p className="text-sm text-(--color-text-muted)">
               This link is missing or has expired.{' '}
               <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium">
                 Request a new one
@@ -62,10 +62,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
+    <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
       {/* Brand */}
       <div className="flex items-center gap-2 mb-8">
-        <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
+        <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
           OA
         </span>
         <span className="font-semibold text-gray-900">OfferAccept</span>
@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
       <Card className="w-full max-w-sm">
         <div className="px-6 pt-6 pb-2 text-center">
           <h1 className="text-lg font-semibold text-gray-900">Choose a new password</h1>
-          <p className="mt-1 text-sm text-[--color-text-muted]">Must be at least 8 characters</p>
+          <p className="mt-1 text-sm text-(--color-text-muted)">Must be at least 8 characters</p>
         </div>
 
         <CardSection border={false} className="px-6 pb-6">
@@ -105,7 +105,7 @@ export default function ResetPasswordPage() {
         </CardSection>
       </Card>
 
-      <p className="mt-5 text-xs text-[--color-text-muted]">
+      <p className="mt-5 text-xs text-(--color-text-muted)">
         <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
           ← Back to sign in
         </Link>

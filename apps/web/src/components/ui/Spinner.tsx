@@ -18,7 +18,7 @@ export function Spinner({ size = 'md', className, label = 'Loading' }: SpinnerPr
     <span role="status" className="inline-flex items-center justify-center">
       <span
         className={cn(
-          'rounded-full border-[--color-accent-light] border-t-[--color-accent] animate-spin',
+          'rounded-full border-(--color-accent-light) border-t-(--color-accent) animate-spin',
           SIZE[size],
           className,
         )}
@@ -31,10 +31,10 @@ export function Spinner({ size = 'md', className, label = 'Loading' }: SpinnerPr
 
 export function SpinnerPage({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-[--color-bg]">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-(--color-bg)">
       <Spinner size="lg" label={label} />
       {label !== 'Loading' && (
-        <p className="text-sm text-[--color-text-muted]">{label}</p>
+        <p className="text-sm text-(--color-text-muted)">{label}</p>
       )}
     </div>
   );

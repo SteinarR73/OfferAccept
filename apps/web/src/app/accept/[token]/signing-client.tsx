@@ -262,7 +262,7 @@ export function SigningClient({ token }: { token: string }) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[--color-bg] flex flex-col">
+    <div className="min-h-screen bg-(--color-bg) flex flex-col">
       <TrustBanner sessionId={sessionId} />
 
       <main className="flex-1 mx-auto w-full max-w-2xl px-4 py-10">
@@ -274,7 +274,7 @@ export function SigningClient({ token }: { token: string }) {
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
             <XCircle className="w-12 h-12 text-red-400 mb-4" aria-hidden="true" />
             <h1 className="text-xl font-semibold text-gray-900">Link not found</h1>
-            <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+            <p className="mt-2 text-sm text-(--color-text-secondary) max-w-sm">
               This link is invalid or has already expired. Please contact the sender for a new link.
             </p>
           </div>
@@ -284,7 +284,7 @@ export function SigningClient({ token }: { token: string }) {
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
             <XCircle className="w-12 h-12 text-amber-400 mb-4" aria-hidden="true" />
             <h1 className="text-xl font-semibold text-gray-900">Deal expired</h1>
-            <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+            <p className="mt-2 text-sm text-(--color-text-secondary) max-w-sm">
               This deal is no longer open for acceptance.
               {phase.expiresAt && (
                 <> It expired on {new Date(phase.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.</>
@@ -299,7 +299,7 @@ export function SigningClient({ token }: { token: string }) {
               <>
                 <CheckCircle className="w-12 h-12 text-green-500 mb-4" aria-hidden="true" />
                 <h1 className="text-xl font-semibold text-gray-900">Deal accepted</h1>
-                <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+                <p className="mt-2 text-sm text-(--color-text-secondary) max-w-sm">
                   {phase.acceptedAt
                     ? `This deal was accepted on ${new Date(phase.acceptedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
                     : 'This deal has already been accepted.'}
@@ -307,7 +307,7 @@ export function SigningClient({ token }: { token: string }) {
                 {phase.certificateId && (
                   <a
                     href={`/verify/${encodeURIComponent(phase.certificateId)}`}
-                    className="mt-4 text-sm font-medium text-[--color-accent] hover:underline"
+                    className="mt-4 text-sm font-medium text-(--color-accent) hover:underline"
                   >
                     View acceptance certificate →
                   </a>
@@ -317,7 +317,7 @@ export function SigningClient({ token }: { token: string }) {
               <>
                 <Shield className="w-12 h-12 text-gray-400 mb-4" aria-hidden="true" />
                 <h1 className="text-xl font-semibold text-gray-900">Deal closed</h1>
-                <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+                <p className="mt-2 text-sm text-(--color-text-secondary) max-w-sm">
                   This deal has already been responded to.
                 </p>
               </>
@@ -378,7 +378,7 @@ export function SigningClient({ token }: { token: string }) {
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
             <XCircle className="w-12 h-12 text-gray-400 mb-4" aria-hidden="true" />
             <h1 className="text-xl font-semibold text-gray-900">Deal declined</h1>
-            <p className="mt-2 text-sm text-[--color-text-secondary] max-w-sm">
+            <p className="mt-2 text-sm text-(--color-text-secondary) max-w-sm">
               You have declined this deal. No further action is needed.
             </p>
           </div>
@@ -410,13 +410,13 @@ function OfferView({
         </p>
       </div>
 
-      <p className="text-sm text-[--color-text-muted] mb-1">
+      <p className="text-sm text-(--color-text-muted) mb-1">
         Deal from <span className="font-medium text-gray-700">{ctx.senderName}</span>
       </p>
-      <h1 className="font-serif text-2xl text-[--color-text-primary]">{ctx.offerTitle}</h1>
+      <h1 className="font-serif text-2xl text-(--color-text-primary)">{ctx.offerTitle}</h1>
 
       {ctx.offerMessage && (
-        <p className="mt-4 whitespace-pre-wrap text-sm text-[--color-text-secondary] leading-relaxed">{ctx.offerMessage}</p>
+        <p className="mt-4 whitespace-pre-wrap text-sm text-(--color-text-secondary) leading-relaxed">{ctx.offerMessage}</p>
       )}
 
       {ctx.expiresAt && (
@@ -448,7 +448,7 @@ function OfferView({
         <Button variant="primary" size="md" onClick={onContinue} leftIcon={<Shield className="w-4 h-4" aria-hidden="true" />}>
           Continue to accept
         </Button>
-        <Button variant="ghost" size="md" onClick={onDecline} className="text-[--color-text-secondary]">
+        <Button variant="ghost" size="md" onClick={onDecline} className="text-(--color-text-secondary)">
           Decline
         </Button>
       </div>
@@ -487,10 +487,10 @@ function OtpEntry({
     <Card>
       <CardHeader title="Verify your email" border />
       <CardSection>
-        <p className="text-sm text-[--color-text-secondary] mb-1">
+        <p className="text-sm text-(--color-text-secondary) mb-1">
           A 6-digit code was sent to <strong className="text-gray-900">{otp.deliveryAddressMasked}</strong>.
         </p>
-        <p className="text-sm text-[--color-text-secondary] mb-4">
+        <p className="text-sm text-(--color-text-secondary) mb-4">
           This code confirms you control the email address this deal was sent to.
         </p>
 
@@ -539,7 +539,7 @@ function OtpEntry({
                 pattern="[0-9]{6}"
                 maxLength={6}
                 autoFocus
-                className="block w-36 rounded-lg border border-[--color-border] px-3 py-2.5 text-center text-xl tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent"
+                className="block w-36 rounded-lg border border-(--color-border) px-3 py-2.5 text-center text-xl tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent"
                 placeholder="——————"
                 onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
               />
@@ -557,7 +557,7 @@ function OtpEntry({
           <button
             type="button"
             onClick={onResend}
-            className="text-sm text-[--color-accent] hover:underline"
+            className="text-sm text-(--color-accent) hover:underline"
           >
             Didn&rsquo;t receive a code? Send a new one
           </button>
@@ -580,17 +580,17 @@ function AcceptanceView({
 }) {
   return (
     <div>
-      <h2 className="text-xl font-semibold text-[--color-text-primary] mb-2">Accept this deal</h2>
-      <p className="text-sm text-[--color-text-secondary] mb-4">
+      <h2 className="text-xl font-semibold text-(--color-text-primary) mb-2">Accept this deal</h2>
+      <p className="text-sm text-(--color-text-secondary) mb-4">
         By clicking <strong>I Accept</strong>, you agree to the following:
       </p>
 
-      <p className="text-xs text-[--color-text-muted] mb-2">
+      <p className="text-xs text-(--color-text-muted) mb-2">
         This statement was provided by{' '}
-        <span className="font-medium text-[--color-text-secondary]">{ctx.senderName}</span>.
+        <span className="font-medium text-(--color-text-secondary)">{ctx.senderName}</span>.
       </p>
-      <div className="border-l-4 border-[--color-accent] bg-[--color-accent-soft] px-5 py-4 rounded-r-xl mb-6">
-        <p className="text-sm text-[--color-text-primary] italic leading-relaxed">{ctx.acceptanceStatement}</p>
+      <div className="border-l-4 border-(--color-accent) bg-(--color-accent-soft) px-5 py-4 rounded-r-xl mb-6">
+        <p className="text-sm text-(--color-text-primary) italic leading-relaxed">{ctx.acceptanceStatement}</p>
       </div>
 
       <div className="flex gap-3">
@@ -599,16 +599,16 @@ function AcceptanceView({
           size="md"
           onClick={() => onAccept(challengeId)}
           leftIcon={<CheckCircle className="w-4 h-4" aria-hidden="true" />}
-          className="bg-[--color-success] hover:bg-[--color-success-text] focus-visible:ring-[--color-success]"
+          className="bg-(--color-success) hover:bg-(--color-success-text) focus-visible:ring-(--color-success)"
         >
           I Accept
         </Button>
-        <Button variant="ghost" size="md" onClick={onDecline} className="text-[--color-text-secondary]" aria-label="Decline this deal">
+        <Button variant="ghost" size="md" onClick={onDecline} className="text-(--color-text-secondary)" aria-label="Decline this deal">
           Decline
         </Button>
       </div>
 
-      <p className="mt-4 text-xs text-[--color-text-muted] leading-relaxed max-w-sm">
+      <p className="mt-4 text-xs text-(--color-text-muted) leading-relaxed max-w-sm">
         This records your acceptance but is not an electronic signature under applicable law.
       </p>
     </div>
@@ -621,8 +621,8 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
 
       {/* ── Animated checkmark icon ─────────────────────────────────────────── */}
       <div
-        className="w-24 h-24 rounded-full bg-[--color-success] flex items-center justify-center mb-7
-                   ring-4 ring-[--color-success-border] animate-pulse-ring shadow-xl"
+        className="w-24 h-24 rounded-full bg-(--color-success) flex items-center justify-center mb-7
+                   ring-4 ring-(--color-success-border) animate-pulse-ring shadow-xl"
         aria-hidden="true"
       >
         <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14">
@@ -642,7 +642,7 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
       <p className="text-base text-gray-700 font-medium max-w-sm mb-2">
         Your acceptance has been recorded.
       </p>
-      <p className="text-sm text-[--color-text-secondary] max-w-sm mb-6">
+      <p className="text-sm text-(--color-text-secondary) max-w-sm mb-6">
         Accepted on{' '}
         <time
           dateTime={acceptedAt}
@@ -719,7 +719,7 @@ function CompletedView({ acceptedAt, certificateId }: { acceptedAt: string; cert
       )}
 
       {/* ── Trust footer ────────────────────────────────────────────────────── */}
-      <p className="text-xs text-[--color-text-muted]">
+      <p className="text-xs text-(--color-text-muted)">
         <span aria-hidden="true">🔒</span> Verified with OTP · SHA-256 sealed · Audit trail preserved
       </p>
     </div>

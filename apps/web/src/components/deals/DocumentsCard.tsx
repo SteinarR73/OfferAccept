@@ -90,7 +90,7 @@ export function DocumentsCard({ offer, onDocumentAdded, onDocumentRemoved }: Doc
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-900 truncate">{doc.filename}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[11px] text-[--color-text-muted]">
+                  <span className="text-[11px] text-(--color-text-muted)">
                     {formatBytes(doc.sizeBytes)}
                   </span>
                   {doc.sha256Hash && (
@@ -132,7 +132,7 @@ export function DocumentsCard({ offer, onDocumentAdded, onDocumentRemoved }: Doc
         <CardSection>
           <div className="flex flex-col items-center py-4 text-center">
             <FileText className="w-6 h-6 text-gray-200 mb-2" aria-hidden="true" />
-            <p className="text-xs text-[--color-text-muted]">No documents were attached to this deal.</p>
+            <p className="text-xs text-(--color-text-muted)">No documents were attached to this deal.</p>
           </div>
         </CardSection>
       )}
@@ -140,7 +140,7 @@ export function DocumentsCard({ offer, onDocumentAdded, onDocumentRemoved }: Doc
       {/* Upload zone (DRAFT only) */}
       {isDraft && (
         <div className="px-5 py-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 text-xs text-[--color-text-muted] mb-3">
+          <div className="flex items-center gap-2 text-xs text-(--color-text-muted) mb-3">
             <FileUp className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Upload PDF or DOCX (max 25 MB each)</span>
           </div>

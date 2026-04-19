@@ -146,30 +146,30 @@ function statusClasses(status: LifecycleStatus): {
   switch (status) {
     case 'complete':
       return {
-        dot:   'border-[--color-success] bg-[--color-success-soft]',
-        icon:  'text-[--color-success]',
-        title: 'text-[--color-text-primary]',
-        desc:  'text-[--color-text-secondary]',
-        line:  'bg-[--color-success]',
-        badge: 'bg-[--color-success-soft] text-[--color-success] border border-[--color-success-border]',
+        dot:   'border-(--color-success) bg-(--color-success-soft)',
+        icon:  'text-(--color-success)',
+        title: 'text-(--color-text-primary)',
+        desc:  'text-(--color-text-secondary)',
+        line:  'bg-(--color-success)',
+        badge: 'bg-(--color-success-soft) text-(--color-success) border border-(--color-success-border)',
       };
     case 'current':
       return {
-        dot:   'border-[--color-accent] bg-[--color-accent-soft]',
-        icon:  'text-[--color-accent]',
-        title: 'text-[--color-text-primary]',
-        desc:  'text-[--color-text-secondary]',
-        line:  'bg-[--color-border]',
-        badge: 'bg-[--color-accent-soft] text-[--color-accent] border border-[--color-accent-light]',
+        dot:   'border-(--color-accent) bg-(--color-accent-soft)',
+        icon:  'text-(--color-accent)',
+        title: 'text-(--color-text-primary)',
+        desc:  'text-(--color-text-secondary)',
+        line:  'bg-(--color-border)',
+        badge: 'bg-(--color-accent-soft) text-(--color-accent) border border-(--color-accent-light)',
       };
     case 'upcoming':
       return {
-        dot:   'border-[--color-border] bg-[--color-surface]',
-        icon:  'text-[--color-text-muted]',
-        title: 'text-[--color-text-secondary]',
-        desc:  'text-[--color-text-muted]',
-        line:  'bg-[--color-border]',
-        badge: 'bg-[--color-muted-surface] text-[--color-text-muted] border border-[--color-border]',
+        dot:   'border-(--color-border) bg-(--color-surface)',
+        icon:  'text-(--color-text-muted)',
+        title: 'text-(--color-text-secondary)',
+        desc:  'text-(--color-text-muted)',
+        line:  'bg-(--color-border)',
+        badge: 'bg-(--color-muted-surface) text-(--color-text-muted) border border-(--color-border)',
       };
   }
 }
@@ -191,11 +191,11 @@ function CopyLinkButton({ url }: { url: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 text-xs font-medium text-[--color-text-secondary] hover:text-[--color-text-primary] transition-colors"
+      className="inline-flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
       aria-label="Copy verification link"
     >
       {copied
-        ? <><Check className="h-3.5 w-3.5 text-[--color-success]" aria-hidden="true" />Copied</>
+        ? <><Check className="h-3.5 w-3.5 text-(--color-success)" aria-hidden="true" />Copied</>
         : <><Copy className="h-3.5 w-3.5" aria-hidden="true" />Copy link</>
       }
     </button>
@@ -226,31 +226,31 @@ export function OfferLifecycleCard({
   return (
     <section
       className={[
-        'rounded-2xl border border-[--color-border] bg-[--color-surface] p-6 shadow-[var(--shadow-card)]',
+        'rounded-2xl border border-(--color-border) bg-(--color-surface) p-6 shadow-[var(--shadow-card)]',
         'card-hover',
         className ?? '',
       ].join(' ')}
       aria-label="Offer lifecycle"
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 border-b border-[--color-border] pb-5 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-4 border-b border-(--color-border) pb-5 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[--color-text-muted]">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-(--color-text-muted)">
             Lifecycle
           </p>
-          <h2 className="mt-1 text-lg font-bold tracking-tight text-[--color-text-primary]">
+          <h2 className="mt-1 text-lg font-bold tracking-tight text-(--color-text-primary)">
             {title}
           </h2>
 
           {(offerTitle || recipientName || recipientEmail) && (
             <div className="mt-3 flex flex-col gap-1">
               {offerTitle && (
-                <p className="truncate text-sm font-medium text-[--color-text-primary]">
+                <p className="truncate text-sm font-medium text-(--color-text-primary)">
                   {offerTitle}
                 </p>
               )}
               {(recipientName || recipientEmail) && (
-                <p className="truncate text-sm text-[--color-text-secondary]">
+                <p className="truncate text-sm text-(--color-text-secondary)">
                   {recipientName}
                   {recipientName && recipientEmail ? ' · ' : ''}
                   {recipientEmail}
@@ -261,9 +261,9 @@ export function OfferLifecycleCard({
 
           {/* Active guidance pill — the key UX addition */}
           {currentStep && (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[--color-accent-soft] border border-[--color-accent-light] px-3 py-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[--color-accent] animate-pulse flex-shrink-0" aria-hidden="true" />
-              <p className="text-xs font-medium text-[--color-accent-text]">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-(--color-accent-soft) border border-(--color-accent-light) px-3 py-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-(--color-accent) animate-pulse flex-shrink-0" aria-hidden="true" />
+              <p className="text-xs font-medium text-(--color-accent-text)">
                 {currentStep.guidance}
               </p>
             </div>
@@ -271,9 +271,9 @@ export function OfferLifecycleCard({
 
           {/* All complete — final state message */}
           {!currentStep && completedCount === STEP_DEFINITIONS.length && (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[--color-success-soft] border border-[--color-success-border] px-3 py-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[--color-success] flex-shrink-0" aria-hidden="true" />
-              <p className="text-xs font-medium text-[--color-success-text]">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-(--color-success-soft) border border-(--color-success-border) px-3 py-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-(--color-success) flex-shrink-0" aria-hidden="true" />
+              <p className="text-xs font-medium text-(--color-success-text)">
                 Acceptance complete — certificate publicly verifiable.
               </p>
             </div>
@@ -282,12 +282,12 @@ export function OfferLifecycleCard({
 
         {/* Progress bar */}
         <div className="min-w-[160px]">
-          <div className="flex items-center justify-between text-xs font-medium text-[--color-text-muted]">
+          <div className="flex items-center justify-between text-xs font-medium text-(--color-text-muted)">
             <span>Progress</span>
             <span>{progressPercent}%</span>
           </div>
           <div
-            className="mt-2 h-2 overflow-hidden rounded-full bg-[--color-muted-surface]"
+            className="mt-2 h-2 overflow-hidden rounded-full bg-(--color-muted-surface)"
             role="progressbar"
             aria-valuenow={progressPercent}
             aria-valuemin={0}
@@ -295,7 +295,7 @@ export function OfferLifecycleCard({
             aria-label="Offer lifecycle progress"
           >
             <div
-              className="h-full rounded-full bg-[--color-accent] transition-[width] duration-[var(--duration-enter)] ease-[var(--ease-decelerate)]"
+              className="h-full rounded-full bg-(--color-accent) transition-[width] duration-[var(--duration-enter)] ease-[var(--ease-decelerate)]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -348,7 +348,7 @@ export function OfferLifecycleCard({
 
                 {/* Timestamp row — relative + absolute */}
                 {rawTs && (
-                  <p className="mt-1.5 text-xs text-[--color-text-muted]">
+                  <p className="mt-1.5 text-xs text-(--color-text-muted)">
                     <span className="font-medium">{formatRelative(rawTs)}</span>
                     <span className="mx-1.5 opacity-40">·</span>
                     <span>{formatAbsolute(rawTs)}</span>
@@ -362,12 +362,12 @@ export function OfferLifecycleCard({
                       href={state.verificationUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[--color-accent] hover:text-[--color-accent-hover] transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-(--color-accent) hover:text-(--color-accent-hover) transition-colors"
                     >
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                       Open verification
                     </a>
-                    <span className="w-px h-3 bg-[--color-border]" aria-hidden="true" />
+                    <span className="w-px h-3 bg-(--color-border)" aria-hidden="true" />
                     <CopyLinkButton url={state.verificationUrl} />
                   </div>
                 )}

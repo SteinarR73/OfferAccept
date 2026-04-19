@@ -90,7 +90,7 @@ export function DealsPipeline({ offers, loading }: DealsPipelineProps) {
     <section aria-labelledby="pipeline-heading">
       <h2
         id="pipeline-heading"
-        className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted] mb-3 px-0.5"
+        className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3 px-0.5"
       >
         Deals pipeline
       </h2>

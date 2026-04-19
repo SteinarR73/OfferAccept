@@ -33,21 +33,21 @@ export function DealSummaryCard({ offer, onSend, onRevoke, onResend }: DealSumma
       <CardSection>
         <dl className="space-y-3">
           <div className="flex items-start justify-between gap-4">
-            <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mt-0.5">
+            <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mt-0.5">
               Status
             </dt>
             <dd><OfferStatusBadge status={offer.status} /></dd>
           </div>
 
           <div className="flex items-start justify-between gap-4">
-            <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mt-0.5">
+            <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mt-0.5">
               Type
             </dt>
             <dd><DealTypeBadge type={dealType} /></dd>
           </div>
 
           <div className="flex items-start justify-between gap-4">
-            <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+            <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider flex items-center gap-1 mt-0.5">
               <Calendar className="w-3 h-3" aria-hidden="true" />
               Created
             </dt>
@@ -62,7 +62,7 @@ export function DealSummaryCard({ offer, onSend, onRevoke, onResend }: DealSumma
 
           {offer.expiresAt && (
             <div className="flex items-start justify-between gap-4">
-              <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+              <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider flex items-center gap-1 mt-0.5">
                 <Tag className="w-3 h-3" aria-hidden="true" />
                 Expires
               </dt>
@@ -119,7 +119,7 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
           <Alert variant="warning" className="text-xs">Add a customer email before sending.</Alert>
         )}
         <div>
-          <p className="text-[11px] text-[--color-text-muted] mb-2">
+          <p className="text-[11px] text-(--color-text-muted) mb-2">
             Draft — not yet sent to customer
           </p>
           <Button
@@ -162,7 +162,7 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
           </Alert>
         ) : (
           <div>
-            <p className="text-[11px] text-[--color-text-muted] mb-2">
+            <p className="text-[11px] text-(--color-text-muted) mb-2">
               Awaiting customer acceptance
               {offer.recipient?.email && ` · ${offer.recipient.email}`}
             </p>
@@ -180,7 +180,7 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setConfirmRevoke(true)}
-                className="text-[--color-error] hover:text-[--color-error-text] hover:bg-[--color-error-light]"
+                className="text-(--color-error) hover:text-(--color-error-text) hover:bg-(--color-error-light)"
                 leftIcon={<XCircle className="w-3.5 h-3.5" aria-hidden="true" />}
               >
                 Revoke

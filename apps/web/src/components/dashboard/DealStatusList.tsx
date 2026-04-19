@@ -72,15 +72,15 @@ export function DealStatusList({ offers, loading }: DealStatusListProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm" aria-label="Offer status list">
             <thead>
-              <tr className="border-b border-[--color-border-subtle]">
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider">Offer</th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider hidden sm:table-cell">Recipient</th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider">Status</th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider hidden md:table-cell">Last activity</th>
-                <th className="px-5 py-3 text-right text-[11px] font-semibold text-[--color-text-muted] uppercase tracking-wider sr-only">Action</th>
+              <tr className="border-b border-(--color-border-subtle)">
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-(--color-text-muted) uppercase tracking-wider">Offer</th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-(--color-text-muted) uppercase tracking-wider hidden sm:table-cell">Recipient</th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-(--color-text-muted) uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-(--color-text-muted) uppercase tracking-wider hidden md:table-cell">Last activity</th>
+                <th className="px-5 py-3 text-right text-[11px] font-semibold text-(--color-text-muted) uppercase tracking-wider sr-only">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[--color-border-subtle]">
+            <tbody className="divide-y divide-(--color-border-subtle)">
               {offers.map((offer) => (
                 <DealRow key={offer.id} offer={offer} />
               ))}
@@ -100,13 +100,13 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
   return (
     <tr className={cn(
-      'group transition-colors hover:bg-[--color-bg]',
+      'group transition-colors hover:bg-(--color-bg)',
     )}>
       {/* Deal name */}
       <td className="px-5 py-3.5">
         <Link
           href={`/dashboard/deals/${offer.id}`}
-          className="font-medium text-[--color-text-primary] hover:text-[--color-accent] transition-colors line-clamp-1 focus-visible:outline-none focus-visible:text-[--color-accent]"
+          className="font-medium text-(--color-text-primary) hover:text-(--color-accent) transition-colors line-clamp-1 focus-visible:outline-none focus-visible:text-(--color-accent)"
         >
           {offer.title}
         </Link>
@@ -114,7 +114,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
       {/* Recipient */}
       <td className="px-5 py-3.5 hidden sm:table-cell">
-        <span className="text-[--color-text-secondary] text-xs truncate max-w-[160px] block">
+        <span className="text-(--color-text-secondary) text-xs truncate max-w-[160px] block">
           {recipientLabel}
         </span>
       </td>
@@ -128,7 +128,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
       {/* Last activity */}
       <td className="px-5 py-3.5 hidden md:table-cell">
-        <span className="text-xs text-[--color-text-muted]">
+        <span className="text-xs text-(--color-text-muted)">
           {formatRelative(offer.updatedAt)}
         </span>
       </td>
@@ -137,7 +137,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
       <td className="px-5 py-3.5 text-right">
         <Link
           href={`/dashboard/deals/${offer.id}`}
-          className="text-xs font-medium text-[--color-accent] hover:text-[--color-accent-hover] opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100"
+          className="text-xs font-medium text-(--color-accent) hover:text-(--color-accent-hover) opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100"
           aria-label={`View offer: ${offer.title}`}
         >
           View →
@@ -152,10 +152,10 @@ function DealRow({ offer }: { offer: OfferItem }) {
 export function DealStatusListSkeleton() {
   return (
     <Card>
-      <div className="px-5 py-4 border-b border-[--color-border-subtle]">
+      <div className="px-5 py-4 border-b border-(--color-border-subtle)">
         <div className="skeleton-shimmer h-3 w-12 rounded" />
       </div>
-      <div className="divide-y divide-[--color-border-subtle]">
+      <div className="divide-y divide-(--color-border-subtle)">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex items-center gap-4 px-5 py-3.5">
             <div className="skeleton-shimmer flex-1 h-3 rounded" />

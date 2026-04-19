@@ -22,7 +22,7 @@ export function CustomerCard({ offer }: CustomerCardProps) {
       <Card>
         <CardHeader title="Customer" border />
         <CardSection>
-          <p className="text-xs text-[--color-text-muted]">No customer assigned to this deal.</p>
+          <p className="text-xs text-(--color-text-muted)">No customer assigned to this deal.</p>
           <Link
             href={`/dashboard/deals/${offer.id}`}
             className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
@@ -55,7 +55,7 @@ export function CustomerCard({ offer }: CustomerCardProps) {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
             {recipient.name && (
-              <p className="text-xs text-[--color-text-muted] flex items-center gap-1 mt-0.5 truncate">
+              <p className="text-xs text-(--color-text-muted) flex items-center gap-1 mt-0.5 truncate">
                 <Mail className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
                 {recipient.email}
               </p>

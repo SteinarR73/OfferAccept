@@ -54,7 +54,7 @@ export default function CertificateHashSpecPage() {
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
-            <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
+            <span className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
@@ -68,7 +68,7 @@ export default function CertificateHashSpecPage() {
       <main className="max-w-3xl mx-auto px-6 py-12">
         {/* Title */}
         <div className="mb-10">
-          <p className="text-xs font-semibold text-[--color-accent] uppercase tracking-wide mb-2">
+          <p className="text-xs font-semibold text-(--color-accent) uppercase tracking-wide mb-2">
             Technical Specification
           </p>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">
@@ -277,7 +277,7 @@ print(hash_hex)  # 64-character hex string`}</Pre>
         </p>
         <ol className="space-y-4 text-sm text-gray-700">
           <li className="flex gap-3">
-            <span className="w-6 h-6 rounded-full bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+            <span className="w-6 h-6 rounded-full bg-(--color-accent) text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
             <div>
               <strong>Obtain the certificate payload.</strong> Call{' '}
               <Code>GET /api/v1/certificates/{'{certificateId}'}/export</Code> (authenticated)
@@ -286,7 +286,7 @@ print(hash_hex)  # 64-character hex string`}</Pre>
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="w-6 h-6 rounded-full bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+            <span className="w-6 h-6 rounded-full bg-(--color-accent) text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
             <div>
               <strong>Reconstruct canonical JSON.</strong> Apply <Code>deepSortKeys</Code> to
               the <Code>payload</Code> field of the response and call{' '}
@@ -295,14 +295,14 @@ print(hash_hex)  # 64-character hex string`}</Pre>
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="w-6 h-6 rounded-full bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+            <span className="w-6 h-6 rounded-full bg-(--color-accent) text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
             <div>
               <strong>Compute SHA-256.</strong> Hash the canonical JSON string as UTF-8 bytes
               and encode the result as lowercase hex.
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="w-6 h-6 rounded-full bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+            <span className="w-6 h-6 rounded-full bg-(--color-accent) text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
             <div>
               <strong>Compare.</strong> The computed hash must equal the{' '}
               <Code>certificateHash</Code> returned by the API and displayed on the

@@ -85,14 +85,14 @@ async function fetchHealth(): Promise<FetchResult> {
 function ServiceStatusBadge({ status }: { status: ServiceHealth }) {
   if (status === 'operational') {
     return (
-      <span className="flex items-center gap-1 text-xs font-medium text-[--color-success-text]">
+      <span className="flex items-center gap-1 text-xs font-medium text-(--color-success-text)">
         <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
         Operational
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-1 text-xs font-medium text-[--color-warning-text]">
+    <span className="flex items-center gap-1 text-xs font-medium text-(--color-warning-text)">
       <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
       Degraded
     </span>
@@ -101,16 +101,16 @@ function ServiceStatusBadge({ status }: { status: ServiceHealth }) {
 
 function BannerIcon({ status }: { status: OverallStatus }) {
   if (status === 'loading')      return <Loader2 className="w-8 h-8 text-gray-400 animate-spin flex-shrink-0" />;
-  if (status === 'operational')  return <CheckCircle2 className="w-8 h-8 text-[--color-success] flex-shrink-0" aria-hidden="true" />;
-  if (status === 'outage')       return <XCircle className="w-8 h-8 text-[--color-error] flex-shrink-0" aria-hidden="true" />;
-  return <AlertTriangle className="w-8 h-8 text-[--color-warning] flex-shrink-0" aria-hidden="true" />;
+  if (status === 'operational')  return <CheckCircle2 className="w-8 h-8 text-(--color-success) flex-shrink-0" aria-hidden="true" />;
+  if (status === 'outage')       return <XCircle className="w-8 h-8 text-(--color-error) flex-shrink-0" aria-hidden="true" />;
+  return <AlertTriangle className="w-8 h-8 text-(--color-warning) flex-shrink-0" aria-hidden="true" />;
 }
 
 const BANNER_CLASS: Record<OverallStatus, string> = {
-  loading:     'bg-[#f8fafc] border-[--color-border]',
-  operational: 'bg-[--color-success-light] border-[--color-success-border]',
-  degraded:    'bg-[--color-warning-light] border-[--color-warning-border]',
-  outage:      'bg-[--color-error-light] border-[--color-error-border]',
+  loading:     'bg-[#f8fafc] border-(--color-border)',
+  operational: 'bg-(--color-success-light) border-(--color-success-border)',
+  degraded:    'bg-(--color-warning-light) border-(--color-warning-border)',
+  outage:      'bg-(--color-error-light) border-(--color-error-border)',
 };
 
 const BANNER_TITLE: Record<OverallStatus, string> = {
@@ -129,16 +129,16 @@ const BANNER_BODY: Record<OverallStatus, string> = {
 
 const BANNER_TITLE_CLASS: Record<OverallStatus, string> = {
   loading:     'text-[#0f172a]',
-  operational: 'text-[--color-success-text]',
-  degraded:    'text-[--color-warning-text]',
-  outage:      'text-[--color-error-text]',
+  operational: 'text-(--color-success-text)',
+  degraded:    'text-(--color-warning-text)',
+  outage:      'text-(--color-error-text)',
 };
 
 const BANNER_BODY_CLASS: Record<OverallStatus, string> = {
-  loading:     'text-[--color-text-secondary]',
-  operational: 'text-[--color-success-text]',
-  degraded:    'text-[--color-warning-text]',
-  outage:      'text-[--color-error-text]',
+  loading:     'text-(--color-text-secondary)',
+  operational: 'text-(--color-success-text)',
+  degraded:    'text-(--color-warning-text)',
+  outage:      'text-(--color-error-text)',
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -181,17 +181,17 @@ export default function StatusPage() {
       );
 
   return (
-    <div className="min-h-screen bg-[--color-surface]">
-      <header className="border-b border-[--color-border-subtle]">
+    <div className="min-h-screen bg-(--color-surface)">
+      <header className="border-b border-(--color-border-subtle)">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-sm text-[--color-text-primary]">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-[--color-accent]">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-sm text-(--color-text-primary)">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-(--color-accent)">
               OA
             </span>
             OfferAccept
           </Link>
           {checkedAt && (
-            <p className="text-xs text-[--color-text-muted]">
+            <p className="text-xs text-(--color-text-muted)">
               Updated {checkedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
           )}
@@ -214,20 +214,20 @@ export default function StatusPage() {
         </div>
 
         {/* Per-service status */}
-        <h2 className="text-sm font-semibold mb-3 text-[--color-text-primary]">
+        <h2 className="text-sm font-semibold mb-3 text-(--color-text-primary)">
           Services
         </h2>
-        <div className="rounded-xl divide-y divide-[--color-border-subtle] border border-[--color-border] mb-10">
+        <div className="rounded-xl divide-y divide-(--color-border-subtle) border border-(--color-border) mb-10">
           {(Object.keys(SERVICE_LABELS) as Array<keyof typeof SERVICE_LABELS>).map((key) => (
             <div
               key={key}
               className="flex items-center justify-between px-5 py-3.5"
             >
-              <span className="text-sm text-[--color-text-secondary]">
+              <span className="text-sm text-(--color-text-secondary)">
                 {SERVICE_LABELS[key]}
               </span>
               {overall === 'loading' ? (
-                <span className="text-xs text-[--color-text-muted]">Checking…</span>
+                <span className="text-xs text-(--color-text-muted)">Checking…</span>
               ) : (
                 <ServiceStatusBadge status={(displayServices[key] as ServiceHealth) ?? 'operational'} />
               )}
@@ -236,43 +236,43 @@ export default function StatusPage() {
         </div>
 
         {/* Incident history */}
-        <h2 className="text-sm font-semibold mb-3 text-[--color-text-primary]">
+        <h2 className="text-sm font-semibold mb-3 text-(--color-text-primary)">
           Incident history
         </h2>
         {INCIDENTS.length === 0 ? (
-          <p className="text-sm text-[--color-text-muted]">No incidents in the past 90 days.</p>
+          <p className="text-sm text-(--color-text-muted)">No incidents in the past 90 days.</p>
         ) : (
           <div className="space-y-4">
             {INCIDENTS.map((inc, i) => (
               <div
                 key={i}
-                className="rounded-lg px-5 py-4 border border-[--color-border]"
+                className="rounded-lg px-5 py-4 border border-(--color-border)"
               >
                 <div className="flex items-start justify-between gap-4 mb-1.5">
-                  <p className="text-sm font-medium text-[--color-text-primary]">{inc.title}</p>
+                  <p className="text-sm font-medium text-(--color-text-primary)">{inc.title}</p>
                   <span
                     className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
                       inc.severity === 'resolved'
-                        ? 'bg-[--color-success-light] text-[--color-success-text]'
-                        : 'bg-[--color-warning-light] text-[--color-warning-text]'
+                        ? 'bg-(--color-success-light) text-(--color-success-text)'
+                        : 'bg-(--color-warning-light) text-(--color-warning-text)'
                     }`}
                   >
                     {inc.severity.charAt(0).toUpperCase() + inc.severity.slice(1)}
                   </span>
                 </div>
-                <p className="text-xs mb-1 text-[--color-text-muted]">{inc.date}</p>
-                <p className="text-sm text-[--color-text-secondary]">{inc.body}</p>
+                <p className="text-xs mb-1 text-(--color-text-muted)">{inc.date}</p>
+                <p className="text-sm text-(--color-text-secondary)">{inc.body}</p>
               </div>
             ))}
           </div>
         )}
       </main>
 
-      <footer className="px-6 py-4 text-center text-xs border-t border-[--color-border-subtle] text-[--color-text-muted]">
+      <footer className="px-6 py-4 text-center text-xs border-t border-(--color-border-subtle) text-(--color-text-muted)">
         For incidents contact{' '}
         <a
           href="mailto:support@offeraccept.com"
-          className="text-[--color-info] transition-colors"
+          className="text-(--color-info) transition-colors"
         >
           support@offeraccept.com
         </a>

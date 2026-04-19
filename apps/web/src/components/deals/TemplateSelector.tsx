@@ -128,7 +128,7 @@ interface TemplateSelectorProps {
 export function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) {
   return (
     <div>
-      <p className="text-xs text-[--color-text-muted] mb-3">
+      <p className="text-xs text-(--color-text-muted) mb-3">
         Choose a template to pre-fill your deal — or leave blank to start from scratch.
       </p>
       <div className="grid grid-cols-2 gap-2">
@@ -163,7 +163,7 @@ export function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) 
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-gray-900 leading-tight">{tpl.title}</p>
-                  <p className="text-[11px] text-[--color-text-muted] mt-0.5 leading-snug line-clamp-2">
+                  <p className="text-[11px] text-(--color-text-muted) mt-0.5 leading-snug line-clamp-2">
                     {tpl.description}
                   </p>
                   <span className="inline-block mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">

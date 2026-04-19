@@ -86,25 +86,25 @@ export default function LoginPage() {
   // ── Signup success ────────────────────────────────────────────────────────────
   if (isSignup && signupDone) {
     return (
-      <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
+      <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
         <div className="flex items-center gap-2 mb-8">
-          <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
+          <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
             OA
           </span>
-          <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>
+          <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>
         </div>
         <Card className="w-full max-w-sm text-center px-6 py-8">
-          <div className="w-12 h-12 rounded-full bg-[--color-success-light] flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-5 h-5 text-[--color-success]" />
+          <div className="w-12 h-12 rounded-full bg-(--color-success-light) flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-5 h-5 text-(--color-success)" />
           </div>
-          <h1 className="text-lg font-semibold text-[--color-text-primary] mb-2">Check your inbox</h1>
-          <p className="text-sm text-[--color-text-muted]">
+          <h1 className="text-lg font-semibold text-(--color-text-primary) mb-2">Check your inbox</h1>
+          <p className="text-sm text-(--color-text-muted)">
             We sent a verification link to <strong>{signupEmail}</strong>. Click the link
             to activate your account.
           </p>
           <Link
             href="/login"
-            className="mt-6 inline-block text-sm text-[--color-accent] hover:text-[--color-accent-hover] font-medium"
+            className="mt-6 inline-block text-sm text-(--color-accent) hover:text-(--color-accent-hover) font-medium"
           >
             Go to sign in →
           </Link>
@@ -116,18 +116,18 @@ export default function LoginPage() {
   // ── Signup form ───────────────────────────────────────────────────────────────
   if (isSignup) {
     return (
-      <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-16 px-4 pb-16">
+      <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-16 px-4 pb-16">
         <div className="flex items-center gap-2 mb-8">
-          <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
+          <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
             OA
           </span>
-          <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>
+          <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>
         </div>
 
         <Card className="w-full max-w-sm">
           <div className="px-6 pt-6 pb-2 text-center">
-            <h1 className="text-lg font-semibold text-[--color-text-primary]">Create your account</h1>
-            <p className="mt-1 text-sm text-[--color-text-muted]">
+            <h1 className="text-lg font-semibold text-(--color-text-primary)">Create your account</h1>
+            <p className="mt-1 text-sm text-(--color-text-muted)">
               Secure deal management with tamper-proof certificates
             </p>
           </div>
@@ -192,16 +192,16 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-[--color-border] text-[--color-accent] accent-[--color-accent] flex-shrink-0"
+                  className="mt-0.5 w-4 h-4 rounded border-(--color-border) text-(--color-accent) accent-(--color-accent) flex-shrink-0"
                   required
                 />
-                <span className="text-xs text-[--color-text-secondary] leading-relaxed">
+                <span className="text-xs text-(--color-text-secondary) leading-relaxed">
                   I have read and accept the{' '}
                   <Link
                     href="/legal/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium underline"
+                    className="text-(--color-accent) hover:text-(--color-accent-hover) font-medium underline"
                   >
                     Terms of Service
                   </Link>{' '}
@@ -210,7 +210,7 @@ export default function LoginPage() {
                     href="/legal/gdpr"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium underline"
+                    className="text-(--color-accent) hover:text-(--color-accent-hover) font-medium underline"
                   >
                     Privacy & GDPR Statement
                   </Link>
@@ -230,15 +230,15 @@ export default function LoginPage() {
             </form>
           </CardSection>
 
-          <div className="px-6 pb-5 pt-1 flex items-center justify-center gap-1.5 text-[11px] text-[--color-text-muted]">
+          <div className="px-6 pb-5 pt-1 flex items-center justify-center gap-1.5 text-[11px] text-(--color-text-muted)">
             <Lock className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
             Acceptance of Terms v{CURRENT_TERMS_VERSION} is recorded at signup.
           </div>
         </Card>
 
-        <p className="mt-5 text-xs text-[--color-text-muted]">
+        <p className="mt-5 text-xs text-(--color-text-muted)">
           Already have an account?{' '}
-          <Link href="/login" className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium">
+          <Link href="/login" className="text-(--color-accent) hover:text-(--color-accent-hover) font-medium">
             Sign in
           </Link>
         </p>
@@ -248,19 +248,19 @@ export default function LoginPage() {
 
   // ── Login form ────────────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
+    <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
       {/* Brand */}
       <div className="flex items-center gap-2 mb-8">
-        <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
+        <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
           OA
         </span>
-        <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>
+        <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>
       </div>
 
       <Card className="w-full max-w-sm">
         <div className="px-6 pt-6 pb-2 text-center">
-          <h1 className="text-lg font-semibold text-[--color-text-primary]">Welcome back</h1>
-          <p className="mt-1 text-sm text-[--color-text-muted]">Secure deal management</p>
+          <h1 className="text-lg font-semibold text-(--color-text-primary)">Welcome back</h1>
+          <p className="mt-1 text-sm text-(--color-text-muted)">Secure deal management</p>
         </div>
 
         <CardSection border={false} className="px-6 pb-2">
@@ -292,7 +292,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
               />
               <div className="flex justify-end">
-                <Link href="/forgot-password" className="text-xs text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors">
+                <Link href="/forgot-password" className="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -304,15 +304,15 @@ export default function LoginPage() {
           </form>
         </CardSection>
 
-        <div className="px-6 pb-5 pt-1 flex items-center justify-center gap-1.5 text-[11px] text-[--color-text-muted]">
+        <div className="px-6 pb-5 pt-1 flex items-center justify-center gap-1.5 text-[11px] text-(--color-text-muted)">
           <Lock className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
           Secure offer acceptance with verifiable audit trails.
         </div>
       </Card>
 
-      <p className="mt-5 text-xs text-[--color-text-muted]">
+      <p className="mt-5 text-xs text-(--color-text-muted)">
         Don&apos;t have an account?{' '}
-        <Link href="/login?mode=signup" className="text-[--color-accent] hover:text-[--color-accent-hover] font-medium">
+        <Link href="/login?mode=signup" className="text-(--color-accent) hover:text-(--color-accent-hover) font-medium">
           Create one
         </Link>
       </p>

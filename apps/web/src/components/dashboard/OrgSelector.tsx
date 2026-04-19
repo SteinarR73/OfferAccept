@@ -69,12 +69,12 @@ export function OrgSelector() {
           'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm',
           'text-slate-300 bg-white/5 hover:bg-white/10 transition-colors',
           'border border-white/10',
-          'focus-visible:ring-2 focus-visible:ring-[--color-accent]',
+          'focus-visible:ring-2 focus-visible:ring-(--color-accent)',
         )}
       >
         {/* Org avatar */}
         <span
-          className="flex-shrink-0 w-7 h-7 rounded-md bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center select-none"
+          className="flex-shrink-0 w-7 h-7 rounded-md bg-(--color-accent) text-white text-xs font-bold flex items-center justify-center select-none"
           aria-hidden="true"
         >
           {(orgName ?? 'O').charAt(0).toUpperCase()}
@@ -113,19 +113,19 @@ export function OrgSelector() {
           <div
             role="option"
             aria-selected="true"
-            className="flex items-center gap-2.5 px-3 py-2.5 bg-[--color-accent-light] cursor-default"
+            className="flex items-center gap-2.5 px-3 py-2.5 bg-(--color-accent-light) cursor-default"
           >
             <span
-              className="w-7 h-7 rounded-md bg-[--color-accent] text-white text-xs font-bold flex items-center justify-center"
+              className="w-7 h-7 rounded-md bg-(--color-accent) text-white text-xs font-bold flex items-center justify-center"
               aria-hidden="true"
             >
               {(orgName ?? 'O').charAt(0).toUpperCase()}
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-              <p className="text-xs text-[--color-accent]">{roleLabel} · current</p>
+              <p className="text-xs text-(--color-accent)">{roleLabel} · current</p>
             </div>
-            <svg className="w-4 h-4 text-[--color-accent]" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <svg className="w-4 h-4 text-(--color-accent)" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 011.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           </div>

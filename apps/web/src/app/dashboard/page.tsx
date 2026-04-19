@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
       {/* ── Header ───────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[length:var(--font-size-h1)] font-bold tracking-tight text-[--color-text-primary]">Dashboard</h1>
+        <h1 className="text-[length:var(--font-size-h1)] font-bold tracking-tight text-(--color-text-primary)">Dashboard</h1>
         <Link href="/dashboard/offers/new">
           <Button
             variant="primary"

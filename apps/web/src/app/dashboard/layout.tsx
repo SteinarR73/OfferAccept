@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <OrgProvider initial={orgState}>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <div className="flex min-h-screen bg-[--color-bg]">
+      <div className="flex min-h-screen bg-(--color-bg)">
         {/* Mobile backdrop */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" aria-hidden="true" onClick={() => setSidebarOpen(false)} />
@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           id="sidebar"
           aria-label="Main navigation"
           className={cn(
-            'fixed inset-y-0 left-0 z-50 flex flex-col w-[--sidebar-width] bg-[--color-sidebar-bg] border-r border-white/5',
+            'fixed inset-y-0 left-0 z-50 flex flex-col w-[--sidebar-width] bg-(--color-sidebar-bg) border-r border-white/5',
             'transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           )}
@@ -117,9 +117,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/5 flex-shrink-0">
             <Link
               href="/dashboard"
-              className="flex items-center gap-2 font-semibold text-white/90 text-sm rounded focus-visible:ring-2 focus-visible:ring-[--color-accent]"
+              className="flex items-center gap-2 font-semibold text-white/90 text-sm rounded focus-visible:ring-2 focus-visible:ring-(--color-accent)"
             >
-              <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold select-none">
+              <span className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold select-none">
                 OA
               </span>
               OfferAccept
@@ -127,7 +127,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <button
               ref={closeButtonRef}
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 rounded text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-[--color-accent]"
+              className="lg:hidden p-1 rounded text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-(--color-accent)"
               aria-label="Close navigation"
             >
               <X className="w-5 h-5" aria-hidden="true" />
@@ -147,13 +147,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       aria-current={active ? 'page' : undefined}
                       className={cn(
                         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                        'focus-visible:ring-2 focus-visible:ring-[--color-accent]',
+                        'focus-visible:ring-2 focus-visible:ring-(--color-accent)',
                         active
-                          ? 'bg-[--color-sidebar-active-bg] text-[--color-sidebar-active-text]'
-                          : 'text-[--color-sidebar-text] hover:bg-white/5 hover:text-white',
+                          ? 'bg-(--color-sidebar-active-bg) text-(--color-sidebar-active-text)'
+                          : 'text-(--color-sidebar-text) hover:bg-white/5 hover:text-white',
                       )}
                     >
-                      <span className={cn('flex-shrink-0', active ? 'text-[--color-sidebar-active-text]' : 'text-slate-500')}>
+                      <span className={cn('flex-shrink-0', active ? 'text-(--color-sidebar-active-text)' : 'text-slate-500')}>
                         {item.icon}
                       </span>
                       {item.label}
@@ -173,13 +173,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       aria-current={active ? 'page' : undefined}
                       className={cn(
                         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                        'focus-visible:ring-2 focus-visible:ring-[--color-accent]',
+                        'focus-visible:ring-2 focus-visible:ring-(--color-accent)',
                         active
-                          ? 'bg-[--color-sidebar-active-bg] text-[--color-sidebar-active-text]'
-                          : 'text-[--color-sidebar-text] hover:bg-white/5 hover:text-white',
+                          ? 'bg-(--color-sidebar-active-bg) text-(--color-sidebar-active-text)'
+                          : 'text-(--color-sidebar-text) hover:bg-white/5 hover:text-white',
                       )}
                     >
-                      <span className={cn('flex-shrink-0', active ? 'text-[--color-sidebar-active-text]' : 'text-slate-500')}>
+                      <span className={cn('flex-shrink-0', active ? 'text-(--color-sidebar-active-text)' : 'text-slate-500')}>
                         {item.icon}
                       </span>
                       {item.label}
@@ -197,7 +197,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             {/* ⌘K discovery hint */}
             <button
               onClick={() => setPaletteOpen(true)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] group"
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-(--color-accent) group"
               aria-label="Open command palette"
             >
               <Search className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
@@ -209,7 +209,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent]"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-(--color-accent)"
             >
               <LogOut className="w-4 h-4 text-slate-500" aria-hidden="true" />
               Sign out
@@ -220,13 +220,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* ── Main content ────────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Mobile top bar */}
-          <header className="lg:hidden flex items-center h-16 px-4 bg-[--color-sidebar-bg] border-b border-white/5 flex-shrink-0 gap-3">
+          <header className="lg:hidden flex items-center h-16 px-4 bg-(--color-sidebar-bg) border-b border-white/5 flex-shrink-0 gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
               aria-expanded={sidebarOpen}
               aria-controls="sidebar"
               aria-label="Open navigation"
-              className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-[--color-accent] transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-(--color-accent) transition-colors"
             >
               <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -236,7 +236,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <button
               onClick={() => setPaletteOpen(true)}
               aria-label="Open command palette"
-              className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-[--color-accent] transition-colors"
+              className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-(--color-accent) transition-colors"
             >
               <Search className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -251,13 +251,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     const isLast = i === breadcrumb.length - 1;
                     return (
                       <li key={i} className="flex items-center gap-1">
-                        {i > 0 && <ChevronRight className="w-3 h-3 text-[--color-text-muted]" aria-hidden="true" />}
+                        {i > 0 && <ChevronRight className="w-3 h-3 text-(--color-text-muted)" aria-hidden="true" />}
                         {isLast || !item.href ? (
-                          <span className="text-xs text-[--color-text-secondary] font-medium" aria-current={isLast ? 'page' : undefined}>
+                          <span className="text-xs text-(--color-text-secondary) font-medium" aria-current={isLast ? 'page' : undefined}>
                             {item.label}
                           </span>
                         ) : (
-                          <Link href={item.href} className="text-xs text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors font-medium">
+                          <Link href={item.href} className="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors font-medium">
                             {item.label}
                           </Link>
                         )}

@@ -124,22 +124,22 @@ function CustomerInfoCard({
       <CardSection>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           <div>
-            <dt className="flex items-center gap-1.5 text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-1">
+            <dt className="flex items-center gap-1.5 text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-1">
               <Mail className="w-3 h-3" aria-hidden="true" />
               Email
             </dt>
-            <dd className="text-sm text-[--color-text-primary] truncate max-w-[200px]">{email}</dd>
+            <dd className="text-sm text-(--color-text-primary) truncate max-w-[200px]">{email}</dd>
           </div>
 
           <div>
-            <dt className="flex items-center gap-1.5 text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-1">
+            <dt className="flex items-center gap-1.5 text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-1">
               <TrendingUp className="w-3 h-3" aria-hidden="true" />
               Deals
             </dt>
-            <dd className="text-2xl font-bold text-[--color-text-primary] tabular-nums">
+            <dd className="text-2xl font-bold text-(--color-text-primary) tabular-nums">
               {dealCount}
               {acceptedCount > 0 && (
-                <span className="text-xs font-normal text-[--color-success-text] ml-2">
+                <span className="text-xs font-normal text-(--color-success-text) ml-2">
                   {acceptedCount} accepted
                 </span>
               )}
@@ -148,20 +148,20 @@ function CustomerInfoCard({
 
           {lastAcceptedTitle && (
             <div>
-              <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-1">
+              <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-1">
                 Last accepted
               </dt>
-              <dd className="text-sm text-[--color-text-secondary] truncate max-w-[180px]">{lastAcceptedTitle}</dd>
+              <dd className="text-sm text-(--color-text-secondary) truncate max-w-[180px]">{lastAcceptedTitle}</dd>
             </div>
           )}
 
           {lastActivity && (
             <div>
-              <dt className="flex items-center gap-1.5 text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-1">
+              <dt className="flex items-center gap-1.5 text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-1">
                 <Clock className="w-3 h-3" aria-hidden="true" />
                 Last activity
               </dt>
-              <dd className="text-sm text-[--color-text-secondary]">
+              <dd className="text-sm text-(--color-text-secondary)">
                 {new Date(lastActivity).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',

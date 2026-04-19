@@ -39,7 +39,7 @@ export default function ContactPage() {
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
-            <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
+            <span className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
@@ -59,9 +59,9 @@ export default function ContactPage() {
             <a
               key={c.email}
               href={`mailto:${c.email}`}
-              className="flex flex-col gap-1 rounded-xl border border-gray-200 px-5 py-4 hover:border-[--color-accent] hover:bg-emerald-50 transition-colors group"
+              className="flex flex-col gap-1 rounded-xl border border-gray-200 px-5 py-4 hover:border-(--color-accent) hover:bg-emerald-50 transition-colors group"
             >
-              <span className="text-xs font-semibold text-gray-900 group-hover:text-[--color-accent]">
+              <span className="text-xs font-semibold text-gray-900 group-hover:text-(--color-accent)">
                 {c.label}
               </span>
               <span className="text-xs text-blue-600 font-medium">{c.email}</span>

@@ -46,7 +46,7 @@ export function QuoteSummaryCard({ description, lineItems = [] }: QuoteSummaryCa
 
         {lineItems.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-2">
               Line items
             </p>
             <table className="w-full text-sm" aria-label="Quote line items">

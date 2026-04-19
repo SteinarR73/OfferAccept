@@ -173,13 +173,13 @@ export default function NewDealWizardPage() {
       <div className="mb-6">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-xs text-[--color-text-muted] hover:text-[--color-text-secondary] transition-colors mb-4"
+          className="flex items-center gap-1 text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors mb-4"
         >
           <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
           All deals
         </button>
-        <h1 className="text-xl font-semibold text-[--color-text-primary]">New deal</h1>
-        <p className="text-sm text-[--color-text-muted] mt-0.5">Send your first deal in under 2 minutes.</p>
+        <h1 className="text-xl font-semibold text-(--color-text-primary)">New deal</h1>
+        <p className="text-sm text-(--color-text-muted) mt-0.5">Send your first deal in under 2 minutes.</p>
       </div>
 
       {/* ── Step indicator ─────────────────────────────────────────────────── */}
@@ -211,7 +211,7 @@ export default function NewDealWizardPage() {
       </div>
 
       {/* ── Navigation ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[--color-border-subtle]">
+      <div className="flex items-center justify-between mt-6 pt-4 border-t border-(--color-border-subtle)">
         <Button
           variant="secondary"
           size="md"
@@ -257,10 +257,10 @@ function StepIndicator({ current, total, label }: { current: number; total: numb
   return (
     <div aria-label={`Step ${current} of ${total}: ${label}`}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-semibold text-[--color-accent]">
+        <span className="text-xs font-semibold text-(--color-accent)">
           Step {current} / {total}
         </span>
-        <span className="text-xs text-[--color-text-muted]">{label}</span>
+        <span className="text-xs text-(--color-text-muted)">{label}</span>
       </div>
       <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border)' }}>
         <div
@@ -370,9 +370,9 @@ function StepDocument({ offerId, state, onTemplateSelect, onUploaded, onUploadin
       </Card>
 
       {selectedTemplate ? (
-        <div className="flex items-center gap-2 rounded-lg border border-[--color-success-border] bg-[--color-success-light] px-4 py-2.5">
-          <FileCheck className="w-4 h-4 text-[--color-success] flex-shrink-0" aria-hidden="true" />
-          <p className="text-xs text-[--color-success-text]">
+        <div className="flex items-center gap-2 rounded-lg border border-(--color-success-border) bg-(--color-success-light) px-4 py-2.5">
+          <FileCheck className="w-4 h-4 text-(--color-success) flex-shrink-0" aria-hidden="true" />
+          <p className="text-xs text-(--color-success-text)">
             <span className="font-semibold">{selectedTemplate.title}</span> template applied.
           </p>
         </div>
@@ -482,7 +482,7 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
       <button
         type="button"
         onClick={() => setShowPreview(true)}
-        className="w-full text-left rounded-xl border border-dashed border-[--color-border] px-4 py-3 text-xs text-[--color-text-muted] hover:border-[--color-border] hover:text-[--color-text-secondary] transition-colors flex items-center gap-2"
+        className="w-full text-left rounded-xl border border-dashed border-(--color-border) px-4 py-3 text-xs text-(--color-text-muted) hover:border-(--color-border) hover:text-(--color-text-secondary) transition-colors flex items-center gap-2"
       >
         <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -491,8 +491,8 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
         Preview what your recipient will see
       </button>
 
-      <div className="rounded-xl border border-[--color-info-border] bg-[--color-info-light] px-4 py-3">
-        <p className="text-xs text-[--color-info-text] font-medium">
+      <div className="rounded-xl border border-(--color-info-border) bg-(--color-info-light) px-4 py-3">
+        <p className="text-xs text-(--color-info-text) font-medium">
           Clicking &ldquo;Send deal&rdquo; delivers a secure deal link to your recipient immediately.
         </p>
       </div>
@@ -540,12 +540,12 @@ function RecipientPreviewModal({
     >
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Modal header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[--color-border-subtle] bg-[--color-bg]">
-          <span className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Recipient preview</span>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-(--color-border-subtle) bg-(--color-bg)">
+          <span className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">Recipient preview</span>
           <button
             type="button"
             onClick={onClose}
-            className="text-[--color-text-muted] hover:text-[--color-text-secondary] transition-colors text-sm font-medium"
+            className="text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors text-sm font-medium"
             aria-label="Close preview"
           >
             ✕
@@ -553,52 +553,52 @@ function RecipientPreviewModal({
         </div>
 
         {/* Trust banner — mirrors the real acceptance page */}
-        <div className="bg-[--color-success-light] border-b border-[--color-success-border] px-4 py-2 flex items-center justify-center gap-4 text-xs text-green-800">
+        <div className="bg-(--color-success-light) border-b border-(--color-success-border) px-4 py-2 flex items-center justify-center gap-4 text-xs text-green-800">
           <span>🔒 Secure acceptance session</span>
-          <span className="text-[--color-success]">· Encrypted in transit (TLS)</span>
+          <span className="text-(--color-success)">· Encrypted in transit (TLS)</span>
         </div>
 
         {/* Deal content */}
         <div className="px-6 py-5">
           {/* Platform introduction */}
-          <div className="mb-4 rounded-lg border border-[--color-border] bg-[--color-bg] px-4 py-3">
-            <p className="text-xs text-[--color-text-secondary] leading-relaxed">
-              You are viewing a deal sent via <span className="font-semibold text-[--color-text-primary]">OfferAccept</span>.{' '}
+          <div className="mb-4 rounded-lg border border-(--color-border) bg-(--color-bg) px-4 py-3">
+            <p className="text-xs text-(--color-text-secondary) leading-relaxed">
+              You are viewing a deal sent via <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>.{' '}
               OfferAccept records verified deal acceptances and produces a certificate that proves the acceptance occurred.
             </p>
           </div>
 
-          <p className="text-sm text-[--color-text-muted] mb-1">Deal from <span className="font-medium text-[--color-text-secondary]">your organization</span></p>
-          <h2 className="text-xl font-semibold text-[--color-text-primary] mb-3">{dealName || 'Your deal title'}</h2>
+          <p className="text-sm text-(--color-text-muted) mb-1">Deal from <span className="font-medium text-(--color-text-secondary)">your organization</span></p>
+          <h2 className="text-xl font-semibold text-(--color-text-primary) mb-3">{dealName || 'Your deal title'}</h2>
 
           {templateMessage && (
-            <p className="text-sm text-[--color-text-secondary] leading-relaxed mb-4 whitespace-pre-line line-clamp-4">
+            <p className="text-sm text-(--color-text-secondary) leading-relaxed mb-4 whitespace-pre-line line-clamp-4">
               {templateMessage}
             </p>
           )}
 
           {hasDoc && (
             <div className="mb-4">
-              <p className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wide mb-2">Documents included in this deal</p>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[--color-bg] border border-[--color-border-subtle]">
+              <p className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wide mb-2">Documents included in this deal</p>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--color-bg) border border-(--color-border-subtle)">
                 <span className="w-6 h-6 rounded bg-red-100 text-red-600 text-[9px] font-bold flex items-center justify-center flex-shrink-0">PDF</span>
-                <span className="text-xs text-[--color-text-secondary] truncate">{docLabel}</span>
+                <span className="text-xs text-(--color-text-secondary) truncate">{docLabel}</span>
               </div>
             </div>
           )}
 
           <div className="flex gap-3 mt-5">
-            <div className="flex-1 h-9 rounded-lg bg-[--color-accent] flex items-center justify-center text-xs text-white font-medium">
+            <div className="flex-1 h-9 rounded-lg bg-(--color-accent) flex items-center justify-center text-xs text-white font-medium">
               Continue to accept
             </div>
-            <div className="h-9 px-4 rounded-lg border border-[--color-border] flex items-center justify-center text-xs text-[--color-text-muted]">
+            <div className="h-9 px-4 rounded-lg border border-(--color-border) flex items-center justify-center text-xs text-(--color-text-muted)">
               Decline
             </div>
           </div>
         </div>
 
-        <div className="px-5 py-3 border-t border-[--color-border-subtle] bg-[--color-bg] text-center">
-          <p className="text-[10px] text-[--color-text-muted]">
+        <div className="px-5 py-3 border-t border-(--color-border-subtle) bg-(--color-bg) text-center">
+          <p className="text-[10px] text-(--color-text-muted)">
             This is a representative preview. The recipient will also verify their email via a one-time code before accepting.
           </p>
         </div>
@@ -616,8 +616,8 @@ function ReviewRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <dt className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider shrink-0">{label}</dt>
-      <dd className={cn('text-sm text-right', muted ? 'text-[--color-text-muted] italic' : 'font-medium text-[--color-text-primary]')}>
+      <dt className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider shrink-0">{label}</dt>
+      <dd className={cn('text-sm text-right', muted ? 'text-(--color-text-muted) italic' : 'font-medium text-(--color-text-primary)')}>
         {value}
       </dd>
     </div>

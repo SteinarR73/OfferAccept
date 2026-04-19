@@ -72,7 +72,7 @@ export function QuoteSummary({ value, onChange }: QuoteSummaryProps) {
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
               Deal description
-              <span className="font-normal text-[--color-text-muted] ml-1">(optional)</span>
+              <span className="font-normal text-(--color-text-muted) ml-1">(optional)</span>
             </label>
             <textarea
               value={value.description}

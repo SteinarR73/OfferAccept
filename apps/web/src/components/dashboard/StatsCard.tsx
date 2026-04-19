@@ -16,9 +16,9 @@ export interface StatsCardProps {
 }
 
 const trendColour = {
-  positive: 'text-[--color-success]',
-  negative: 'text-[--color-error]',
-  neutral:  'text-[--color-text-muted]',
+  positive: 'text-(--color-success)',
+  negative: 'text-(--color-error)',
+  neutral:  'text-(--color-text-muted)',
 };
 
 export function StatsCard({
@@ -31,12 +31,12 @@ export function StatsCard({
 }: StatsCardProps) {
   return (
     <article
-      className="bg-[--color-surface] rounded-xl border border-[--color-border] p-5 flex flex-col gap-1 animate-fade-in shadow-[var(--shadow-card)] card-hover"
+      className="bg-(--color-surface) rounded-xl border border-(--color-border) p-5 flex flex-col gap-1 animate-fade-in shadow-[var(--shadow-card)] card-hover"
       {...(tourId ? { 'data-tour': tourId } : {})}
       aria-label={description ?? `${label}: ${value}`}
     >
-      <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">{label}</p>
-      <p className="text-3xl font-bold tracking-tight text-[--color-text-primary] tabular-nums">{value}</p>
+      <p className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider">{label}</p>
+      <p className="text-3xl font-bold tracking-tight text-(--color-text-primary) tabular-nums">{value}</p>
       {sub && (
         <p className={cn('text-xs font-medium mt-0.5', trendColour[trend])} aria-hidden="true">
           {sub}
@@ -50,7 +50,7 @@ export function StatsCard({
 export function StatsCardSkeleton() {
   return (
     <div
-      className="bg-[--color-surface] rounded-xl border border-[--color-border] p-5 flex flex-col gap-2 shadow-[var(--shadow-card)]"
+      className="bg-(--color-surface) rounded-xl border border-(--color-border) p-5 flex flex-col gap-2 shadow-[var(--shadow-card)]"
       aria-hidden="true"
     >
       <div className="skeleton-shimmer h-3 w-20 rounded" />

@@ -76,13 +76,13 @@ export default function CertificateVerifyPage() {
   }, [certificateId]);
 
   return (
-    <div className="min-h-screen bg-[--color-bg] flex flex-col">
+    <div className="min-h-screen bg-(--color-bg) flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <header className="border-b border-[--color-border] bg-white px-6 py-3 flex items-center gap-2.5">
-        <Shield className="w-5 h-5 text-[--color-accent]" aria-hidden="true" />
-        <span className="font-semibold text-sm text-[--color-text-primary]">OfferAccept</span>
-        <span className="text-[--color-border] select-none">·</span>
-        <span className="text-sm text-[--color-text-secondary]">Certificate verification</span>
+      <header className="border-b border-(--color-border) bg-white px-6 py-3 flex items-center gap-2.5">
+        <Shield className="w-5 h-5 text-(--color-accent)" aria-hidden="true" />
+        <span className="font-semibold text-sm text-(--color-text-primary)">OfferAccept</span>
+        <span className="text-(--color-border) select-none">·</span>
+        <span className="text-sm text-(--color-text-secondary)">Certificate verification</span>
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
@@ -117,7 +117,7 @@ export default function CertificateVerifyPage() {
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[--color-border] bg-gray-50/60">
+      <footer className="border-t border-(--color-border) bg-gray-50/60">
         <AboutCertificate
           metadata={
             state.phase === 'valid' || state.phase === 'legacy' || state.phase === 'invalid'
@@ -125,7 +125,7 @@ export default function CertificateVerifyPage() {
               : undefined
           }
         />
-        <p className="text-center text-xs text-[--color-text-muted] px-6 py-4">
+        <p className="text-center text-xs text-(--color-text-muted) px-6 py-4">
           Certificates are cryptographically sealed and tamper-evident. This verification is
           performed server-side against the original signing record.
         </p>
@@ -138,7 +138,7 @@ export default function CertificateVerifyPage() {
 
 function LoadingState() {
   return (
-    <div className="flex flex-col items-center gap-4 py-16 text-[--color-text-secondary]">
+    <div className="flex flex-col items-center gap-4 py-16 text-(--color-text-secondary)">
       <Spinner size="lg" />
       <p className="text-sm">Verifying certificate…</p>
     </div>
@@ -424,26 +424,26 @@ function VerificationExplanation({ tint }: { tint: 'green' | 'red' | 'amber' }) 
 
 function NotFoundState({ certificateId }: { certificateId: string }) {
   return (
-    <div className="rounded-2xl border border-[--color-border] bg-white p-10 text-center shadow-sm">
+    <div className="rounded-2xl border border-(--color-border) bg-white p-10 text-center shadow-sm">
       <div
         className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5"
         aria-hidden="true"
       >
         <Shield className="w-8 h-8 text-gray-400" />
       </div>
-      <h1 className="text-xl font-bold text-[--color-text-primary] mb-2">Certificate not found</h1>
-      <p className="text-sm text-[--color-text-secondary] max-w-xs mx-auto mb-6">
+      <h1 className="text-xl font-bold text-(--color-text-primary) mb-2">Certificate not found</h1>
+      <p className="text-sm text-(--color-text-secondary) max-w-xs mx-auto mb-6">
         No certificate exists for ID{' '}
         <code className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">{certificateId}</code>.
         Double-check the link you were given.
       </p>
       <Link
         href="/verify"
-        className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-[--color-border] bg-white text-sm font-medium text-[--color-text-primary] hover:bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2"
+        className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-(--color-border) bg-white text-sm font-medium text-(--color-text-primary) hover:bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2"
       >
         Try another Certificate ID
       </Link>
-      <p className="mt-3 text-xs text-[--color-text-muted]">
+      <p className="mt-3 text-xs text-(--color-text-muted)">
         Enter the certificate ID again to check a different record.
       </p>
     </div>
@@ -496,8 +496,8 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
 
   return (
     <>
-    <div className="px-6 py-5 border-b border-[--color-border]">
-      <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-3">
+    <div className="px-6 py-5 border-b border-(--color-border)">
+      <p className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-3">
         Legal and verification framework
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -505,17 +505,17 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
           href={evidenceModelUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-col gap-1 rounded-lg border border-[--color-border] bg-white px-3 py-2.5 hover:border-[--color-accent]/40 hover:bg-blue-50/30 transition-colors"
+          className="flex flex-col gap-1 rounded-lg border border-(--color-border) bg-white px-3 py-2.5 hover:border-(--color-accent)/40 hover:bg-blue-50/30 transition-colors"
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="font-medium text-[--color-text-primary]">Evidence model</span>
+            <span className="font-medium text-(--color-text-primary)">Evidence model</span>
             {metadata?.evidenceModelVersion && (
               <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
                 v{metadata.evidenceModelVersion}
               </span>
             )}
           </div>
-          <span className="text-[--color-text-muted] leading-relaxed">
+          <span className="text-(--color-text-muted) leading-relaxed">
             How the SHA-256 hash chain is constructed and how to verify independently
           </span>
         </a>
@@ -523,17 +523,17 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
           href="/legal/acceptance-statement"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-col gap-1 rounded-lg border border-[--color-border] bg-white px-3 py-2.5 hover:border-[--color-accent]/40 hover:bg-blue-50/30 transition-colors"
+          className="flex flex-col gap-1 rounded-lg border border-(--color-border) bg-white px-3 py-2.5 hover:border-(--color-accent)/40 hover:bg-blue-50/30 transition-colors"
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="font-medium text-[--color-text-primary]">Acceptance statement</span>
+            <span className="font-medium text-(--color-text-primary)">Acceptance statement</span>
             {metadata?.acceptanceStatementVersion && (
               <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
                 v{metadata.acceptanceStatementVersion}
               </span>
             )}
           </div>
-          <span className="text-[--color-text-muted] leading-relaxed">
+          <span className="text-(--color-text-muted) leading-relaxed">
             Exact wording shown to the recipient and eIDAS positioning
           </span>
         </a>
@@ -541,17 +541,17 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
           href={termsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-col gap-1 rounded-lg border border-[--color-border] bg-white px-3 py-2.5 hover:border-[--color-accent]/40 hover:bg-blue-50/30 transition-colors"
+          className="flex flex-col gap-1 rounded-lg border border-(--color-border) bg-white px-3 py-2.5 hover:border-(--color-accent)/40 hover:bg-blue-50/30 transition-colors"
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="font-medium text-[--color-text-primary]">Terms of service</span>
+            <span className="font-medium text-(--color-text-primary)">Terms of service</span>
             {metadata?.termsVersionAtCreation && (
               <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
                 v{metadata.termsVersionAtCreation}
               </span>
             )}
           </div>
-          <span className="text-[--color-text-muted] leading-relaxed">
+          <span className="text-(--color-text-muted) leading-relaxed">
             Terms in effect when the sender created this offer
           </span>
         </a>
@@ -560,10 +560,10 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
 
     {/* Section 4 — Independent verification links */}
     <div className="px-6 py-5">
-      <p className="text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider mb-3">
+      <p className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-3">
         Independent verification
       </p>
-      <p className="text-xs text-[--color-text-secondary] mb-3 leading-relaxed">
+      <p className="text-xs text-(--color-text-secondary) mb-3 leading-relaxed">
         OfferAccept uses SHA-256 with a canonical 5-field payload. You can reproduce the
         hash independently using any standard tool.
       </p>
@@ -572,7 +572,7 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
           href="/security/evidence-model#independent-verification"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-[--color-text-primary] hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-md border border-(--color-border) bg-white px-3 py-1.5 text-xs font-medium text-(--color-text-primary) hover:bg-gray-50 transition-colors"
         >
           Verification guide
         </a>
@@ -580,7 +580,7 @@ function AboutCertificate({ metadata }: { metadata?: CertificateMetadata }) {
           href="https://emn178.github.io/online-tools/sha256.html"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-[--color-text-primary] hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-md border border-(--color-border) bg-white px-3 py-1.5 text-xs font-medium text-(--color-text-primary) hover:bg-gray-50 transition-colors"
         >
           SHA-256 online tool ↗
         </a>
@@ -600,7 +600,7 @@ function CheckRow({ label, ok }: { label: string; ok: boolean }) {
       ) : (
         <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" aria-hidden="true" />
       )}
-      <span className="text-sm text-[--color-text-primary]">{label}</span>
+      <span className="text-sm text-(--color-text-primary)">{label}</span>
       <span
         className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
           ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'

@@ -148,12 +148,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
       {/* Panel */}
       <div
-        className="relative w-full max-w-lg bg-[--color-surface] rounded-2xl shadow-2xl overflow-hidden animate-palette-in border border-[--color-border]"
+        className="relative w-full max-w-lg bg-(--color-surface) rounded-2xl shadow-2xl overflow-hidden animate-palette-in border border-(--color-border)"
         onKeyDown={handleKeyDown}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 border-b border-[--color-border-subtle]">
-          <Search className="w-4 h-4 text-[--color-text-muted] flex-shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-3 px-4 border-b border-(--color-border-subtle)">
+          <Search className="w-4 h-4 text-(--color-text-muted) flex-shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
@@ -165,9 +165,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             placeholder="Type a command or search…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 py-4 text-sm text-[--color-text-primary] bg-transparent placeholder:text-[--color-text-muted] outline-none"
+            className="flex-1 py-4 text-sm text-(--color-text-primary) bg-transparent placeholder:text-(--color-text-muted) outline-none"
           />
-          <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-[--color-text-muted] border border-[--color-border] rounded px-1.5 py-0.5 font-mono">
+          <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-(--color-text-muted) border border-(--color-border) rounded px-1.5 py-0.5 font-mono">
             esc
           </kbd>
         </div>
@@ -191,53 +191,53 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 onMouseEnter={() => setActiveIdx(i)}
                 className={cn(
                   'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors',
-                  i === activeIdx ? 'bg-[--color-focus]' : 'hover:bg-[--color-hover]',
+                  i === activeIdx ? 'bg-(--color-focus)' : 'hover:bg-(--color-hover)',
                 )}
               >
                 <span className={cn(
                   'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center',
-                  i === activeIdx ? 'bg-[--color-accent] text-white' : 'bg-[--color-neutral-surface] text-[--color-text-secondary]',
+                  i === activeIdx ? 'bg-(--color-accent) text-white' : 'bg-(--color-neutral-surface) text-(--color-text-secondary)',
                 )}>
                   {cmd.icon}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className={cn(
                     'text-sm font-medium',
-                    i === activeIdx ? 'text-[--color-accent-text]' : 'text-[--color-text-primary]',
+                    i === activeIdx ? 'text-(--color-accent-text)' : 'text-(--color-text-primary)',
                   )}>
                     {cmd.label}
                   </p>
                   {cmd.description && (
-                    <p className="text-xs text-[--color-text-muted] truncate">{cmd.description}</p>
+                    <p className="text-xs text-(--color-text-muted) truncate">{cmd.description}</p>
                   )}
                 </div>
                 {i === activeIdx && (
-                  <ArrowRight className="w-3.5 h-3.5 text-[--color-accent] flex-shrink-0" aria-hidden="true" />
+                  <ArrowRight className="w-3.5 h-3.5 text-(--color-accent) flex-shrink-0" aria-hidden="true" />
                 )}
               </li>
             ))}
           </ul>
         ) : (
           <div className="py-10 text-center">
-            <p className="text-sm text-[--color-text-muted]">No commands match "{query}"</p>
+            <p className="text-sm text-(--color-text-muted)">No commands match "{query}"</p>
           </div>
         )}
 
         {/* Footer hint */}
-        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-[--color-border-subtle] bg-[--color-bg]">
-          <span className="flex items-center gap-1 text-[11px] text-[--color-text-muted]">
-            <kbd className="font-mono border border-[--color-border] rounded px-1 py-0.5 bg-[--color-surface] text-[10px]">↑↓</kbd>
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-(--color-border-subtle) bg-(--color-bg)">
+          <span className="flex items-center gap-1 text-[11px] text-(--color-text-muted)">
+            <kbd className="font-mono border border-(--color-border) rounded px-1 py-0.5 bg-(--color-surface) text-[10px]">↑↓</kbd>
             navigate
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-[--color-text-muted]">
-            <kbd className="font-mono border border-[--color-border] rounded px-1 py-0.5 bg-[--color-surface] text-[10px]">↵</kbd>
+          <span className="flex items-center gap-1 text-[11px] text-(--color-text-muted)">
+            <kbd className="font-mono border border-(--color-border) rounded px-1 py-0.5 bg-(--color-surface) text-[10px]">↵</kbd>
             select
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-[--color-text-muted]">
-            <kbd className="font-mono border border-[--color-border] rounded px-1 py-0.5 bg-[--color-surface] text-[10px]">esc</kbd>
+          <span className="flex items-center gap-1 text-[11px] text-(--color-text-muted)">
+            <kbd className="font-mono border border-(--color-border) rounded px-1 py-0.5 bg-(--color-surface) text-[10px]">esc</kbd>
             close
           </span>
-          <span className="ml-auto flex items-center gap-1 text-[11px] text-[--color-text-muted]">
+          <span className="ml-auto flex items-center gap-1 text-[11px] text-(--color-text-muted)">
             <Command className="w-3 h-3" aria-hidden="true" />
             <kbd className="font-mono text-[10px]">K</kbd>
           </span>

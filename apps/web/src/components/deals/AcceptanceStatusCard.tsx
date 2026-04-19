@@ -139,7 +139,7 @@ export function AcceptanceStatusCard({ status }: AcceptanceStatusCardProps) {
                     {step.label}
                   </p>
                   {step.sublabel && (
-                    <p className="text-[11px] text-[--color-text-muted] mt-0.5">{step.sublabel}</p>
+                    <p className="text-[11px] text-(--color-text-muted) mt-0.5">{step.sublabel}</p>
                   )}
                 </div>
               </li>

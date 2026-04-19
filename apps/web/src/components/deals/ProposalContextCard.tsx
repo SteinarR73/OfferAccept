@@ -29,7 +29,7 @@ export function ProposalContextCard({ offer }: ProposalContextCardProps) {
 
         {offer.expiresAt && isSent && (
           <div className={hasMessage ? 'mt-4 pt-4 border-t border-gray-100' : ''}>
-            <p className="text-xs text-[--color-text-muted]">
+            <p className="text-xs text-(--color-text-muted)">
               Expires{' '}
               <time dateTime={offer.expiresAt} className="font-medium text-gray-700">
                 {new Date(offer.expiresAt).toLocaleDateString(undefined, {

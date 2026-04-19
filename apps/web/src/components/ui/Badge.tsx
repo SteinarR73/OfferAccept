@@ -1,21 +1,21 @@
 import { cn } from '@/lib/cn';
 
 const VARIANT = {
-  gray:   'bg-[--color-neutral-surface] text-[--color-neutral-text]',
-  blue:   'bg-[--color-info-light] text-[--color-info-text]',
-  green:  'bg-[--color-success-light] text-[--color-success-text]',
-  red:    'bg-[--color-error-light] text-[--color-error-text]',
-  amber:  'bg-[--color-warning-light] text-[--color-warning-text]',
-  purple: 'bg-[--color-purple-surface] text-[--color-purple-text]',
+  gray:   'bg-(--color-neutral-surface) text-(--color-neutral-text)',
+  blue:   'bg-(--color-info-light) text-(--color-info-text)',
+  green:  'bg-(--color-success-light) text-(--color-success-text)',
+  red:    'bg-(--color-error-light) text-(--color-error-text)',
+  amber:  'bg-(--color-warning-light) text-(--color-warning-text)',
+  purple: 'bg-(--color-purple-surface) text-(--color-purple-text)',
 } as const;
 
 const DOT = {
-  gray:   'bg-[--color-neutral-text]',
-  blue:   'bg-[--color-info]',
-  green:  'bg-[--color-success]',
-  red:    'bg-[--color-error]',
-  amber:  'bg-[--color-warning]',
-  purple: 'bg-[--color-purple]',
+  gray:   'bg-(--color-neutral-text)',
+  blue:   'bg-(--color-info)',
+  green:  'bg-(--color-success)',
+  red:    'bg-(--color-error)',
+  amber:  'bg-(--color-warning)',
+  purple: 'bg-(--color-purple)',
 } as const;
 
 const SIZE = {

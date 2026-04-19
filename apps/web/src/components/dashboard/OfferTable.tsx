@@ -22,9 +22,9 @@ function getHealth(offer: OfferItem): HealthState {
 }
 
 const HEALTH_META: Record<NonNullable<HealthState>, { dot: string; label: string }> = {
-  expiring: { dot: 'bg-[--color-error]',   label: 'Expiring soon' },
-  slow:     { dot: 'bg-[--color-warning]', label: 'Slow response' },
-  healthy:  { dot: 'bg-[--color-success]', label: 'Active'        },
+  expiring: { dot: 'bg-(--color-error)',   label: 'Expiring soon' },
+  slow:     { dot: 'bg-(--color-warning)', label: 'Slow response' },
+  healthy:  { dot: 'bg-(--color-success)', label: 'Active'        },
 };
 
 // ─── Suggested action ─────────────────────────────────────────────────────────
@@ -35,9 +35,9 @@ type SuggestedAction = 'send_reminder' | 'urgent_expiring' | 'ready_to_send' | n
 interface SuggestedActionMeta { label: string; classes: string }
 
 const SUGGESTED_ACTION_META: Record<NonNullable<SuggestedAction>, SuggestedActionMeta> = {
-  urgent_expiring: { label: 'Expires soon',    classes: 'bg-[--color-error-light] text-[--color-error-text]' },
-  send_reminder:   { label: 'Send reminder',   classes: 'bg-[--color-warning-light] text-[--color-warning-text]' },
-  ready_to_send:   { label: 'Ready to send',   classes: 'bg-[--color-accent-light] text-[--color-accent-text]' },
+  urgent_expiring: { label: 'Expires soon',    classes: 'bg-(--color-error-light) text-(--color-error-text)' },
+  send_reminder:   { label: 'Send reminder',   classes: 'bg-(--color-warning-light) text-(--color-warning-text)' },
+  ready_to_send:   { label: 'Ready to send',   classes: 'bg-(--color-accent-light) text-(--color-accent-text)' },
 };
 
 function getSuggestedAction(offer: OfferItem): SuggestedAction {
@@ -56,7 +56,7 @@ function getSuggestedAction(offer: OfferItem): SuggestedAction {
 
 function SuggestedActionChip({ offer }: { offer: OfferItem }) {
   const action = getSuggestedAction(offer);
-  if (!action) return <span className="text-[--color-text-muted] text-xs">—</span>;
+  if (!action) return <span className="text-(--color-text-muted) text-xs">—</span>;
   const meta = SUGGESTED_ACTION_META[action];
   return (
     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', meta.classes)}>
@@ -81,12 +81,12 @@ function HealthDot({ offer }: { offer: OfferItem }) {
 // ─── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<OfferStatusValue, { label: string; classes: string }> = {
-  DRAFT:    { label: 'Draft',    classes: 'bg-[--color-surface] text-[--color-text-secondary]' },
-  SENT:     { label: 'Sent',     classes: 'bg-[--color-accent-light] text-[--color-accent-text]' },
-  ACCEPTED: { label: 'Accepted', classes: 'bg-[--color-success-light] text-[--color-success-text]' },
-  DECLINED: { label: 'Declined', classes: 'bg-[--color-error-light] text-[--color-error-text]' },
-  EXPIRED:  { label: 'Expired',  classes: 'bg-[--color-warning-light] text-[--color-warning-text]' },
-  REVOKED:  { label: 'Revoked',  classes: 'bg-[--color-surface] text-[--color-text-muted]' },
+  DRAFT:    { label: 'Draft',    classes: 'bg-(--color-surface) text-(--color-text-secondary)' },
+  SENT:     { label: 'Sent',     classes: 'bg-(--color-accent-light) text-(--color-accent-text)' },
+  ACCEPTED: { label: 'Accepted', classes: 'bg-(--color-success-light) text-(--color-success-text)' },
+  DECLINED: { label: 'Declined', classes: 'bg-(--color-error-light) text-(--color-error-text)' },
+  EXPIRED:  { label: 'Expired',  classes: 'bg-(--color-warning-light) text-(--color-warning-text)' },
+  REVOKED:  { label: 'Revoked',  classes: 'bg-(--color-surface) text-(--color-text-muted)' },
 };
 
 type FilterTab = 'ALL' | OfferStatusValue;
@@ -175,24 +175,24 @@ export function OfferTable({
   }
 
   function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 text-[--color-text-muted] inline" aria-hidden="true" />;
+    if (sortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 text-(--color-text-muted) inline" aria-hidden="true" />;
     return sortDir === 'asc'
-      ? <ArrowUp className="w-3 h-3 ml-1 text-[--color-accent] inline" aria-hidden="true" />
-      : <ArrowDown className="w-3 h-3 ml-1 text-[--color-accent] inline" aria-hidden="true" />;
+      ? <ArrowUp className="w-3 h-3 ml-1 text-(--color-accent) inline" aria-hidden="true" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-(--color-accent) inline" aria-hidden="true" />;
   }
 
   return (
     <section
-      className="bg-white rounded-xl border border-[--color-border] flex flex-col"
+      className="bg-white rounded-xl border border-(--color-border) flex flex-col"
       aria-labelledby="offers-heading"
       {...(tourId ? { 'data-tour': tourId } : {})}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[--color-border-subtle]">
-        <h2 id="offers-heading" className="text-base font-semibold text-[--color-text-primary]">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-(--color-border-subtle)">
+        <h2 id="offers-heading" className="text-base font-semibold text-(--color-text-primary)">
           {headingLabel}
           {!loading && (
-            <span className="ml-2 text-xs font-normal text-[--color-text-muted]">
+            <span className="ml-2 text-xs font-normal text-(--color-text-muted)">
               ({filtered.length}{activeTab !== 'ALL' || search ? ` of ${offers.length}` : ''})
             </span>
           )}
@@ -202,8 +202,8 @@ export function OfferTable({
           data-tour="create-offer"
           className={cn(
             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium btn-lift',
-            'bg-[--color-accent] text-white hover:bg-[--color-accent-hover] transition-colors',
-            'focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2',
+            'bg-(--color-accent) text-white hover:bg-(--color-accent-hover) transition-colors',
+            'focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2',
           )}
           aria-label="Create a new offer"
         >
@@ -217,7 +217,7 @@ export function OfferTable({
       {/* Search bar */}
       <div className="px-4 pt-3 pb-1">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[--color-text-muted] pointer-events-none" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted) pointer-events-none" aria-hidden="true" />
           <input
             type="search"
             placeholder="Search by name or recipient…"
@@ -225,16 +225,16 @@ export function OfferTable({
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search offers"
             className={cn(
-              'w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[--color-border]',
-              'placeholder:text-[--color-text-muted] text-[--color-text-primary] bg-[--color-bg]',
-              'focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent focus:bg-white',
+              'w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-(--color-border)',
+              'placeholder:text-(--color-text-muted) text-(--color-text-primary) bg-(--color-bg)',
+              'focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent focus:bg-white',
               'transition-colors',
             )}
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[--color-text-muted] hover:text-[--color-text-secondary] transition-colors cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors cursor-pointer"
               aria-label="Clear search"
             >
               ×
@@ -262,17 +262,17 @@ export function OfferTable({
               onClick={() => setActiveTab(tab.key)}
               className={cn(
                 'px-3 py-1.5 rounded-t-lg text-xs font-medium transition-colors relative whitespace-nowrap',
-                'focus-visible:ring-2 focus-visible:ring-[--color-accent]',
+                'focus-visible:ring-2 focus-visible:ring-(--color-accent)',
                 activeTab === tab.key
-                  ? 'text-[--color-accent-text] bg-[--color-accent-light] border border-b-0 border-[--color-border]'
-                  : 'text-[--color-text-secondary] hover:text-[--color-text-primary] hover:bg-[--color-bg]',
+                  ? 'text-(--color-accent-text) bg-(--color-accent-light) border border-b-0 border-(--color-border)'
+                  : 'text-(--color-text-secondary) hover:text-(--color-text-primary) hover:bg-(--color-bg)',
               )}
             >
               {tab.label}
               {count > 0 && (
                 <span className={cn(
                   'ml-1.5 inline-flex items-center justify-center rounded-full text-[10px] px-1.5 min-w-[18px] h-[18px]',
-                  activeTab === tab.key ? 'bg-[--color-accent-light] text-[--color-accent-text]' : 'bg-[--color-surface] text-[--color-text-muted]',
+                  activeTab === tab.key ? 'bg-(--color-accent-light) text-(--color-accent-text)' : 'bg-(--color-surface) text-(--color-text-muted)',
                 )}>
                   {count}
                 </span>
@@ -295,38 +295,38 @@ export function OfferTable({
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[--color-border-subtle]">
-                <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider w-[38%]">
+              <tr className="border-b border-(--color-border-subtle)">
+                <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider w-[38%]">
                   <button
                     onClick={() => toggleSort('createdAt')}
-                    className="flex items-center hover:text-[--color-text-primary] transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded cursor-pointer"
+                    className="flex items-center hover:text-(--color-text-primary) transition-colors focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded cursor-pointer"
                     aria-label={`Sort by created date ${sortKey === 'createdAt' && sortDir === 'asc' ? 'descending' : 'ascending'}`}
                   >
                     {colTitle} <SortIcon col="createdAt" />
                   </button>
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider hidden sm:table-cell">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider hidden sm:table-cell">
                   {colRecipient}
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider">
                   <button
                     onClick={() => toggleSort('status')}
-                    className="flex items-center hover:text-[--color-text-primary] transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded cursor-pointer"
+                    className="flex items-center hover:text-(--color-text-primary) transition-colors focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded cursor-pointer"
                     aria-label={`Sort by status`}
                   >
                     Status <SortIcon col="status" />
                   </button>
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider hidden md:table-cell">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider hidden md:table-cell">
                   <button
                     onClick={() => toggleSort('updatedAt')}
-                    className="flex items-center hover:text-[--color-text-primary] transition-colors focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded cursor-pointer"
+                    className="flex items-center hover:text-(--color-text-primary) transition-colors focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded cursor-pointer"
                     aria-label={`Sort by last activity ${sortKey === 'updatedAt' && sortDir === 'asc' ? 'descending' : 'ascending'}`}
                   >
                     Last activity <SortIcon col="updatedAt" />
                   </button>
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider hidden xl:table-cell">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider hidden xl:table-cell">
                   Suggested action
                 </th>
                 <th scope="col" className="sr-only">Actions</th>
@@ -336,36 +336,36 @@ export function OfferTable({
               {filtered.map((offer) => (
                 <tr
                   key={offer.id}
-                  className="table-row-hover border-b border-[--color-border-subtle] last:border-0 transition-colors"
+                  className="table-row-hover border-b border-(--color-border-subtle) last:border-0 transition-colors"
                 >
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-1.5">
                       <HealthDot offer={offer} />
                       <Link
                         href={`/dashboard/deals/${offer.id}`}
-                        className="font-medium text-[--color-text-primary] hover:text-[--color-accent] focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded transition-colors"
+                        className="font-medium text-(--color-text-primary) hover:text-(--color-accent) focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded transition-colors"
                       >
                         {search ? <Highlight text={offer.title} query={search} /> : offer.title}
                       </Link>
                     </div>
                     {offer.recipient?.email && (
-                      <p className="text-xs text-[--color-text-muted] mt-0.5 sm:hidden truncate max-w-[200px] pl-3">
+                      <p className="text-xs text-(--color-text-muted) mt-0.5 sm:hidden truncate max-w-[200px] pl-3">
                         {offer.recipient.email}
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3.5 text-[--color-text-secondary] hidden sm:table-cell">
+                  <td className="px-4 py-3.5 text-(--color-text-secondary) hidden sm:table-cell">
                     <span className="truncate max-w-[160px] block">
                       {offer.recipient?.email
                         ? (search ? <Highlight text={offer.recipient.email} query={search} /> : offer.recipient.email)
-                        : <span className="text-[--color-text-muted]">—</span>
+                        : <span className="text-(--color-text-muted)">—</span>
                       }
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
                     <StatusBadge status={offer.status} />
                   </td>
-                  <td className="px-4 py-3.5 text-[--color-text-muted] text-xs hidden md:table-cell">
+                  <td className="px-4 py-3.5 text-(--color-text-muted) text-xs hidden md:table-cell">
                     <time dateTime={offer.updatedAt}>
                       {new Date(offer.updatedAt).toLocaleDateString(undefined, {
                         month: 'short', day: 'numeric', year: 'numeric',
@@ -378,7 +378,7 @@ export function OfferTable({
                   <td className="px-3 py-3.5 text-right">
                     <Link
                       href={`/dashboard/deals/${offer.id}`}
-                      className="inline-flex items-center gap-1 text-xs text-[--color-text-muted] hover:text-[--color-accent] focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded transition-colors"
+                      className="inline-flex items-center gap-1 text-xs text-(--color-text-muted) hover:text-(--color-accent) focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded transition-colors"
                       aria-label={`Open offer: ${offer.title}`}
                     >
                       Open
@@ -406,7 +406,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-[--color-warning-light] text-[--color-warning-text] rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      <mark className="bg-(--color-warning-light) text-(--color-warning-text) rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
       {text.slice(idx + query.length)}
     </>
   );
@@ -415,7 +415,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: OfferStatusValue }) {
-  const meta = STATUS_META[status] ?? { label: status, classes: 'bg-[--color-surface] text-[--color-text-secondary]' };
+  const meta = STATUS_META[status] ?? { label: status, classes: 'bg-(--color-surface) text-(--color-text-secondary)' };
   return (
     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold transition-colors duration-200', meta.classes)}>
       {meta.label}
@@ -433,17 +433,17 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-12 h-12 rounded-full bg-[--color-surface] flex items-center justify-center mb-3" aria-hidden="true">
-        <svg className="w-6 h-6 text-[--color-text-muted]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="w-12 h-12 rounded-full bg-(--color-surface) flex items-center justify-center mb-3" aria-hidden="true">
+        <svg className="w-6 h-6 text-(--color-text-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
       </div>
-      <p className="text-sm font-medium text-[--color-text-primary]">
+      <p className="text-sm font-medium text-(--color-text-primary)">
         {hasSearch ? 'No matching offers' : hasOffers ? `No ${tab.toLowerCase()} offers` : 'No offers yet'}
       </p>
-      <p className="text-xs text-[--color-text-muted] mt-1 mb-4">
+      <p className="text-xs text-(--color-text-muted) mt-1 mb-4">
         {hasSearch
           ? 'Try a different search term.'
           : hasOffers
@@ -453,7 +453,7 @@ function EmptyState({
       {hasSearch && (
         <button
           onClick={onClear}
-          className="px-4 py-2 text-sm font-medium text-[--color-accent] border border-[--color-accent-light] rounded-lg hover:bg-[--color-accent-light] transition-colors cursor-pointer"
+          className="px-4 py-2 text-sm font-medium text-(--color-accent) border border-(--color-accent-light) rounded-lg hover:bg-(--color-accent-light) transition-colors cursor-pointer"
         >
           Clear search
         </button>
@@ -461,7 +461,7 @@ function EmptyState({
       {!hasOffers && !hasSearch && (
         <Link
           href="/dashboard/offers/new"
-          className="px-4 py-2 bg-[--color-accent] text-white text-sm font-medium rounded-lg hover:bg-[--color-accent-hover] focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2 transition-colors"
+          className="px-4 py-2 bg-(--color-accent) text-white text-sm font-medium rounded-lg hover:bg-(--color-accent-hover) focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2 transition-colors"
         >
           Create your first offer
         </Link>

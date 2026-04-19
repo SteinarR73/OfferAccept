@@ -29,10 +29,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[--color-bg] flex flex-col items-center justify-start pt-20 px-4">
+    <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
       {/* Brand */}
       <div className="flex items-center gap-2 mb-8">
-        <span className="w-8 h-8 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-sm font-bold select-none">
+        <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
           OA
         </span>
         <span className="font-semibold text-gray-900">OfferAccept</span>
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-sm">
         <div className="px-6 pt-6 pb-2 text-center">
           <h1 className="text-lg font-semibold text-gray-900">Reset your password</h1>
-          <p className="mt-1 text-sm text-[--color-text-muted]">
+          <p className="mt-1 text-sm text-(--color-text-muted)">
             {submitted
               ? 'Check your inbox'
               : "Enter your email and we'll send a reset link"}
@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
         </CardSection>
       </Card>
 
-      <p className="mt-5 text-xs text-[--color-text-muted]">
+      <p className="mt-5 text-xs text-(--color-text-muted)">
         <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
           ← Back to sign in
         </Link>

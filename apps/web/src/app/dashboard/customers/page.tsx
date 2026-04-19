@@ -102,13 +102,13 @@ export default function CustomersPage() {
       />
 
       {/* ── Table card ───────────────────────────────────────────────────────── */}
-      <section className="bg-white rounded-xl border border-[--color-border]" aria-labelledby="customers-heading">
+      <section className="bg-white rounded-xl border border-(--color-border)" aria-labelledby="customers-heading">
         {/* Header row */}
-        <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-[--color-border-subtle]">
-          <h2 id="customers-heading" className="text-base font-semibold text-[--color-text-primary]">
+        <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-(--color-border-subtle)">
+          <h2 id="customers-heading" className="text-base font-semibold text-(--color-text-primary)">
             Recipients
             {!loading && (
-              <span className="ml-2 text-xs font-normal text-[--color-text-muted]">
+              <span className="ml-2 text-xs font-normal text-(--color-text-muted)">
                 ({filtered.length}{search ? ` of ${customers.length}` : ''})
               </span>
             )}
@@ -118,7 +118,7 @@ export default function CustomersPage() {
         {/* Search */}
         <div className="px-4 pt-3 pb-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[--color-text-muted] pointer-events-none" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted) pointer-events-none" aria-hidden="true" />
             <input
               type="search"
               placeholder="Search by name or email…"
@@ -126,9 +126,9 @@ export default function CustomersPage() {
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search recipients"
               className={cn(
-                'w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[--color-border]',
-                'placeholder:text-[--color-text-muted] text-[--color-text-primary] bg-[--color-bg]',
-                'focus:outline-none focus:ring-2 focus:ring-[--color-accent] focus:border-transparent focus:bg-white',
+                'w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-(--color-border)',
+                'placeholder:text-(--color-text-muted) text-(--color-text-primary) bg-(--color-bg)',
+                'focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent focus:bg-white',
                 'transition-colors',
               )}
             />
@@ -144,17 +144,17 @@ export default function CustomersPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[--color-border-subtle]">
-                  <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider w-[35%]">
+                <tr className="border-b border-(--color-border-subtle)">
+                  <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider w-[35%]">
                     Recipient
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider hidden sm:table-cell">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider hidden sm:table-cell">
                     Email
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider">
                     Offers
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-[--color-text-muted] uppercase tracking-wider hidden md:table-cell">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider hidden md:table-cell">
                     Last activity
                   </th>
                   <th scope="col" className="sr-only">Actions</th>
@@ -164,7 +164,7 @@ export default function CustomersPage() {
                 {filtered.map((customer) => (
                   <tr
                     key={customer.email}
-                    className="table-row-hover border-b border-[--color-border-subtle] last:border-0 transition-colors"
+                    className="table-row-hover border-b border-(--color-border-subtle) last:border-0 transition-colors"
                   >
                     <td className="px-5 py-3.5">
                       <Link
@@ -172,37 +172,37 @@ export default function CustomersPage() {
                         className="flex items-center gap-2.5 group"
                       >
                         <div
-                          className="w-7 h-7 rounded-full bg-[--color-accent-light] flex items-center justify-center flex-shrink-0 text-xs font-semibold text-[--color-accent-text] uppercase"
+                          className="w-7 h-7 rounded-full bg-(--color-accent-light) flex items-center justify-center flex-shrink-0 text-xs font-semibold text-(--color-accent-text) uppercase"
                           aria-hidden="true"
                         >
                           {customer.name.slice(0, 1)}
                         </div>
-                        <span className="font-medium text-[--color-text-primary] group-hover:text-[--color-accent] transition-colors">
+                        <span className="font-medium text-(--color-text-primary) group-hover:text-(--color-accent) transition-colors">
                           {customer.name}
                         </span>
                       </Link>
                     </td>
-                    <td className="px-4 py-3.5 text-[--color-text-secondary] text-xs hidden sm:table-cell">
+                    <td className="px-4 py-3.5 text-(--color-text-secondary) text-xs hidden sm:table-cell">
                       {customer.email}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[--color-text-primary]">{customer.offerCount}</span>
+                        <span className="font-semibold text-(--color-text-primary)">{customer.offerCount}</span>
                         {customer.acceptedCount > 0 && (
-                          <span className="text-xs text-[--color-success-text] bg-[--color-success-light] rounded-full px-1.5 py-0.5">
+                          <span className="text-xs text-(--color-success-text) bg-(--color-success-light) rounded-full px-1.5 py-0.5">
                             {customer.acceptedCount} accepted
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-[--color-text-muted] hidden md:table-cell">
+                    <td className="px-4 py-3.5 text-xs text-(--color-text-muted) hidden md:table-cell">
                       {customer.lastActivity ? relativeTime(customer.lastActivity) : '—'}
                     </td>
                     <td className="px-3 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/dashboard/offers/new?email=${encodeURIComponent(customer.email)}&name=${encodeURIComponent(customer.name)}`}
-                          className="inline-flex items-center gap-1 text-xs text-[--color-accent] hover:underline focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded whitespace-nowrap"
+                          className="inline-flex items-center gap-1 text-xs text-(--color-accent) hover:underline focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded whitespace-nowrap"
                           aria-label={`New offer for ${customer.name}`}
                         >
                           <Plus className="w-3 h-3" aria-hidden="true" />
@@ -210,7 +210,7 @@ export default function CustomersPage() {
                         </Link>
                         <Link
                           href={`/dashboard/customers/${encodeURIComponent(customer.email)}`}
-                          className="text-xs text-[--color-text-muted] hover:text-[--color-accent] focus-visible:ring-2 focus-visible:ring-[--color-accent] rounded transition-colors"
+                          className="text-xs text-(--color-text-muted) hover:text-(--color-accent) focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded transition-colors"
                           aria-label={`View ${customer.name}`}
                         >
                           View →
@@ -250,13 +250,13 @@ function CustomersSkeleton() {
 function CustomersEmpty({ hasCustomers }: { hasCustomers: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-12 h-12 rounded-full bg-[--color-surface] flex items-center justify-center mb-3" aria-hidden="true">
-        <Users className="w-6 h-6 text-[--color-text-muted]" />
+      <div className="w-12 h-12 rounded-full bg-(--color-surface) flex items-center justify-center mb-3" aria-hidden="true">
+        <Users className="w-6 h-6 text-(--color-text-muted)" />
       </div>
-      <p className="text-sm font-medium text-[--color-text-primary]">
+      <p className="text-sm font-medium text-(--color-text-primary)">
         {hasCustomers ? 'No matching recipients' : 'No recipients yet'}
       </p>
-      <p className="text-xs text-[--color-text-muted] mt-1 mb-4">
+      <p className="text-xs text-(--color-text-muted) mt-1 mb-4">
         {hasCustomers
           ? 'Try a different search term.'
           : 'Recipients appear here when you send offers.'}
@@ -264,7 +264,7 @@ function CustomersEmpty({ hasCustomers }: { hasCustomers: boolean }) {
       {!hasCustomers && (
         <Link
           href="/dashboard/offers/new"
-          className="px-4 py-2 bg-[--color-accent] text-white text-sm font-medium rounded-lg hover:bg-[--color-accent-hover] focus-visible:ring-2 focus-visible:ring-[--color-accent] focus-visible:ring-offset-2 transition-colors"
+          className="px-4 py-2 bg-(--color-accent) text-white text-sm font-medium rounded-lg hover:bg-(--color-accent-hover) focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2 transition-colors"
         >
           Create first offer
         </Link>

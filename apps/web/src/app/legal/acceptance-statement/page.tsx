@@ -13,7 +13,7 @@ export default function AcceptanceStatementPage() {
       <header className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-gray-900 text-sm">
-            <span className="w-7 h-7 rounded-lg bg-[--color-accent] flex items-center justify-center text-white text-xs font-bold">
+            <span className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold">
               OA
             </span>
             OfferAccept
@@ -42,7 +42,7 @@ export default function AcceptanceStatementPage() {
               <code className="bg-gray-100 px-1 rounded text-xs">buildAcceptanceStatement()</code>{' '}
               på serveren og er identisk i visningsflaten og i det lagrede sertifikatet:
             </p>
-            <blockquote className="border-l-4 border-[--color-accent] pl-4 py-2 bg-gray-50 rounded-r-lg italic text-gray-800">
+            <blockquote className="border-l-4 border-(--color-accent) pl-4 py-2 bg-gray-50 rounded-r-lg italic text-gray-800">
               «I, [Recipient Name], confirm that I have reviewed and accept the offer
               &quot;[Offer Title]&quot; presented by [Sender Name] ([Sender Email]). By
               confirming this acceptance, I acknowledge this action as my binding agreement to

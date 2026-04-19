@@ -186,7 +186,7 @@ export function OfferEditor({ initial }: Props) {
                 <span className="text-base flex-shrink-0" aria-hidden="true">{fileIcon(doc.mimeType)}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-gray-900 truncate">{doc.filename}</p>
-                  <p className="text-[11px] text-[--color-text-muted] mt-0.5">
+                  <p className="text-[11px] text-(--color-text-muted) mt-0.5">
                     {formatBytes(doc.sizeBytes)}
                     {doc.sha256Hash && (
                       <span className="ml-2 font-mono">SHA-256: {doc.sha256Hash.slice(0, 8)}…</span>
@@ -213,13 +213,13 @@ export function OfferEditor({ initial }: Props) {
         )}
 
         {offer.documents.length === 0 && !isDraft && (
-          <p className="px-5 py-4 text-xs text-[--color-text-muted]">No documents attached.</p>
+          <p className="px-5 py-4 text-xs text-(--color-text-muted)">No documents attached.</p>
         )}
 
         {/* Upload — DRAFT only */}
         {isDraft && (
           <div className="px-5 py-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-xs text-[--color-text-muted] mb-3">
+            <div className="flex items-center gap-2 text-xs text-(--color-text-muted) mb-3">
               <FileUp className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Upload additional documents (PDF or DOCX, max 20 MB each)</span>
             </div>
