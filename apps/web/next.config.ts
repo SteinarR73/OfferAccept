@@ -46,11 +46,10 @@ const CSP = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  experimental: {
-    allowedDevOrigins: ['192.168.128.1'],
-    // Required by Next.js 15 for the instrumentation hook
-    instrumentationHook: true,
-  },
+  // Allow cross-origin requests from local dev network interface
+  allowedDevOrigins: ['192.168.128.1'],
+
+  // experimental: {} — instrumentationHook is stable in Next.js 15, no longer needed here
 
   async headers() {
     return [

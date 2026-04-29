@@ -132,6 +132,27 @@ const envSchema = z
     AI_CIRCUIT_COOLDOWN_MS: z.coerce.number().int().min(1000).default(60000),
     // Maximum retries on transient AI errors.
     AI_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
+    // Legal compliance mode.
+    // When true:
+    //   - acceptance statement must be non-empty (guard in AcceptanceService)
+    //   - Article 14 GDPR notice must be rendered before OTP (enforced client-side;
+    //     see signing-client.tsx — the notice is unconditionally shown)
+    // Set to true before launch in any EEA-facing production deployment.
+    LEGAL_MODE_STRICT: z
+      .string()
+      .transform((v) => v === 'true')
+      .default('false'),
+    // Token expiry for signing links in days.
+    // Signing links older than this are rejected by verifyToken().
+    // Keep short (7–30 days) to limit the window of a link compromise.
+    TOKEN_EXPIRY_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    // Retention period for acceptance evidence (years).
+    // Controls when mutable session data (SigningSession, SigningOtpChallenge) is
+    // purged. Immutable tables (AcceptanceRecord, OfferSnapshot, SigningEvent) are
+    // never deleted. See: handlers/purge-expired-signing-data.handler.ts
+    ACCEPTANCE_RETENTION_YEARS: z.coerce.number().int().min(1).max(50).default(10),
+    // Retention period for active DealEvent rows before archival to cold storage.
+    DEAL_EVENT_RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(18),
     BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),

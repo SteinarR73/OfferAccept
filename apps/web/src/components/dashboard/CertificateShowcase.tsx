@@ -41,7 +41,8 @@ export function CertificateShowcase({ certificateId }: Props) {
     setDownloading(true);
     try {
       const pdfBytes = await generateCertificatePdf(cert, window.location.origin);
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      // .slice() returns Uint8Array<ArrayBuffer> — required by the Blob constructor type
+      const blob = new Blob([pdfBytes.slice()], { type: 'application/pdf' });
       const url  = URL.createObjectURL(blob);
 
       // iOS Safari does not honour the `download` attribute on blob URLs —

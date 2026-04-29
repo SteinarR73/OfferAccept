@@ -27,6 +27,7 @@ import { NotifyDealAcceptedHandler } from './handlers/notify-deal-accepted.handl
 import { ReconcileCertificatesHandler } from './handlers/reconcile-certificates.handler';
 import { GenerateCertificatePdfHandler } from './handlers/generate-certificate-pdf.handler';
 import { ArchiveDealEventsHandler } from './handlers/archive-deal-events.handler';
+import { PurgeExpiredSigningDataHandler } from './handlers/purge-expired-signing-data.handler';
 
 // ─── JobWorker ─────────────────────────────────────────────────────────────────
 // Lifecycle service that owns the pg-boss start/stop sequence and registers all
@@ -100,6 +101,8 @@ const WORKER_OPTIONS: Record<Exclude<JobName, 'send-email'>, WorkOptions> = {
   'generate-certificate-pdf':     { batchSize: 5, localConcurrency: 3 },
   // Cron sweep — one job per tick, no concurrency needed.
   'archive-deal-events':          { batchSize: 1, localConcurrency: 1 },
+  // Cron sweep — deletes mutable signing session data past retention period.
+  'purge-expired-signing-data':   { batchSize: 1, localConcurrency: 1 },
 };
 
 @Injectable()
@@ -122,6 +125,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     private readonly reconcileCertificates: ReconcileCertificatesHandler,
     private readonly generateCertificatePdf: GenerateCertificatePdfHandler,
     private readonly archiveDealEvents: ArchiveDealEventsHandler,
+    private readonly purgeExpiredSigningData: PurgeExpiredSigningDataHandler,
   ) {}
 
   // ── trackAndHandle ─────────────────────────────────────────────────────────
@@ -257,6 +261,12 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
       'archive-deal-events',
       WORKER_OPTIONS['archive-deal-events'],
       (jobs) => this.trackAndHandle('archive-deal-events', jobs, (j) => this.archiveDealEvents.handle(j)),
+    );
+
+    await this.boss.work<JobPayloadMap['purge-expired-signing-data']>(
+      'purge-expired-signing-data',
+      WORKER_OPTIONS['purge-expired-signing-data'],
+      (jobs) => this.trackAndHandle('purge-expired-signing-data', jobs, (j) => this.purgeExpiredSigningData.handle(j)),
     );
 
     this.logger.log('All job workers registered');

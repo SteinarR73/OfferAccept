@@ -21,7 +21,7 @@ const { default: SignRedirectPage } = await import('../[token]/page');
 
 describe('/sign/[token] — permanent redirect to /accept/[token]', () => {
   beforeEach(() => {
-    (redirect as ReturnType<typeof jest.fn>).mockClear();
+    (redirect as unknown as ReturnType<typeof jest.fn>).mockClear();
   });
 
   it('redirects to /accept/<token>', async () => {

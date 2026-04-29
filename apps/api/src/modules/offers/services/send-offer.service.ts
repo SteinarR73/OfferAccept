@@ -12,6 +12,7 @@ import { EMAIL_PORT, EmailPort } from '../../../common/email/email.port';
 import { ResendDeliveryError } from '../../../common/email/resend-email.adapter';
 import { DealEventService } from '../../deal-events/deal-events.service';
 import { SubscriptionService } from '../../billing/subscription.service';
+import { MetricsService } from '../../../common/metrics/metrics.service';
 
 // ─── Token generation ─────────────────────────────────────────────────────────
 // Mirrors signing-token.service.ts — kept in the offers module to avoid
@@ -131,6 +132,7 @@ export class SendOfferService {
     private readonly config: ConfigService,
     private readonly dealEventService: DealEventService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly metrics: MetricsService,
   ) {}
 
   async send(
@@ -162,8 +164,9 @@ export class SendOfferService {
     const recipient = offer.recipient!; // safe after assertOfferIsComplete
 
     // ── Compute token expiry ──────────────────────────────────────────────────
-    // Token expires at offer.expiresAt, or 30 days from now if unset.
-    const tokenExpiry = offer.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    // Token expires at offer.expiresAt, or TOKEN_EXPIRY_DAYS from now if unset.
+    const tokenExpiryDays = this.config.get<number>('TOKEN_EXPIRY_DAYS', 30);
+    const tokenExpiry = offer.expiresAt ?? new Date(Date.now() + tokenExpiryDays * 24 * 60 * 60 * 1000);
     const { rawToken, tokenHash, tokenExpiresAt } = generateRecipientToken(tokenExpiry);
 
     // ── Compute snapshot content hash ──────────────────────────────────────────
@@ -283,6 +286,7 @@ export class SendOfferService {
       );
 
       void this.dealEventService.emit(offer.id, 'deal_sent', { deliveryAttemptId: attempt.id });
+      this.metrics.recordDealSent();
       return {
         snapshotId: snapshot.id,
         sentAt: snapshot.frozenAt,
@@ -362,7 +366,8 @@ export class SendOfferService {
     }
 
     // ── Generate new token (same expiry rules as original send) ───────────────
-    const tokenExpiry = offer.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const tokenExpiryDays = this.config.get<number>('TOKEN_EXPIRY_DAYS', 30);
+    const tokenExpiry = offer.expiresAt ?? new Date(Date.now() + tokenExpiryDays * 24 * 60 * 60 * 1000);
     const { rawToken, tokenHash, tokenExpiresAt } = generateRecipientToken(tokenExpiry);
 
     // Replace token atomically — old link will no longer initiate new sessions.

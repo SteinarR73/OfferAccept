@@ -21,6 +21,7 @@ import {
 import { SigningEventService } from '../signing/services/signing-event.service';
 import { computeSnapshotHash } from '../signing/domain/signing-event.builder';
 import { DealEventService } from '../deal-events/deal-events.service';
+import { MetricsService } from '../../common/metrics/metrics.service';
 
 // The evidence model version identifies the hash algorithm, canonical hash spec,
 // and event chain verification protocol in use. Increment only on breaking changes.
@@ -140,6 +141,7 @@ export class CertificateService {
     private readonly builder: CertificatePayloadBuilder,
     private readonly eventService: SigningEventService,
     private readonly dealEventService: DealEventService,
+    private readonly metrics: MetricsService,
   ) {}
 
   // Creates a certificate for an AcceptanceRecord.
@@ -214,6 +216,9 @@ export class CertificateService {
         },
       });
       void this.dealEventService.emit(record.snapshot.offerId, 'certificate_issued', { certificateId: cert.id });
+      const sentAt = new Date(built.payload.offer.sentAt).getTime();
+      const acceptedAt = new Date(built.payload.acceptance.acceptedAt).getTime();
+      this.metrics.recordDealAccepted((acceptedAt - sentAt) / 1000);
       return { certificateId: cert.id, certificateHash: built.certificateHash };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -584,6 +589,7 @@ export class CertificateService {
     issuedAt: string;
     pdfStorageKey: string | null;
     payload: CertificatePayload;
+    canonicalJson: string;
   }> {
     const cert = await this.db.acceptanceCertificate.findUnique({
       where: { id: certificateId },
@@ -595,13 +601,13 @@ export class CertificateService {
 
     return {
       certificateId: cert.id,
-      // Phase 5 (MEDIUM-6): use the recomputed hash from the builder, not the stored value.
-      // The stored certificateHash could be stale if the row was tampered with after issuance.
+      // Use the recomputed hash from the builder, not the stored value.
       // The builder recomputes from immutable evidence, so this is always authoritative.
       certificateHash: built.certificateHash,
       issuedAt: cert.issuedAt.toISOString(),
       pdfStorageKey: cert.pdfStorageKey,
       payload: built.payload,
+      canonicalJson: built.canonicalJson,
     };
   }
 

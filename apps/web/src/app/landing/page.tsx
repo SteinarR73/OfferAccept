@@ -18,8 +18,10 @@ export default function LandingPage() {
         <TrustStrip />
         <HowItWorks />
         <WhyNotEmail />
+        <VsEsign />
         <CertificatePreview />
         <PricingBand />
+        <LegalClarification />
       </main>
       <LandingFooter />
     </div>
@@ -251,6 +253,109 @@ function WhyNotEmail() {
   );
 }
 
+// ─── Vs e-sign ────────────────────────────────────────────────────────────────
+
+const VS_ROWS = [
+  {
+    topic: 'Recipient account required',
+    oa: { value: 'No', good: true },
+    esign: { value: 'Yes', good: false },
+  },
+  {
+    topic: 'Recipient app / plugin',
+    oa: { value: 'No', good: true },
+    esign: { value: 'Sometimes', good: false },
+  },
+  {
+    topic: 'Time to first acceptance',
+    oa: { value: '< 60 seconds', good: true },
+    esign: { value: '3 – 10 minutes', good: false },
+  },
+  {
+    topic: 'Legally binding e-signature (eIDAS)',
+    oa: { value: 'No — acceptance evidence', good: false },
+    esign: { value: 'Yes', good: true },
+  },
+  {
+    topic: 'Tamper-evident audit trail',
+    oa: { value: 'Yes — SHA-256 hash chain', good: true },
+    esign: { value: 'Yes', good: true },
+  },
+  {
+    topic: 'Third-party verification (no login)',
+    oa: { value: 'Yes', good: true },
+    esign: { value: 'Varies', good: false },
+  },
+  {
+    topic: 'Price per deal (low volume)',
+    oa: { value: 'Free up to 3/mo', good: true },
+    esign: { value: '$5 – $20+', good: false },
+  },
+];
+
+function VsEsign() {
+  return (
+    <section className="max-w-5xl mx-auto px-6 py-20">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold tracking-tight text-(--color-text-primary)">
+          Prove acceptance — without the friction of e-signature
+        </h2>
+        <p className="mt-3 text-(--color-text-muted) text-sm max-w-xl mx-auto leading-relaxed">
+          Qualified e-signatures are the right tool when you need a legally binding signature
+          under eIDAS or equivalent law. For everything else — offer letters, NDAs, scope of
+          work confirmations — OfferAccept is faster and simpler, with the same audit trail.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-(--color-border) shadow-sm">
+        <table className="w-full text-sm" role="table" aria-label="Feature comparison">
+          <thead>
+            <tr className="bg-(--color-bg) border-b border-(--color-border-subtle)">
+              <th className="text-left px-5 py-3 text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide w-1/2">
+                Feature
+              </th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-(--color-accent) uppercase tracking-wide">
+                OfferAccept
+              </th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide">
+                DocuSign / e-sign
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {VS_ROWS.map((row, i) => (
+              <tr
+                key={row.topic}
+                className={i % 2 === 0 ? 'bg-(--color-surface)' : 'bg-(--color-bg)'}
+              >
+                <td className="px-5 py-3 text-(--color-text-secondary) font-medium">
+                  {row.topic}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span className={row.oa.good ? 'text-(--color-success-text) font-semibold' : 'text-(--color-text-muted)'}>
+                    {row.oa.good ? '✓ ' : ''}{row.oa.value}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span className={row.esign.good ? 'text-(--color-success-text) font-semibold' : 'text-(--color-text-muted)'}>
+                    {row.esign.good ? '✓ ' : ''}{row.esign.value}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-(--color-text-muted) text-center mt-4 leading-relaxed max-w-lg mx-auto">
+        OfferAccept is not a qualified electronic signature service under EU Regulation 910/2014.
+        The legal weight of an acceptance record depends on the law governing the agreement.
+        Seek legal advice if a binding signature is required.
+      </p>
+    </section>
+  );
+}
+
 // ─── Certificate Preview ──────────────────────────────────────────────────────
 
 function CertificatePreview() {
@@ -338,8 +443,8 @@ function PricingBand() {
         <p className="text-white/80 text-sm mb-6">No credit card required. Upgrade any time as you grow.</p>
         <p className="text-white/70 text-sm mb-6">
           Need more?{' '}
-          <Link href="/contact" className="underline underline-offset-2 hover:text-white transition-colors">
-            See paid plans →
+          <Link href="/pricing" className="underline underline-offset-2 hover:text-white transition-colors">
+            See all plans →
           </Link>
         </p>
         <Link
@@ -356,6 +461,29 @@ function PricingBand() {
   );
 }
 
+// ─── Legal clarification ──────────────────────────────────────────────────────
+
+function LegalClarification() {
+  return (
+    <section aria-label="Legal information" className="border-t border-(--color-border-subtle) bg-(--color-bg)">
+      <div className="max-w-3xl mx-auto px-6 py-10 text-center">
+        <p className="text-sm text-(--color-text-secondary) leading-relaxed mb-2">
+          OfferAccept records verifiable evidence that a document was accepted.
+        </p>
+        <p className="text-sm text-(--color-text-secondary) leading-relaxed mb-4">
+          It is not a qualified electronic signature service under EU Regulation 910/2014 (eIDAS).
+          The legal effect of any acceptance record depends on the law governing the agreement
+          between the parties.
+        </p>
+        <p className="text-xs text-(--color-text-muted)">
+          Recipients who have questions about the legal status of an acceptance record should seek
+          independent legal advice.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
 function LandingFooter() {
@@ -365,6 +493,7 @@ function LandingFooter() {
         <p className="text-xs text-(--color-text-muted)">© 2026 OfferAccept. All rights reserved.</p>
         <nav className="flex items-center gap-4" aria-label="Footer navigation">
           {[
+            { label: 'Pricing', href: '/pricing' },
             { label: 'Privacy', href: '/privacy' },
             { label: 'Terms', href: '/terms' },
             { label: 'Contact', href: '/contact' },

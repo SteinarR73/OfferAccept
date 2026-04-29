@@ -27,6 +27,14 @@ import { PrismaClient, Prisma } from '@prisma/client';
 // Since DealEventsModule is @Global(), services can inject DealEventService
 // without their own module importing DealEventsModule.
 
+// Activation funnel events are intentionally NOT part of DealEventType because
+// they have no dealId and are not stored in the deal_events table. They are
+// tracked client-side (localStorage) and server-side via structured pino logs:
+//   metric=onboarding_shown     → first time the welcome modal appeared
+//   metric=onboarding_completed → user finished onboarding and sent first deal
+// Query via your log aggregator; timestamps are also stored in localStorage
+// (keys: oa_onboarding_shown_at, oa_onboarding_completed_at).
+
 export type DealEventType =
   | 'deal_created'
   | 'deal_sent'

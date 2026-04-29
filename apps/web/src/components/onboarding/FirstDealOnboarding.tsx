@@ -12,6 +12,7 @@ interface Props {
   currentStep: number;
   onStepChange: (step: number) => void;
   onDismiss: () => void;
+  onTryYourself?: () => void;
 }
 
 const TOTAL_STEPS = 3;
@@ -20,7 +21,7 @@ const TOTAL_STEPS = 3;
 // Full-screen modal with 3 educational panels shown to first-time users.
 // Closes on Escape, backdrop click, or the X button.
 
-export function FirstDealOnboarding({ currentStep, onStepChange, onDismiss }: Props) {
+export function FirstDealOnboarding({ currentStep, onStepChange, onDismiss, onTryYourself }: Props) {
   const router = useRouter();
 
   // Close on Escape
@@ -97,6 +98,16 @@ export function FirstDealOnboarding({ currentStep, onStepChange, onDismiss }: Pr
             {currentStep < TOTAL_STEPS ? 'Next' : 'Send my first deal'}
           </Button>
 
+          {currentStep === TOTAL_STEPS && onTryYourself && (
+            <button
+              type="button"
+              onClick={() => { onDismiss(); onTryYourself(); }}
+              className="text-sm text-(--color-accent) hover:underline underline-offset-2 transition-colors text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded"
+            >
+              Or try it on yourself first →
+            </button>
+          )}
+
           <div className="flex items-center justify-center gap-2" role="tablist" aria-label="Onboarding steps">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
               <button
@@ -139,8 +150,8 @@ function PanelWhatItDoes() {
       </div>
 
       <p className="text-sm text-(--color-text-secondary) leading-relaxed">
-        OfferAccept creates a timestamped record that a specific person accepted a specific
-        document. That record is tamper-evident and downloadable.
+        A timestamped, tamper-evident record that the right person accepted the right document.
+        Takes under 60 seconds for your recipient.
       </p>
 
       <ul className="space-y-3">

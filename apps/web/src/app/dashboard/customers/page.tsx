@@ -89,7 +89,7 @@ export default function CustomersPage() {
         title="Recipients"
         description="Everyone who has received an offer from you"
         action={
-          <Link href="/dashboard/offers/new">
+          <Link href="/dashboard/deals/new">
             <Button
               variant="primary"
               size="sm"
@@ -201,7 +201,7 @@ export default function CustomersPage() {
                     <td className="px-3 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href={`/dashboard/offers/new?email=${encodeURIComponent(customer.email)}&name=${encodeURIComponent(customer.name)}`}
+                          href={`/dashboard/deals/new?email=${encodeURIComponent(customer.email)}&name=${encodeURIComponent(customer.name)}`}
                           className="inline-flex items-center gap-1 text-xs text-(--color-accent) hover:underline focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded whitespace-nowrap"
                           aria-label={`New offer for ${customer.name}`}
                         >
@@ -263,7 +263,7 @@ function CustomersEmpty({ hasCustomers }: { hasCustomers: boolean }) {
       </p>
       {!hasCustomers && (
         <Link
-          href="/dashboard/offers/new"
+          href="/dashboard/deals/new"
           className="px-4 py-2 bg-(--color-accent) text-white text-sm font-medium rounded-lg hover:bg-(--color-accent-hover) focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2 transition-colors"
         >
           Create first offer

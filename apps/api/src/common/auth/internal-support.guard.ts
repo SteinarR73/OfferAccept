@@ -33,12 +33,16 @@ import type { Request } from 'express';
 @Injectable()
 export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
   private readonly logger = new Logger(InternalSupportGuard.name);
+  private readonly supportConfig: ConfigService<Env, true>;
 
   constructor(
     jwtService: JwtService,
-    private readonly config: ConfigService<Env, true>,
+    config: ConfigService<Env, true>,
   ) {
-    super(jwtService);
+    // Cast to the unparameterized ConfigService expected by JwtAuthGuard — safe
+    // because ConfigService<Env, true> is structurally compatible at runtime.
+    super(jwtService, config as unknown as ConfigService);
+    this.supportConfig = config;
   }
 
   override canActivate(context: ExecutionContext): boolean {
@@ -55,7 +59,7 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
     }
 
     // Step 3: IP allowlist (optional)
-    const allowlistRaw = this.config.get('SUPPORT_IP_ALLOWLIST', { infer: true });
+    const allowlistRaw = this.supportConfig.get('SUPPORT_IP_ALLOWLIST', { infer: true });
     if (allowlistRaw) {
       const ip = extractClientIp(request);
       const allowedIps = allowlistRaw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -71,7 +75,7 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
     }
 
     // Step 4: Session TTL (optional)
-    const sessionTtlMinutes = this.config.get('SUPPORT_SESSION_TTL_MINUTES', { infer: true });
+    const sessionTtlMinutes = this.supportConfig.get('SUPPORT_SESSION_TTL_MINUTES', { infer: true });
     if (sessionTtlMinutes !== undefined && user.iat !== undefined) {
       const issuedAtMs = user.iat * 1000; // JWT iat is in seconds
       const maxAgeMs = sessionTtlMinutes * 60 * 1000;
@@ -89,7 +93,7 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
     }
 
     // Step 5: MFA claim (optional, controlled by REQUIRE_SUPPORT_MFA)
-    const requireMfa = this.config.get('REQUIRE_SUPPORT_MFA', { infer: true });
+    const requireMfa = this.supportConfig.get('REQUIRE_SUPPORT_MFA', { infer: true });
     if (requireMfa) {
       const mfaPayload = user as JwtPayload & { mfaVerifiedAt?: number };
       if (!mfaPayload.mfaVerifiedAt) {

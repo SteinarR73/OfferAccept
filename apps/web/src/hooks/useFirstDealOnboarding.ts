@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
-const DISMISSED_KEY = 'oa_onboarding_dismissed';
-const STEP_KEY      = 'oa_onboarding_step';
+const DISMISSED_KEY    = 'oa_onboarding_dismissed';
+const STEP_KEY         = 'oa_onboarding_step';
+const SHOWN_AT_KEY     = 'oa_onboarding_shown_at';
+const COMPLETED_AT_KEY = 'oa_onboarding_completed_at';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,11 +51,26 @@ export function useFirstDealOnboarding({
     setHydrated(true);
   }, []);
 
+  // Record onboarding_shown timestamp the first time the modal becomes visible.
+  // Used as the top of the activation funnel: shown → completed → deal_created → deal_sent.
+  useEffect(() => {
+    if (hydrated && !loading && !dismissed && offerCount === 0) {
+      if (!localStorage.getItem(SHOWN_AT_KEY)) {
+        localStorage.setItem(SHOWN_AT_KEY, new Date().toISOString());
+      }
+    }
+  }, [hydrated, loading, dismissed, offerCount]);
+
   const isFirstDealUser = !loading && offerCount === 0;
 
   const dismiss = useCallback(() => {
     setDismissed(true);
     localStorage.setItem(DISMISSED_KEY, 'true');
+    // Record onboarding_completed when the user finishes all panels and clicks
+    // "Send my first deal" (step 3 dismiss). Proxy for activation funnel step 2.
+    if (!localStorage.getItem(COMPLETED_AT_KEY)) {
+      localStorage.setItem(COMPLETED_AT_KEY, new Date().toISOString());
+    }
   }, []);
 
   const setStep = useCallback((s: number) => {

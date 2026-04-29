@@ -30,7 +30,7 @@ export default function DealsPage() {
         title="Offers"
         description="Send, track, and manage your offers."
         action={
-          <Link href="/dashboard/offers/new">
+          <Link href="/dashboard/deals/new">
             <Button
               variant="primary"
               size="sm"

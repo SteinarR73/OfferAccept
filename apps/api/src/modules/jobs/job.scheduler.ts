@@ -19,14 +19,15 @@ import { JOB_BOSS } from './job.service';
 //
 // ── Schedule table ──────────────────────────────────────────────────────────
 //
-//   Job                      Cron              Description
-//   ───────────────────────  ───────────────   ───────────────────────────────
-//   expire-sessions          */5 * * * *       Every 5 minutes
-//   expire-offers            */30 * * * *      Every 30 minutes
-//   send-reminders           */5 * * * *       Every 5 minutes
-//   reconcile-certificates   */15 * * * *      Every 15 minutes
-//   reset-monthly-billing    0 0 1 * *         Midnight UTC on 1st of month
-//   archive-deal-events      0 2 * * *         02:00 UTC daily
+//   Job                        Cron              Description
+//   ─────────────────────────  ───────────────   ──────────────────────────────────────────
+//   expire-sessions            */5 * * * *       Every 5 minutes
+//   expire-offers              */30 * * * *      Every 30 minutes
+//   send-reminders             */5 * * * *       Every 5 minutes
+//   reconcile-certificates     */15 * * * *      Every 15 minutes
+//   reset-monthly-billing      0 0 1 * *         Midnight UTC on 1st of month
+//   archive-deal-events        0 2 * * *         02:00 UTC daily
+//   purge-expired-signing-data 0 3 * * *         03:00 UTC daily — deletes mutable session/OTP data past retention
 //
 // issue-certificate, send-email, send-webhook, notify-deal-accepted are
 // event-driven — they are enqueued by application code rather than on a schedule.
@@ -86,6 +87,13 @@ export class JobScheduler implements OnApplicationBootstrap {
       tz: 'UTC',
     });
 
-    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders, reconcile-certificates, archive-deal-events');
+    // purge-expired-signing-data: 03:00 UTC daily — deletes mutable SigningSession and
+    // SigningOtpChallenge rows past the ACCEPTANCE_RETENTION_YEARS threshold.
+    // Immutable evidence tables (AcceptanceRecord, OfferSnapshot, SigningEvent) are never touched.
+    await this.boss.schedule('purge-expired-signing-data', '0 3 * * *', {}, {
+      tz: 'UTC',
+    });
+
+    this.logger.log('Cron schedules registered: expire-sessions, expire-offers, reset-monthly-billing, send-reminders, reconcile-certificates, archive-deal-events, purge-expired-signing-data');
   }
 }

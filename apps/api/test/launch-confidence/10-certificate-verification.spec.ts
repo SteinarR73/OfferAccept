@@ -189,6 +189,10 @@ function makeDealEventService() {
   return { emit: jest.fn<any>().mockResolvedValue(undefined) };
 }
 
+function makeMetricsService() {
+  return { recordDealAccepted: jest.fn() };
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('TEST 10 — Certificate Verification', () => {
@@ -198,6 +202,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(true) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);
@@ -221,6 +226,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never, // builder still recomputes correct hash
       makeEventService(true) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);
@@ -243,6 +249,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(true) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);
@@ -264,6 +271,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(true) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);
@@ -279,6 +287,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(false, 3) as never, // chain broken at sequence 3
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);
@@ -297,6 +306,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(true) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);
@@ -321,6 +331,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(true) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     await expect(svc.verify('nonexistent-cert-id')).rejects.toThrow(NotFoundException);
@@ -342,6 +353,7 @@ describe('TEST 10 — Certificate Verification', () => {
       makeBuilder(CERT_HASH) as never,
       makeEventService(false, 2) as never,
       makeDealEventService() as never,
+      makeMetricsService() as never,
     );
 
     const result = await svc.verify(CERT_ID);

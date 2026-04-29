@@ -51,7 +51,7 @@ export default function PrivacyPage() {
             <h2 className="text-base font-semibold text-gray-900 mb-2">Data retention</h2>
             <p>
               Deal records and acceptance certificates are retained for the lifetime of your account
-              and for a minimum of 7 years after acceptance to support legal and compliance use cases.
+              and for a minimum of 10 years after acceptance to support legal and compliance use cases.
               You may request deletion of your account and associated data by contacting us.
             </p>
           </section>

@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { createHash } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient, SigningSession, AcceptanceRecord, Prisma } from '@prisma/client';
 import { offerStateMachine } from '../../offers/domain/offer.state-machine';
 import { recipientStateMachine } from '../../offers/domain/offer-recipient.state-machine';
@@ -41,6 +42,7 @@ export class AcceptanceService {
   constructor(
     @Inject('PRISMA') private readonly db: PrismaClient,
     private readonly eventService: SigningEventService,
+    private readonly config: ConfigService,
   ) {}
 
   // Confirms final acceptance.
@@ -111,6 +113,15 @@ export class AcceptanceService {
       senderEmail: snapshot.senderEmail,
     });
 
+    // LEGAL_MODE_STRICT: if enabled, the acceptance statement must be non-empty.
+    // buildAcceptanceStatement() is deterministic and never returns blank given
+    // valid inputs, so this guard fires only if there is a programming error in
+    // the statement builder. Privacy notice enforcement is client-side — the
+    // Article 14 notice is unconditionally rendered before OTP (signing-client.tsx).
+    if (this.config.get<boolean>('LEGAL_MODE_STRICT', false) && !acceptanceStatement.trim()) {
+      throw new Error('LEGAL_MODE_STRICT: acceptance statement must not be empty');
+    }
+
     // ── Atomic transaction: create evidence, transition all entities ──────────
     const acceptanceRecord = await this.db.$transaction(async (tx) => {
       // Re-verify offer status INSIDE the transaction — this is the authoritative check.
@@ -171,9 +182,12 @@ export class AcceptanceService {
         data: { status: 'ACCEPTED', completedAt: acceptedAt },
       });
 
+      // tokenInvalidatedAt is set here atomically with the acceptance transition.
+      // After this commit, verifyToken() will reject the signing link (tokenInvalidatedAt IS NULL
+      // check fails), making the link permanently unusable for future signing attempts.
       await tx.offerRecipient.update({
         where: { id: recipient.id },
-        data: { status: 'ACCEPTED', respondedAt: acceptedAt },
+        data: { status: 'ACCEPTED', respondedAt: acceptedAt, tokenInvalidatedAt: acceptedAt },
       });
 
       // OFFER_ACCEPTED is the terminal event in the signing chain.

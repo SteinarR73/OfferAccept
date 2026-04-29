@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard, JwtPayload } from './jwt-auth.guard';
 import type { Request } from 'express';
@@ -30,8 +31,8 @@ export const ADMIN_ROLES = new Set<string>(['OWNER', 'INTERNAL_SUPPORT']);
 
 @Injectable()
 export class AdminGuard extends JwtAuthGuard implements CanActivate {
-  constructor(jwtService: JwtService) {
-    super(jwtService);
+  constructor(jwtService: JwtService, config: ConfigService) {
+    super(jwtService, config);
   }
 
   override canActivate(context: ExecutionContext): boolean {

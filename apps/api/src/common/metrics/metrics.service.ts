@@ -51,6 +51,14 @@ export class MetricsService implements OnModuleInit {
   readonly queueDepth: Gauge<string>;
   readonly apiErrors: Counter<string>;
 
+  // ── Deal lifecycle business metrics ──────────────────────────────────────────
+  //   deals_sent_total     — incremented in SendOfferService when deal_sent event fires
+  //   deals_accepted_total — incremented in CertificateService after cert creation
+  //   time_to_acceptance_seconds — histogram of (acceptedAt - sentAt) per deal
+  readonly dealsSent: Counter<string>;
+  readonly dealsAccepted: Counter<string>;
+  readonly timeToAcceptance: Histogram<string>;
+
   constructor() {
     this.registry = new Registry();
 
@@ -100,6 +108,26 @@ export class MetricsService implements OnModuleInit {
       labelNames: ['code', 'status_code'] as const,
       registers: [this.registry],
     });
+
+    this.dealsSent = new Counter({
+      name: 'deals_sent_total',
+      help: 'Total number of deals sent to recipients',
+      registers: [this.registry],
+    });
+
+    this.dealsAccepted = new Counter({
+      name: 'deals_accepted_total',
+      help: 'Total number of deals accepted by recipients',
+      registers: [this.registry],
+    });
+
+    // Buckets cover typical acceptance windows: under 1h, same-day, next-day, week
+    this.timeToAcceptance = new Histogram({
+      name: 'time_to_acceptance_seconds',
+      help: 'Time from deal sent to deal accepted, in seconds',
+      buckets: [3600, 14400, 43200, 86400, 172800, 259200, 604800],
+      registers: [this.registry],
+    });
   }
 
   onModuleInit(): void {
@@ -131,5 +159,14 @@ export class MetricsService implements OnModuleInit {
 
   recordApiError(code: string, statusCode: number): void {
     this.apiErrors.labels(code, String(statusCode)).inc();
+  }
+
+  recordDealSent(): void {
+    this.dealsSent.inc();
+  }
+
+  recordDealAccepted(durationSeconds: number): void {
+    this.dealsAccepted.inc();
+    this.timeToAcceptance.observe(durationSeconds);
   }
 }

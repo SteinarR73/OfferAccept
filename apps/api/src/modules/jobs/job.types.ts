@@ -145,6 +145,23 @@ export interface ArchiveDealEventsPayload {
   // batchSize and retentionMonths are read from env vars inside the handler.
 }
 
+// ── purge-expired-signing-data ────────────────────────────────────────────────
+//
+// Cron-triggered sweep that deletes mutable signing session data older than
+// ACCEPTANCE_RETENTION_YEARS. Immutable tables (AcceptanceRecord, OfferSnapshot,
+// OfferSnapshotDocument, SigningEvent) are never deleted — they form the evidence
+// chain and are preserved under GDPR Art. 17(3)(e).
+//
+// What is deleted:
+//   - SigningSession rows: mutable session state; evidence is in AcceptanceRecord
+//   - SigningOtpChallenge rows: OTP codes hashed; no evidential value after 1 year
+//
+// Cron schedule: 0 3 * * * (03:00 UTC daily, offset from archive-deal-events)
+
+export interface PurgeExpiredSigningDataPayload {
+  // Cron-triggered sweep — no per-job parameters needed.
+}
+
 export interface JobPayloadMap {
   'expire-sessions': ExpireSessionsPayload;
   'expire-offers': ExpireOffersPayload;
@@ -157,6 +174,7 @@ export interface JobPayloadMap {
   'reconcile-certificates': ReconcileCertificatesPayload;
   'generate-certificate-pdf': GenerateCertificatePdfPayload;
   'archive-deal-events': ArchiveDealEventsPayload;
+  'purge-expired-signing-data': PurgeExpiredSigningDataPayload;
 }
 
 // ── Queue-level retry + TTL defaults ─────────────────────────────────────────
@@ -176,6 +194,14 @@ export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
     retryDelay: 300,      // 5 min gaps — no urgency
     retryBackoff: false,
     expireInSeconds: 3600, // kill if running > 1 h (indicates a pathologically large batch)
+  },
+  'purge-expired-signing-data': {
+    // Runs daily (cron: 0 3 * * *). Deletes mutable session data past retention.
+    // Idempotent — safe to retry. Never touches immutable evidence tables.
+    retryLimit: 3,
+    retryDelay: 300,
+    retryBackoff: false,
+    expireInSeconds: 3600,
   },
   'send-reminders': {
     retryLimit: 3,

@@ -67,11 +67,13 @@ export class GenerateCertificatePdfHandler {
         }
 
         // Generate PDF bytes from the certificate payload.
+        // canonicalJson is embedded as a file attachment for offline hash verification.
         const pdfBytes = await this.pdfService.generate({
           certificateId: cert.certificateId,
           certificateHash: cert.certificateHash,
           issuedAt: cert.issuedAt,
           payload: cert.payload,
+          canonicalJson: cert.canonicalJson,
         });
 
         // Upload to storage.

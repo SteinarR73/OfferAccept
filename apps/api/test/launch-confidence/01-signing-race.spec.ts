@@ -22,6 +22,9 @@ import { AcceptanceService } from '../../src/modules/signing/services/acceptance
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { OfferAlreadyAcceptedError } from '../../src/common/errors/domain.errors';
 import { createRaceDb, makeRaceState } from './helpers/db.factory';
+import type { ConfigService } from '@nestjs/config';
+
+const stubConfig = { get: () => false } as unknown as ConfigService;
 
 const CONCURRENCY = 50;
 
@@ -51,7 +54,7 @@ describe('TEST 1 — Signing Race Condition', () => {
 
     // Build SigningEventService with the same mock DB
     const eventService = new SigningEventService(db as never);
-    const svc = new AcceptanceService(db as never, eventService);
+    const svc = new AcceptanceService(db as never, eventService, stubConfig);
 
     const session = makeVerifiedSession();
     const ctx = { ipAddress: '127.0.0.1', userAgent: 'jest/launch-confidence' };
@@ -94,7 +97,7 @@ describe('TEST 1 — Signing Race Condition', () => {
 
     // The pre-transaction guard (offer.status !== 'SENT') fires before any CAS
     const eventService = new SigningEventService(db as never);
-    const svc = new AcceptanceService(db as never, eventService);
+    const svc = new AcceptanceService(db as never, eventService, stubConfig);
 
     await expect(
       svc.accept(makeVerifiedSession(), 'challenge-1', {}),
@@ -108,7 +111,7 @@ describe('TEST 1 — Signing Race Condition', () => {
     const state = makeRaceState();
     const db = createRaceDb(state) as unknown as ConstructorParameters<typeof AcceptanceService>[0];
     const eventService = new SigningEventService(db as never);
-    const svc = new AcceptanceService(db as never, eventService);
+    const svc = new AcceptanceService(db as never, eventService, stubConfig);
 
     // First call succeeds
     await svc.accept(makeVerifiedSession(), 'challenge-1', {});

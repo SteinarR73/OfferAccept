@@ -263,15 +263,20 @@ export default function NewDealWizardPage() {
             {STEPS[step - 1].cta}
           </Button>
         ) : (
-          <Button
-            variant="primary"
-            size="md"
-            loading={submitting}
-            onClick={handleSend}
-            leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
-          >
-            Send deal
-          </Button>
+          <div className="flex flex-col items-end gap-1.5">
+            <Button
+              variant="primary"
+              size="md"
+              loading={submitting}
+              onClick={handleSend}
+              leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
+            >
+              Send deal
+            </Button>
+            <p className="text-[11px] text-(--color-text-muted) text-right">
+              Your recipient receives one email with a secure link. No passwords. No downloads.
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -357,7 +362,7 @@ function StepDealName({
           hint={
             state.dealName.length > 450
               ? `${state.dealName.length}/500 characters`
-              : 'Appears in the email and acceptance certificate.'
+              : 'This label is only for you.'
           }
         />
       </CardSection>
@@ -448,7 +453,7 @@ function StepRecipient({
             }}
             required
             autoFocus
-            hint="A secure deal link will be sent here."
+            hint="They receive a secure link by email. No account required."
           />
           <Input
             label="Recipient name"

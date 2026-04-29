@@ -8,6 +8,8 @@
     "experimentalDecorators": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@offeraccept/database": ["../../packages/database/src/index.ts"],
       "@offeraccept/types": ["../../packages/types/src/index.ts"]

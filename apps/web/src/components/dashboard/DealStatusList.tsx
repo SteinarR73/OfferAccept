@@ -65,7 +65,7 @@ export function DealStatusList({ offers, loading }: DealStatusListProps) {
           title="No offers yet"
           description="Send your first offer to collect verifiable acceptance."
           hint="Recipients don't need an account — they accept via a secure email link."
-          action={{ label: 'Create offer', href: '/dashboard/offers/new' }}
+          action={{ label: 'Create offer', href: '/dashboard/deals/new' }}
           className="py-10"
         />
       ) : (

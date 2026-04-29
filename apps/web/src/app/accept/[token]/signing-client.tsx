@@ -457,6 +457,7 @@ function OfferView({
 }
 
 function OtpEntry({
+  ctx,
   otp,
   codeRef,
   error,
@@ -487,6 +488,33 @@ function OtpEntry({
     <Card>
       <CardHeader title="Verify your email" border />
       <CardSection>
+        {/* ── Article 14 GDPR notice ─────────────────────────────────────────── */}
+        <div className="rounded-lg border border-(--color-border-subtle) bg-(--color-bg) px-4 py-3 mb-5">
+          <p className="text-xs font-semibold text-(--color-text-primary) mb-1.5">
+            How your information is used
+          </p>
+          <p className="text-xs text-(--color-text-secondary) mb-1.5">
+            <span className="font-medium">{ctx.senderName}</span> shared this document using OfferAccept.
+          </p>
+          <p className="text-xs text-(--color-text-secondary) mb-1">
+            If you confirm acceptance we record:
+          </p>
+          <ul className="text-xs text-(--color-text-muted) space-y-0.5 mb-2 pl-1">
+            <li>· email address</li>
+            <li>· time of confirmation</li>
+            <li>· device information</li>
+          </ul>
+          <p className="text-xs text-(--color-text-secondary) mb-1.5">
+            This creates a verifiable acceptance record. Processing is based on legitimate interests.
+          </p>
+          <a
+            href="/privacy"
+            className="text-xs text-(--color-accent) hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded"
+          >
+            Privacy notice →
+          </a>
+        </div>
+
         <p className="text-sm text-(--color-text-secondary) mb-1">
           A 6-digit code was sent to <strong className="text-gray-900">{otp.deliveryAddressMasked}</strong>.
         </p>
@@ -593,6 +621,33 @@ function AcceptanceView({
         <p className="text-sm text-(--color-text-primary) italic leading-relaxed">{ctx.acceptanceStatement}</p>
       </div>
 
+      {/* ── Legal disclosure — shown directly above Accept button ────────────── */}
+      <div className="rounded-lg border border-(--color-border-subtle) bg-(--color-bg) px-4 py-4 mb-5">
+        <p className="text-sm font-medium text-(--color-text-primary) mb-2">
+          By clicking Accept you confirm that:
+        </p>
+        <ul className="space-y-1.5 mb-3" aria-label="Acceptance confirmation items">
+          {[
+            'you are the intended recipient of this document',
+            'you have read and understood the document displayed here',
+            'you accept the document in the form presented',
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2 text-sm text-(--color-text-secondary)">
+              <span className="mt-1 w-1 h-1 rounded-full bg-(--color-accent) flex-shrink-0" aria-hidden="true" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-(--color-text-muted) leading-relaxed">
+          Your confirmation will be recorded together with your email address, time of acceptance,
+          and device information.
+        </p>
+        <p className="text-xs text-(--color-text-muted) leading-relaxed mt-1.5">
+          This confirmation records acceptance evidence. It is not a qualified electronic signature
+          under EU Regulation No 910/2014 (eIDAS).
+        </p>
+      </div>
+
       <div className="flex gap-3">
         <Button
           variant="primary"
@@ -607,10 +662,6 @@ function AcceptanceView({
           Decline
         </Button>
       </div>
-
-      <p className="mt-4 text-xs text-(--color-text-muted) leading-relaxed max-w-sm">
-        This records your acceptance but is not an electronic signature under applicable law.
-      </p>
     </div>
   );
 }

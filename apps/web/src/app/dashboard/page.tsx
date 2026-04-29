@@ -14,6 +14,7 @@ import { useFirstDealOnboarding } from '../../hooks/useFirstDealOnboarding';
 import { FirstDealOnboarding } from '../../components/onboarding/FirstDealOnboarding';
 import { OnboardingBanner } from '../../components/onboarding/OnboardingBanner';
 import { DealSentSuccessBanner } from '../../components/onboarding/DealSentSuccessBanner';
+import { TryYourselfModal } from '../../components/dashboard/TryYourselfModal';
 
 // ─── First-deal detection keys ────────────────────────────────────────────────
 // When the dashboard loads with 0 offers we set HAD_ZERO_KEY.
@@ -26,6 +27,7 @@ const SUCCESS_BANNER_KEY = 'oa_first_deal_meta';
 interface FirstDealMeta {
   id: string;
   title: string;
+  recipientEmail?: string;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -51,6 +53,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [firstDealMeta, setFirstDealMeta] = useState<FirstDealMeta | null>(null);
   const [bannerVisible, setBannerVisible] = useState(true);
+  const [tryYourselfOpen, setTryYourselfOpen] = useState(false);
 
   // ── Load offers + detect first deal sent ────────────────────────────────────
   useEffect(() => {
@@ -72,7 +75,7 @@ export default function DashboardPage() {
         } else if (hadZero) {
           // Count just moved from 0 → ≥1: user sent their first deal.
           const latest = data[0];
-          const meta: FirstDealMeta = { id: latest.id, title: latest.title };
+          const meta: FirstDealMeta = { id: latest.id, title: latest.title, recipientEmail: latest.recipient?.email };
           setFirstDealMeta(meta);
           localStorage.setItem(SUCCESS_BANNER_KEY, JSON.stringify(meta));
           localStorage.removeItem(HAD_ZERO_KEY);
@@ -103,7 +106,13 @@ export default function DashboardPage() {
           currentStep={currentStep}
           onStepChange={setStep}
           onDismiss={dismiss}
+          onTryYourself={() => setTryYourselfOpen(true)}
         />
+      )}
+
+      {/* ── "Try it yourself" quick-send modal ──────────────────────────────── */}
+      {tryYourselfOpen && (
+        <TryYourselfModal onClose={() => setTryYourselfOpen(false)} />
       )}
 
       <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
@@ -113,13 +122,13 @@ export default function DashboardPage() {
           <h1 className="text-[length:var(--font-size-h1)] font-bold tracking-tight text-(--color-text-primary)">
             Dashboard
           </h1>
-          <Link href="/dashboard/offers/new">
+          <Link href="/dashboard/deals/new">
             <Button
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />}
             >
-              Create offer
+              New deal
             </Button>
           </Link>
         </div>
@@ -134,6 +143,7 @@ export default function DashboardPage() {
           <DealSentSuccessBanner
             dealTitle={firstDealMeta.title}
             dealId={firstDealMeta.id}
+            recipientEmail={firstDealMeta.recipientEmail}
             onDismiss={dismissSuccessBanner}
           />
         )}

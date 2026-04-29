@@ -17,6 +17,7 @@ import { NotifyDealAcceptedHandler } from './handlers/notify-deal-accepted.handl
 import { ReconcileCertificatesHandler } from './handlers/reconcile-certificates.handler';
 import { GenerateCertificatePdfHandler } from './handlers/generate-certificate-pdf.handler';
 import { ArchiveDealEventsHandler } from './handlers/archive-deal-events.handler';
+import { PurgeExpiredSigningDataHandler } from './handlers/purge-expired-signing-data.handler';
 import { CertificatesModule } from '../certificates/certificates.module';
 import { BillingModule } from '../billing/billing.module';
 import { EnterpriseCoreModule } from '../enterprise/enterprise-core.module';
@@ -87,6 +88,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ReconcileCertificatesHandler,
     GenerateCertificatePdfHandler,
     ArchiveDealEventsHandler,
+    PurgeExpiredSigningDataHandler,
   ],
   exports: [JobService, JobTrackingService],
 })

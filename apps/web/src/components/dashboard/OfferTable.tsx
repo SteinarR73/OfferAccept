@@ -198,7 +198,7 @@ export function OfferTable({
           )}
         </h2>
         <Link
-          href="/dashboard/offers/new"
+          href="/dashboard/deals/new"
           data-tour="create-offer"
           className={cn(
             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium btn-lift',
@@ -460,7 +460,7 @@ function EmptyState({
       )}
       {!hasOffers && !hasSearch && (
         <Link
-          href="/dashboard/offers/new"
+          href="/dashboard/deals/new"
           className="px-4 py-2 bg-(--color-accent) text-white text-sm font-medium rounded-lg hover:bg-(--color-accent-hover) focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2 transition-colors"
         >
           Create your first offer
