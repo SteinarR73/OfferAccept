@@ -15,6 +15,8 @@ import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty } from 'class-validator';
 import { AuthService } from './auth.service';
+import { LoginLockoutService } from './login-lockout.service';
+import { InvalidCredentialsError, EmailNotVerifiedError } from '../../common/errors/domain.errors';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
@@ -128,6 +130,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly rateLimiter: RateLimitService,
+    private readonly lockout: LoginLockoutService,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -165,8 +168,27 @@ export class AuthController {
     await this.rateLimiter.check('login_attempt', extractClientIp(req));
     await this.rateLimiter.check('login_attempt_burst', extractClientIp(req));
 
+    // Per-account lockout check — applied before the password attempt so a locked
+    // account returns 429 without ever touching the bcrypt path.
+    await this.lockout.check(body.email);
+
     const context = { ipAddress: extractClientIp(req), userAgent: req.headers['user-agent'] };
-    const tokens = await this.authService.login(body.email, body.password, context);
+
+    let tokens: Awaited<ReturnType<AuthService['login']>>;
+    try {
+      tokens = await this.authService.login(body.email, body.password, context);
+    } catch (err) {
+      // Increment the per-account failure counter on authentication errors.
+      // Non-auth errors (DB down, etc.) propagate without incrementing so
+      // a transient infrastructure failure does not eat lockout budget.
+      if (err instanceof InvalidCredentialsError || err instanceof EmailNotVerifiedError) {
+        await this.lockout.recordFailure(body.email);
+      }
+      throw err;
+    }
+
+    // Successful login — clear any accumulated failure count.
+    await this.lockout.clearFailures(body.email);
 
     setCookies(req, res, tokens.accessToken, tokens.refreshToken, this.config);
 
@@ -359,12 +381,15 @@ function setCookies(
   const secure = isSecure(req) || config.get('COOKIE_SECURE', { infer: true });
   const domain = config.get('COOKIE_DOMAIN', { infer: true }); // undefined → omit domain attr
 
+  const accessTtlMs = parseTtlToMs(config.get('JWT_ACCESS_TTL', { infer: true }));
+  const refreshTtlMs = config.get('JWT_REFRESH_TTL_DAYS', { infer: true }) * 24 * 60 * 60 * 1000;
+
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure,
     sameSite: 'strict',
     path: '/',
-    maxAge: 15 * 60 * 1000, // 15 minutes (mirrors JWT_ACCESS_TTL)
+    maxAge: accessTtlMs,
     ...(domain ? { domain } : {}),
   });
 
@@ -373,9 +398,24 @@ function setCookies(
     secure,
     sameSite: 'strict',
     path: '/api/v1/auth/refresh', // scoped: only sent to the refresh endpoint
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days (mirrors JWT_REFRESH_TTL_DAYS)
+    maxAge: refreshTtlMs,
     ...(domain ? { domain } : {}),
   });
+}
+
+// Parse JWT TTL strings like '15m', '1h', '7d' into milliseconds.
+// Falls back to 15 minutes for unrecognised formats.
+function parseTtlToMs(ttl: string): number {
+  const match = /^(\d+)(s|m|h|d)$/.exec(ttl);
+  if (!match) return 15 * 60 * 1000;
+  const n = parseInt(match[1], 10);
+  switch (match[2]) {
+    case 's': return n * 1000;
+    case 'm': return n * 60 * 1000;
+    case 'h': return n * 60 * 60 * 1000;
+    case 'd': return n * 24 * 60 * 60 * 1000;
+    default:  return 15 * 60 * 1000;
+  }
 }
 
 function clearCookies(res: Response): void {

@@ -8,40 +8,25 @@ try {
   withSentryConfig = (config) => config;
 }
 
-// ── Content Security Policy ───────────────────────────────────────────────────
-// Applied to all routes via the headers() hook.
+// ── Security headers ──────────────────────────────────────────────────────────
+// Applied to all responses via headers() — covers static assets, HTML pages, and
+// API proxy responses. CSP is intentionally excluded here: it is set per-request
+// by middleware.ts with a fresh cryptographic nonce so script-src can omit
+// unsafe-inline. Static assets and non-page routes do not need CSP.
 //
-// Notes:
-//   script-src 'unsafe-inline': Next.js 15 App Router injects inline scripts
-//     for RSC payload and router state. Required for hydration to work without
-//     per-request nonces. Nonce-based CSP is a future improvement.
+//   X-Content-Type-Options: prevents MIME-type sniffing — browsers must honour
+//     the declared Content-Type, closing content-sniffing attack vectors.
 //
-//   style-src 'unsafe-inline': Tailwind CSS v4 and Next.js inject <style> blocks
-//     at runtime. Cannot be removed without a nonce strategy.
+//   Referrer-Policy: strict-origin-when-cross-origin — sends the full URL for
+//     same-origin requests (useful for analytics), sends only the origin for
+//     cross-origin requests (prevents leaking URL paths to third parties).
 //
-//   connect-src includes sentry.io: Sentry browser SDK reports errors there.
-//     Set NEXT_PUBLIC_SENTRY_DSN to the ingest URL — same domain will be covered.
+//   Permissions-Policy: opt out of browser APIs this app does not use. Prevents
+//     a compromised script from silently accessing camera, microphone, or GPS.
 //
-//   font-src 'self': next/font/google downloads and self-hosts fonts at build
-//     time. All font files are served from the same origin in production.
-//
-//   img-src data:: Next.js and various UI libraries use data: URIs for
-//     placeholder images and SVG icons.
-//
-//   frame-ancestors 'none': prevents the app from being embedded in iframes,
-//     closing clickjacking vectors.
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  // 'self' covers proxied API calls (/api/*). Sentry ingest for browser SDK.
-  "connect-src 'self' https://*.ingest.sentry.io",
-  "font-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join('; ');
+//   frame-ancestors 'none' (via CSP in middleware) + X-Frame-Options are both
+//     set. X-Frame-Options: DENY is kept for old browsers that predate CSP.
+//     frame-ancestors in CSP takes precedence in modern browsers.
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -56,10 +41,14 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: CSP,
-          },
+          // Prevent MIME-type sniffing
+          { key: 'X-Content-Type-Options',    value: 'nosniff' },
+          // Referrer leakage prevention
+          { key: 'Referrer-Policy',            value: 'strict-origin-when-cross-origin' },
+          // Disable unused browser APIs
+          { key: 'Permissions-Policy',         value: 'camera=(), microphone=(), geolocation=()' },
+          // Legacy clickjacking prevention (modern browsers use CSP frame-ancestors)
+          { key: 'X-Frame-Options',            value: 'DENY' },
         ],
       },
     ];

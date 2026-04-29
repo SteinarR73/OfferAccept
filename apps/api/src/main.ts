@@ -31,10 +31,24 @@ async function bootstrap() {
   // Read TRUST_PROXY from the validated ConfigService so it is covered by the
   // Zod env schema (startup fails in production if the variable is absent/false).
   const config = app.get(ConfigService<Env, true>);
-  if (config.get('TRUST_PROXY', { infer: true })) {
+  const trustProxy = config.get('TRUST_PROXY', { infer: true });
+  const nodeEnv    = config.get('NODE_ENV', { infer: true });
+  const logger     = app.get(Logger);
+
+  if (trustProxy) {
     // Trust exactly one proxy hop. Increase to 2+ if the stack is
     // API-gateway → LB → app (each hop forwards X-Forwarded-For).
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
+    logger.log('Reverse-proxy trust: enabled (1 hop). X-Forwarded-For will be used for client IP.');
+  } else {
+    if (nodeEnv === 'production') {
+      logger.warn(
+        'TRUST_PROXY=false in production. IP-based rate limiting will apply to the load balancer ' +
+        'IP, not individual clients. Set TRUST_PROXY=true if the API runs behind a proxy.',
+      );
+    } else {
+      logger.log('Reverse-proxy trust: disabled (direct connections assumed).');
+    }
   }
 
   // ── Security headers (helmet) ─────────────────────────────────────────────────

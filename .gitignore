@@ -36,6 +36,10 @@ prisma/*.db-shm
 # Security audit outputs — contain redacted credential info, never commit
 docs/security/audit-report.json
 
+# Internal analysis/engine reports — never commit scoring artefacts
+*-engine-report.txt
+*engine-report*.txt
+
 # Logs
 *.log
 npm-debug.log*

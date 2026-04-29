@@ -153,6 +153,14 @@ const envSchema = z
     ACCEPTANCE_RETENTION_YEARS: z.coerce.number().int().min(1).max(50).default(10),
     // Retention period for active DealEvent rows before archival to cold storage.
     DEAL_EVENT_RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(18),
+    // Prometheus metrics endpoint (/api/v1/metrics).
+    // Disabled by default — must be explicitly opted in.
+    // In production, combine with network-level firewall rules so only the
+    // metrics collector (Prometheus, Grafana Agent, etc.) can reach this path.
+    ENABLE_METRICS: z
+      .string()
+      .transform((v) => v === 'true')
+      .default('false'),
     BILLING_PROVIDER: z.enum(['stripe', 'none']).default('none'),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -253,6 +261,15 @@ const envSchema = z
     {
       message: 'BILLING_PROVIDER=none must not be used in production. Set BILLING_PROVIDER=stripe.',
       path: ['BILLING_PROVIDER'],
+    },
+  )
+  .refine(
+    (data) => data.NODE_ENV !== 'production' || data.LEGAL_MODE_STRICT === true,
+    {
+      message:
+        'LEGAL_MODE_STRICT must be true in production. ' +
+        'EEA deployments require acceptance-statement validation and Article 14 notice enforcement.',
+      path: ['LEGAL_MODE_STRICT'],
     },
   )
   .refine(

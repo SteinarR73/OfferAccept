@@ -38,8 +38,10 @@ while IFS= read -r -d '' file; do
 done < <(git diff --cached --name-only -z)
 
 # ── 2. Block .env files ────────────────────────────────────────────────────────
+# .env.example and .env.example.* are template files with no real secrets — they
+# are explicitly tracked in git and must not be blocked here.
 while IFS= read -r -d '' file; do
-  if [[ "$file" =~ (^|/)\.env($|\.) ]]; then
+  if [[ "$file" =~ (^|/)\.env($|\.) ]] && [[ ! "$file" =~ \.env\.example ]]; then
     fail "Attempting to commit environment file: $file" \
          "Run: git rm --cached \"$file\"  then verify .gitignore covers it"
     BLOCKED=1

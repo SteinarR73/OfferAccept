@@ -1,28 +1,35 @@
-import { Controller, Get, Inject, Res } from '@nestjs/common';
+import { Controller, Get, Inject, Res, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { MetricsService } from './metrics.service';
+import type { Env } from '../../config/env';
 
 // ─── MetricsController ────────────────────────────────────────────────────────
 // GET /metrics — returns Prometheus text-format metrics.
 //
-// No authentication: Prometheus scrapers use network-level access control.
-// In production, firewall this endpoint so only the metrics collector can reach it.
+// Access control: disabled by default. Set ENABLE_METRICS=true to expose.
+// In production, combine with network-level access control (firewall / VPC rules)
+// so only the metrics collector (Prometheus, Grafana Agent, etc.) can reach this
+// endpoint — do NOT expose it to the public internet.
+//
 // The ApiRateLimitGuard explicitly exempts /api/v1/metrics so frequent scrapes
 // (default: every 15 s) do not consume rate-limit budget.
-//
-// Before serialising the registry, the controller refreshes the queue_depth gauge
-// from the database so every scrape reflects the current job backlog.
 
 @Controller('metrics')
 export class MetricsController {
   constructor(
     private readonly metrics: MetricsService,
     @Inject('PRISMA') private readonly db: PrismaClient,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   @Get()
   async scrape(@Res() res: Response): Promise<void> {
+    if (!this.config.get('ENABLE_METRICS', { infer: true })) {
+      throw new NotFoundException('Metrics endpoint is disabled. Set ENABLE_METRICS=true to enable.');
+    }
+
     await this.refreshQueueDepth();
 
     const text = await this.metrics.registry.metrics();
@@ -34,9 +41,6 @@ export class MetricsController {
 
   // ── Private helpers ───────────────────────────────────────────────────────────
 
-  // Query PENDING and RUNNING job counts per job name from the application jobs
-  // table and update the queue_depth gauge. Called on every scrape so the gauge
-  // always reflects current state without a background polling loop.
   private async refreshQueueDepth(): Promise<void> {
     try {
       const rows = await this.db.job.groupBy({
@@ -53,8 +57,7 @@ export class MetricsController {
         );
       }
     } catch {
-      // Non-critical: if the DB is unavailable we skip the refresh.
-      // Stale gauge values are better than a 500 on the metrics endpoint.
+      // Non-critical: stale gauge values are better than a 500 on the scrape.
     }
   }
 }
