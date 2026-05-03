@@ -65,7 +65,7 @@ export function DealSentSuccessBanner({ dealTitle, dealId, recipientEmail, onDis
       <div className="border-t border-(--color-success-border)/40 px-4 py-3">
         <DealStatusTracker steps={steps} />
         <p className="text-[11px] text-(--color-text-muted) mt-1">
-          Most recipients open the link within the hour. Send a reminder any time from the deal page.
+          If not opened within 24 hours, you can send a reminder.
         </p>
       </div>
 
@@ -77,6 +77,12 @@ export function DealSentSuccessBanner({ dealTitle, dealId, recipientEmail, onDis
         >
           View deal
           <ArrowRight className="w-3 h-3" aria-hidden="true" />
+        </Link>
+        <Link
+          href={`/dashboard/deals/${dealId}`}
+          className="flex items-center gap-1 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded"
+        >
+          Send reminder
         </Link>
         <Link
           href="/dashboard/deals/new"

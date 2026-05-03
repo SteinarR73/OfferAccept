@@ -524,6 +524,9 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
         <p className="text-xs text-(--color-info-text) font-medium">
           Clicking &ldquo;Send deal&rdquo; delivers a secure deal link to your recipient immediately.
         </p>
+        <p className="text-xs text-(--color-text-muted) mt-1.5">
+          Once sent, this record cannot be modified.
+        </p>
       </div>
 
       {showPreview && (

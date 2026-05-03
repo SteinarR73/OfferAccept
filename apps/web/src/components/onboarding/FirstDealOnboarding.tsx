@@ -307,10 +307,34 @@ function PanelCertificate() {
         </div>
       </div>
 
-      <p className="text-xs text-(--color-text-muted) border-t border-(--color-border-subtle) pt-4">
-        OfferAccept is not an e-signature platform. It records verifiable acceptance —
-        a lighter, faster alternative for situations that don&apos;t require a legal signature.
-      </p>
+      <div className="border-t border-(--color-border-subtle) pt-4 grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[10px] font-semibold text-(--color-success-text) uppercase tracking-wide mb-1.5">
+            Best for
+          </p>
+          <ul className="space-y-1">
+            {['Offers', 'Approvals', 'Confirmations'].map((item) => (
+              <li key={item} className="flex items-center gap-1.5 text-xs text-(--color-text-secondary)">
+                <span className="text-(--color-success)" aria-hidden="true">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold text-red-600 uppercase tracking-wide mb-1.5">
+            Not for
+          </p>
+          <ul className="space-y-1">
+            {['Formal legal signatures', 'Regulated e-signature requirements'].map((item) => (
+              <li key={item} className="flex items-start gap-1.5 text-xs text-(--color-text-secondary)">
+                <span className="text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true">✕</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

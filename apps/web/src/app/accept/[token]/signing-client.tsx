@@ -648,6 +648,21 @@ function AcceptanceView({
         </p>
       </div>
 
+      {/* ── Pre-accept clarity strip ───────────────────────────────────────────
+           Three standalone lines placed directly above the button so they are
+           visible without scrolling and scannable in under 2 seconds.         */}
+      <div className="pl-3 border-l-2 border-(--color-border) flex flex-col gap-1 mb-5">
+        <p className="text-sm font-medium text-(--color-text-primary)">
+          This is a confirmation of acceptance — not a formal electronic signature.
+        </p>
+        <p className="text-sm text-(--color-text-secondary)">
+          Your confirmation will be recorded as evidence of acceptance.
+        </p>
+        <p className="text-sm text-(--color-text-secondary)">
+          Only proceed if you are the intended recipient of this document.
+        </p>
+      </div>
+
       <div className="flex gap-3">
         <Button
           variant="primary"

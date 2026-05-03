@@ -70,7 +70,21 @@ export class CertificatePdfService {
       font: fontBold,
       color: rgb(1, 1, 1),
     });
-    y -= 36 + 24;
+    y -= 36 + 18;
+
+    // ── Purpose statement (Part 8) ───────────────────────────────────────────────
+    page.drawText(
+      'This document is designed to serve as verifiable acceptance evidence.',
+      {
+        x: margin,
+        y,
+        size: 10,
+        font: fontBold,
+        color: black,
+        maxWidth: contentWidth,
+      },
+    );
+    y -= 18;
 
     // ── Disclaimer ──────────────────────────────────────────────────────────────
     page.drawText(
@@ -181,6 +195,20 @@ export class CertificatePdfService {
     drawRow('SHA-256 hash', certificateHash, true);
     drawRow('Issued at', formatIso(params.issuedAt));
     drawRow('Verify online', `${APP_URL}/verify/${certificateId}`);
+    // Part 9: independent verification note
+    y -= 4;
+    page.drawText(
+      'This certificate can be independently verified using the embedded data.',
+      {
+        x: margin,
+        y,
+        size: 8,
+        font: fontRegular,
+        color: gray,
+        maxWidth: contentWidth,
+      },
+    );
+    y -= 14;
     drawDivider();
 
     // ── Documents ────────────────────────────────────────────────────────────────

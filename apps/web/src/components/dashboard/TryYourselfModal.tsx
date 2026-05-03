@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Send } from 'lucide-react';
+import { X, Send, CheckCircle2 } from 'lucide-react';
 import {
   createOffer,
   setRecipient,
@@ -33,6 +33,7 @@ export function TryYourselfModal({ onClose }: Props) {
   const [dealName, setDealName] = useState(DEFAULT_DEAL_NAME);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successDealId, setSuccessDealId] = useState<string | null>(null);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -44,8 +45,8 @@ export function TryYourselfModal({ onClose }: Props) {
       const { offerId } = await createOffer({ title: dealName.trim() || DEFAULT_DEAL_NAME });
       await setRecipient(offerId, { email: email.trim(), name: email.trim() });
       await sendOffer(offerId);
-      onClose();
-      router.push(`/dashboard/deals/${offerId}?sent=1`);
+      setSuccessDealId(offerId);
+      setLoading(false);
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -94,58 +95,88 @@ export function TryYourselfModal({ onClose }: Props) {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 pb-2 space-y-4">
-          <p className="text-sm text-(--color-text-secondary) leading-relaxed">
-            We&apos;ll send a deal to your own inbox. You&apos;ll see exactly what your
-            recipients experience — the link, the OTP, the acceptance screen, and the
-            certificate.
-          </p>
+        {successDealId ? (
+          /* ── Success state ─────────────────────────────────────────────────── */
+          <div className="px-6 pb-6">
+            <div className="flex flex-col items-center text-center pt-2 pb-5">
+              <div
+                className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4"
+                aria-hidden="true"
+              >
+                <CheckCircle2 className="w-7 h-7 text-green-600" />
+              </div>
+              <p className="text-base font-semibold text-(--color-text-primary) mb-2">
+                Test deal sent!
+              </p>
+              <p className="text-sm text-(--color-text-secondary) leading-relaxed max-w-xs">
+                This was a test. Your real recipient will receive a similar link by email.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              className="w-full"
+              onClick={() => { onClose(); router.push(`/dashboard/deals/${successDealId}?sent=1`); }}
+            >
+              View test deal →
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Body */}
+            <div className="px-6 pb-2 space-y-4">
+              <p className="text-sm text-(--color-text-secondary) leading-relaxed">
+                We&apos;ll send a deal to your own inbox. You&apos;ll see exactly what your
+                recipients experience — the link, the OTP, the acceptance screen, and the
+                certificate.
+              </p>
 
-          {error && (
-            <Alert variant="error" dismissible onDismiss={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
+              {error && (
+                <Alert variant="error" dismissible onDismiss={() => setError(null)}>
+                  {error}
+                </Alert>
+              )}
 
-          <Input
-            label="Deal name"
-            value={dealName}
-            onChange={(e) => setDealName(e.target.value)}
-            maxLength={200}
-          />
+              <Input
+                label="Deal name"
+                value={dealName}
+                onChange={(e) => setDealName(e.target.value)}
+                maxLength={200}
+              />
 
-          <Input
-            label="Your email address"
-            type="email"
-            placeholder="you@yourcompany.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && emailValid) handleSend(); }}
-            required
-            autoFocus
-            hint="You&apos;ll receive the acceptance link here. No document needed."
-          />
-        </div>
+              <Input
+                label="Your email address"
+                type="email"
+                placeholder="you@yourcompany.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && emailValid) handleSend(); }}
+                required
+                autoFocus
+                hint="You'll receive the acceptance link here. No document needed."
+              />
+            </div>
 
-        {/* Footer */}
-        <div className="px-6 pt-3 pb-6 flex flex-col gap-3">
-          <Button
-            variant="primary"
-            size="md"
-            className="w-full"
-            loading={loading}
-            onClick={handleSend}
-            disabled={!emailValid}
-            leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
-          >
-            Send test deal
-          </Button>
-          <p className="text-[11px] text-(--color-text-muted) text-center leading-relaxed">
-            Takes under 60 seconds on the recipient side.
-            No document required for a test.
-          </p>
-        </div>
+            {/* Footer */}
+            <div className="px-6 pt-3 pb-6 flex flex-col gap-3">
+              <Button
+                variant="primary"
+                size="md"
+                className="w-full"
+                loading={loading}
+                onClick={handleSend}
+                disabled={!emailValid}
+                leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
+              >
+                Send test deal
+              </Button>
+              <p className="text-[11px] text-(--color-text-muted) text-center leading-relaxed">
+                Takes under 60 seconds on the recipient side.
+                No document required for a test.
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

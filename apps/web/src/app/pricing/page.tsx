@@ -22,6 +22,7 @@ export default function PricingPage() {
         </div>
 
         <PlanGrid />
+        <UsageGuidance />
         <FeatureTable />
         <Faq />
         <Legal />
@@ -180,6 +181,49 @@ function PlanGrid() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Usage guidance ───────────────────────────────────────────────────────────
+
+function UsageGuidance() {
+  return (
+    <div className="mb-12 max-w-2xl mx-auto rounded-xl border border-(--color-border) bg-(--color-surface) px-8 py-6">
+      <h3 className="text-sm font-bold text-(--color-text-primary) uppercase tracking-wide mb-5 text-center">
+        When to use OfferAccept
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div>
+          <p className="text-[11px] font-semibold text-(--color-success-text) uppercase tracking-wide mb-3">
+            Best for
+          </p>
+          <ul className="space-y-2">
+            {['Offers', 'Approvals', 'Confirmations'].map((item) => (
+              <li key={item} className="flex items-center gap-2 text-sm text-(--color-text-secondary)">
+                <span className="text-(--color-success) font-bold" aria-hidden="true">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wide mb-3">
+            Not designed for
+          </p>
+          <ul className="space-y-2">
+            {[
+              'Formal legal signatures',
+              'Regulated agreements requiring e-signature',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2 text-sm text-(--color-text-secondary)">
+                <span className="text-red-400 font-bold flex-shrink-0 mt-0.5" aria-hidden="true">✕</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
