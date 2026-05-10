@@ -125,10 +125,10 @@ export function OfferTable({
   offers,
   loading = false,
   tourId,
-  headingLabel = 'Deals',
+  headingLabel = 'Offers',
   columnLabels = {},
 }: Props) {
-  const colTitle     = columnLabels.title     ?? 'Deal name';
+  const colTitle     = columnLabels.title     ?? 'Offer name';
   const colRecipient = columnLabels.recipient ?? 'Customer';
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
   const [search, setSearch] = useState('');
@@ -448,7 +448,7 @@ function EmptyState({
           ? 'Try a different search term.'
           : hasOffers
           ? 'Try a different filter tab above.'
-          : 'Send your first deal in under 2 minutes.'}
+          : 'Send your first document in under 2 minutes.'}
       </p>
       {hasSearch && (
         <button

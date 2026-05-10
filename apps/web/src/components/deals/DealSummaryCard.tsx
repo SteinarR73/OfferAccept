@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Send, RotateCcw, XCircle, Calendar, Tag } from 'lucide-react';
-import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
+import type { OfferItem } from '@offeraccept/types';
 import { Card, CardHeader, CardSection, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
@@ -29,7 +29,7 @@ export function DealSummaryCard({ offer, onSend, onRevoke, onResend }: DealSumma
 
   return (
     <Card>
-      <CardHeader title="Deal summary" border />
+      <CardHeader title="Document summary" border />
       <CardSection>
         <dl className="space-y-3">
           <div className="flex items-start justify-between gap-4">
@@ -130,7 +130,7 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
             onClick={() => handle('send', onSend)}
             leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}
           >
-            Send deal
+            Send document
           </Button>
         </div>
       </div>
@@ -143,8 +143,8 @@ function ActionBar({ offer, onSend, onRevoke, onResend }: ActionBarProps) {
         {error && <Alert variant="error" dismissible>{error}</Alert>}
         {confirmRevoke ? (
           <Alert variant="warning">
-            <p className="text-xs font-semibold mb-1">Revoke this deal?</p>
-            <p className="text-xs mb-2">The deal link will be invalidated immediately.</p>
+            <p className="text-xs font-semibold mb-1">Revoke this document?</p>
+            <p className="text-xs mb-2">The document link will be invalidated immediately.</p>
             <div className="flex gap-2">
               <Button
                 variant="danger"

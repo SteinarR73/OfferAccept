@@ -27,7 +27,7 @@ export default function DpaPage() {
         <div className="flex items-start justify-between gap-4 mb-2">
           <h1 className="text-2xl font-bold text-gray-900">Data Processing Agreement</h1>
           <a
-            href="/legal/dpa?format=pdf"
+            href="/legal/dpa/download"
             download="offeraccept-dpa-v1.0.pdf"
             className="flex items-center gap-1.5 text-xs font-medium text-(--color-accent) hover:text-(--color-accent-hover) border border-(--color-accent) rounded-lg px-3 py-1.5 flex-shrink-0 transition-colors"
           >
@@ -58,7 +58,7 @@ export default function DpaPage() {
             <h2 className="text-base font-semibold text-gray-900 mb-2">Processing purpose</h2>
             <p>
               The Processor processes personal data solely to provide the OfferAccept service as
-              described in the Terms of Service: sending deal documents to recipients, verifying
+              described in the Terms of Service: sending documents to recipients, verifying
               recipient email via OTP, recording acceptance or decline events, and issuing tamper-evident
               certificates. Processing occurs only on documented instructions from the Controller.
             </p>
@@ -70,10 +70,10 @@ export default function DpaPage() {
               The Processor processes the following categories of personal data on behalf of the Controller:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Name and email address of deal recipients</li>
+              <li>Name and email address of recipients</li>
               <li>IP address, browser information, and timestamps recorded during signing events</li>
               <li>OTP verification records (hashed codes, not raw values)</li>
-              <li>Deal titles and acceptance decisions</li>
+              <li>Document titles and acceptance decisions</li>
             </ul>
           </section>
 
@@ -108,10 +108,15 @@ export default function DpaPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Sub-processors</h2>
             <p>
-              The Processor uses the following categories of sub-processors to deliver the service:
-              cloud infrastructure (hosting and database), transactional email delivery, and payment
-              processing. The Processor will notify the Controller of material changes to
-              sub-processors with reasonable notice.
+              The Processor uses third-party sub-processors to deliver the service, including cloud
+              infrastructure, transactional email delivery, payment processing, and error monitoring.
+              A full list of confirmed sub-processors, including purpose, data categories, location,
+              and transfer mechanism, is maintained at{' '}
+              <Link href="/legal/subprocessors" className="text-blue-600 hover:text-blue-700">
+                /legal/subprocessors
+              </Link>
+              . The Processor will notify the Controller of material changes to sub-processors with
+              at least 14 days&rsquo; notice.
             </p>
           </section>
 

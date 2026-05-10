@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FileText, User, Send,
@@ -21,6 +21,12 @@ import { Button } from '../../../../components/ui/Button';
 import { Alert } from '../../../../components/ui/Alert';
 import { cn } from '@/lib/cn';
 
+function getLocale(): 'no' | 'en' {
+  if (typeof document === 'undefined') return 'en';
+  const m = document.cookie.match(/oa_locale=([^;]+)/);
+  return m?.[1] === 'no' ? 'no' : 'en';
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface WizardState {
@@ -40,13 +46,21 @@ interface UploadedDoc {
 const STEPS = [
   { id: 1, label: 'Name',       icon: FileText,  cta: 'Continue'    },
   { id: 2, label: 'Document',   icon: FileCheck, cta: 'Continue'    },
-  { id: 3, label: 'Recipient',  icon: User,      cta: 'Review deal' },
-  { id: 4, label: 'Review',     icon: Send,      cta: 'Send deal'   },
+  { id: 3, label: 'Recipient',  icon: User,      cta: 'Review document' },
+  { id: 4, label: 'Review',     icon: Send,      cta: 'Send document'   },
 ] as const;
 
 // ─── NewDealWizardPage ─────────────────────────────────────────────────────────
 
 export default function NewDealWizardPage() {
+  return (
+    <Suspense>
+      <NewDealWizardContent />
+    </Suspense>
+  );
+}
+
+function NewDealWizardContent() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -56,7 +70,7 @@ export default function NewDealWizardPage() {
 
   const [step, setStep] = useState(1);
   const [state, setState] = useState<WizardState>({
-    dealName: params.get('name') ? '' : 'Deal',
+    dealName: '',
     selectedTemplateId: null,
     customerEmail: params.get('email') ?? '',
     customerName: params.get('name') ?? '',
@@ -70,6 +84,7 @@ export default function NewDealWizardPage() {
   const [settingRecipient, setSettingRecipient] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planLimitHit, setPlanLimitHit] = useState(false);
 
   function update(patch: Partial<WizardState>) {
     setState((s) => ({ ...s, ...patch }));
@@ -157,19 +172,18 @@ export default function NewDealWizardPage() {
       router.push(`/dashboard/deals/${draftOfferId}?sent=1`);
     } catch (err: unknown) {
       if (err instanceof ApiError && err.code === 'PLAN_LIMIT_EXCEEDED') {
-        // Server message already says e.g. "Your free plan allows 5 deal(s) per month.
-        // Upgrade your plan to send more deals." — surface it directly.
-        setError(err.message);
+        setPlanLimitHit(true);
       } else {
-        // Generic: deal was saved as DRAFT so no work is lost; user can retry.
+        // Generic: document was saved as DRAFT so no work is lost; user can retry.
         const detail = err instanceof Error ? err.message : 'Please try again.';
-        setError(`Your deal was saved but could not be sent — ${detail}`);
+        setError(`Your document was saved but could not be sent — ${detail}`);
       }
       setSubmitting(false);
     }
   }
 
   const isLoading = creatingDraft || settingRecipient;
+  const locale = getLocale();
 
   return (
     <div className="max-w-xl mx-auto py-2">
@@ -181,10 +195,10 @@ export default function NewDealWizardPage() {
           className="flex items-center gap-1 text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors mb-4"
         >
           <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-          All deals
+          All documents
         </button>
-        <h1 className="text-xl font-semibold text-(--color-text-primary)">New deal</h1>
-        <p className="text-sm text-(--color-text-muted) mt-0.5">Send your first deal in under 2 minutes.</p>
+        <h1 className="text-xl font-semibold text-(--color-text-primary)">New document</h1>
+        <p className="text-sm text-(--color-text-muted) mt-0.5">Send your first document in under 2 minutes.</p>
       </div>
 
       {/* ── Step indicator ─────────────────────────────────────────────────── */}
@@ -192,6 +206,38 @@ export default function NewDealWizardPage() {
 
       {/* ── Step content ───────────────────────────────────────────────────── */}
       <div className="mt-5">
+        {planLimitHit && draftOfferId && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+            <p className="text-sm font-semibold text-amber-800 mb-1">
+              {locale === 'no' ? 'Månedlig dokumentgrense nådd' : 'Monthly document limit reached'}
+            </p>
+            <p className="text-sm text-amber-700 mb-1">
+              {locale === 'no'
+                ? 'Du er på Gratis-planen — 3 dokumenter per måned.'
+                : "You're on the Free plan — 3 documents per month."}
+            </p>
+            <p className="text-sm text-amber-700 mb-3">
+              {locale === 'no'
+                ? 'Oppgrader til Starter (149 NOK/mnd fakturert årlig) for å sende opptil 20 dokumenter per måned og låse opp purringer. Dokumentet ditt er lagret som utkast.'
+                : 'Upgrade to Starter ($15/month billed yearly) to send up to 20 documents per month and unlock reminders. Your document is saved as a draft.'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={locale === 'no' ? '/no/pricing' : '/pricing'}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
+              >
+                {locale === 'no' ? 'Oppgrader nå' : 'Upgrade now'}
+              </a>
+              <a
+                href={`/dashboard/deals/${draftOfferId}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors"
+              >
+                {locale === 'no' ? 'Lagre som utkast, oppgrader senere' : 'Save as draft, upgrade later'}
+              </a>
+            </div>
+          </div>
+        )}
+
         {error && (
           <Alert variant="error" dismissible className="mb-4" onDismiss={() => setError(null)}>
             {error}
@@ -215,8 +261,8 @@ export default function NewDealWizardPage() {
               <div className="mt-3 rounded-xl border border-(--color-border-subtle) bg-(--color-bg) px-4 py-3">
                 <p className="text-xs font-semibold text-(--color-text-primary) mb-1">About document snapshots</p>
                 <p className="text-xs text-(--color-text-secondary) leading-relaxed">
-                  We store an exact copy of whatever you upload now. If you change the document later,
-                  accepted deals will still reference the version that was accepted — keeping the record clean.
+                  We store an exact copy of whatever you upload now. If you change the file later,
+                  accepted documents will still reference the version that was accepted — keeping the record clean.
                 </p>
               </div>
             )}
@@ -271,7 +317,7 @@ export default function NewDealWizardPage() {
               onClick={handleSend}
               leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
             >
-              Send deal
+              Send document
             </Button>
             <p className="text-[11px] text-(--color-text-muted) text-right">
               Your recipient receives one email with a secure link. No passwords. No downloads.
@@ -348,11 +394,11 @@ function StepDealName({
 }) {
   return (
     <Card>
-      <CardHeader title="Name your deal" description="Give this deal a clear, descriptive name." border />
+      <CardHeader title="Name your document" description="Give this document a clear, descriptive name." border />
       <CardSection>
         <Input
-          label="Deal name"
-          placeholder="e.g. Software Development Deal — Q2 2026"
+          label="Document name"
+          placeholder="e.g. Q2 Proposal — Acme Corp"
           value={state.dealName}
           onChange={(e) => onChange({ dealName: e.target.value })}
           onKeyDown={(e) => { if (e.key === 'Enter' && state.dealName.trim()) onNext(); }}
@@ -409,7 +455,7 @@ function StepDocument({ offerId, state, onTemplateSelect, onUploaded, onUploadin
         <Card>
           <CardHeader
             title="Upload document"
-            description="PDF or DOCX — optional. You can attach a document from the deal page after sending."
+            description="PDF or DOCX — optional. You can attach a file from the document page after sending."
             border
           />
           <CardSection>
@@ -436,7 +482,7 @@ function StepRecipient({
 }) {
   return (
     <Card>
-      <CardHeader title="Who is receiving this deal?" border />
+      <CardHeader title="Who is receiving this document?" border />
       <CardSection>
         <div className="space-y-4">
           <Input
@@ -461,7 +507,7 @@ function StepRecipient({
             value={state.customerName}
             onChange={(e) => onChange({ customerName: e.target.value })}
             maxLength={200}
-            hint="Optional — shown in the deal and certificate."
+            hint="Optional — shown in the document and certificate."
           />
         </div>
       </CardSection>
@@ -487,10 +533,10 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Deal summary" border />
+        <CardHeader title="Document summary" border />
         <CardSection>
           <dl className="space-y-3">
-            <ReviewRow label="Deal name" value={state.dealName} />
+            <ReviewRow label="Document name" value={state.dealName} />
             <ReviewRow
               label="Recipient"
               value={
@@ -520,9 +566,29 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
         Preview what your recipient will see
       </button>
 
+      {/* Acceptance statement preview */}
+      <Card>
+        <CardHeader
+          title="What your recipient agrees to"
+          description="This statement is shown to your recipient before they accept. It is sealed into the certificate."
+          border
+        />
+        <CardSection>
+          <blockquote className="text-xs text-(--color-text-secondary) leading-relaxed border-l-4 border-(--color-accent) pl-3 italic">
+            I, <span className="font-medium not-italic">{state.customerName || state.customerEmail || '[recipient name]'}</span>,
+            confirm that I have reviewed and accept the attached document &ldquo;<span className="font-medium not-italic">{state.dealName || '[document name]'}</span>&rdquo;
+            presented by <span className="text-(--color-text-muted) not-italic">[your name] ([your email])</span>.
+            By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.
+          </blockquote>
+          <p className="text-[11px] text-(--color-text-muted) mt-2.5">
+            Sender name and email are filled in from your account when the document is sent.
+          </p>
+        </CardSection>
+      </Card>
+
       <div className="rounded-xl border border-(--color-info-border) bg-(--color-info-light) px-4 py-3">
         <p className="text-xs text-(--color-info-text) font-medium">
-          Clicking &ldquo;Send deal&rdquo; delivers a secure deal link to your recipient immediately.
+          Clicking &ldquo;Send document&rdquo; delivers a secure document link to your recipient immediately.
         </p>
         <p className="text-xs text-(--color-text-muted) mt-1.5">
           Once sent, this record cannot be modified.
@@ -595,13 +661,13 @@ function RecipientPreviewModal({
           {/* Platform introduction */}
           <div className="mb-4 rounded-lg border border-(--color-border) bg-(--color-bg) px-4 py-3">
             <p className="text-xs text-(--color-text-secondary) leading-relaxed">
-              You are viewing a deal sent via <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>.{' '}
-              OfferAccept records verified deal acceptances and produces a certificate that proves the acceptance occurred.
+              You are reviewing a document shared via <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>.{' '}
+              OfferAccept records verified document acceptances and produces a certificate that proves the acceptance occurred.
             </p>
           </div>
 
-          <p className="text-sm text-(--color-text-muted) mb-1">Deal from <span className="font-medium text-(--color-text-secondary)">your organization</span></p>
-          <h2 className="text-xl font-semibold text-(--color-text-primary) mb-3">{dealName || 'Your deal title'}</h2>
+          <p className="text-sm text-(--color-text-muted) mb-1">Sent by <span className="font-medium text-(--color-text-secondary)">your organization</span></p>
+          <h2 className="text-xl font-semibold text-(--color-text-primary) mb-3">{dealName || 'Your document title'}</h2>
 
           {templateMessage && (
             <p className="text-sm text-(--color-text-secondary) leading-relaxed mb-4 whitespace-pre-line line-clamp-4">
@@ -611,7 +677,7 @@ function RecipientPreviewModal({
 
           {hasDoc && (
             <div className="mb-4">
-              <p className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wide mb-2">Documents included in this deal</p>
+              <p className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wide mb-2">Documents included</p>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--color-bg) border border-(--color-border-subtle)">
                 <span className="w-6 h-6 rounded bg-red-100 text-red-600 text-[9px] font-bold flex items-center justify-center flex-shrink-0">PDF</span>
                 <span className="text-xs text-(--color-text-secondary) truncate">{docLabel}</span>
@@ -629,9 +695,25 @@ function RecipientPreviewModal({
           </div>
         </div>
 
+        {/* Acceptance statement section */}
+        <div className="px-6 pb-5 border-t border-(--color-border-subtle) pt-4">
+          <p className="text-[11px] font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-2">
+            After verifying their email, your recipient reads:
+          </p>
+          <blockquote className="text-xs text-(--color-text-secondary) leading-relaxed border border-(--color-border-subtle) rounded-lg bg-(--color-bg) px-3 py-3 italic">
+            I, <span className="font-medium not-italic">{recipientName || '[recipient]'}</span>, confirm that I have reviewed
+            and accept the attached document &ldquo;<span className="font-medium not-italic">{dealName}</span>&rdquo; presented by{' '}
+            <span className="not-italic text-(--color-text-muted)">[your name] ([your email])</span>.
+            By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.
+          </blockquote>
+          <p className="text-[10px] text-(--color-text-muted) mt-2">
+            This statement is sealed into the acceptance certificate. It cannot be changed after sending.
+          </p>
+        </div>
+
         <div className="px-5 py-3 border-t border-(--color-border-subtle) bg-(--color-bg) text-center">
           <p className="text-[10px] text-(--color-text-muted)">
-            This is a representative preview. The recipient will also verify their email via a one-time code before accepting.
+            This is a representative preview. The recipient verifies their email via a one-time code before this step.
           </p>
         </div>
       </div>

@@ -14,7 +14,7 @@ const CONTACTS = [
   {
     label: 'Support',
     email: 'support@offeraccept.com',
-    desc: 'Help with your account or a specific deal.',
+    desc: 'Help with your account or a specific document.',
   },
   {
     label: 'Enterprise sales',

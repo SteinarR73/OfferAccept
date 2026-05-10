@@ -185,11 +185,13 @@ describe('ACCEPTED', () => {
       type: 'ACCEPTED',
       acceptedAt: '2026-03-27T10:00:00Z',
       certificateId: 'cert-abc123',
+      senderName: 'Acme Corp',
     });
     expect(next).toEqual({
       name: 'completed',
       acceptedAt: '2026-03-27T10:00:00Z',
       certificateId: 'cert-abc123',
+      senderName: 'Acme Corp',
     });
   });
 
@@ -199,11 +201,13 @@ describe('ACCEPTED', () => {
       type: 'ACCEPTED',
       acceptedAt: '2026-03-27T10:00:00Z',
       certificateId: null,
+      senderName: '',
     });
     expect(next).toEqual({
       name: 'completed',
       acceptedAt: '2026-03-27T10:00:00Z',
       certificateId: null,
+      senderName: '',
     });
   });
 });
@@ -233,9 +237,11 @@ describe('Full OTP expiry + resend scenario', () => {
       expect(state.error).toBeUndefined();
     }
 
-    // 5. User verifies the new code
+    // 5. User verifies the new code — OTP_VERIFIED → otp_verified (transient) → acceptance
     state = act(state, { type: 'SUBMIT_CODE', code: '123456' });
     state = act(state, { type: 'OTP_VERIFIED', challengeId: OTP_B.challengeId });
+    expect(state.name).toBe('otp_verified');
+    state = act(state, { type: 'ADVANCE_TO_STATEMENT' });
     expect(state.name).toBe('acceptance');
   });
 

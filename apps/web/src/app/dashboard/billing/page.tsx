@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { ExternalLink, Zap, Check } from 'lucide-react';
+
+function getLocale(): 'no' | 'en' {
+  if (typeof document === 'undefined') return 'en';
+  const m = document.cookie.match(/oa_locale=([^;]+)/);
+  return m?.[1] === 'no' ? 'no' : 'en';
+}
 import {
   getBillingSubscription,
   getBillingCheckout,
@@ -19,27 +25,20 @@ import { cn } from '../../../lib/cn';
 
 // ─── Plan meta ─────────────────────────────────────────────────────────────────
 
-const PLAN_META: Record<SubscriptionPlan, { label: string; price: string; features: string[] }> = {
-  FREE: {
-    label: 'Free',
-    price: '$0/mo',
-    features: ['3 deals / month', 'PDF & DOCX documents', 'Acceptance certificates', 'Email support'],
-  },
-  STARTER: {
-    label: 'Starter',
-    price: '$29/mo',
-    features: ['25 deals / month', 'All Free features', 'Custom expiry dates', 'Priority email support'],
-  },
-  PROFESSIONAL: {
-    label: 'Professional',
-    price: '$79/mo',
-    features: ['100 deals / month', 'All Starter features', 'API access', 'Webhooks', 'Priority support'],
-  },
-  ENTERPRISE: {
-    label: 'Enterprise',
-    price: 'Custom',
-    features: ['Unlimited deals', 'All Professional features', 'SLA guarantee', 'Dedicated support', 'Custom onboarding'],
-  },
+type PlanMetaEntry = { label: string; price: string; priceSub: string; features: string[] };
+
+const PLAN_META_NOK: Record<SubscriptionPlan, PlanMetaEntry> = {
+  FREE:         { label: 'Free',     price: '0 NOK',        priceSub: '',               features: ['3 documents / month', 'PDF & DOCX documents', 'Acceptance certificates', 'Email support'] },
+  STARTER:      { label: 'Starter',  price: '149 NOK/mo',   priceSub: 'billed yearly',  features: ['20 documents / month', 'All Free features', 'Recipient reminders', 'Email support'] },
+  PROFESSIONAL: { label: 'Team',     price: '399 NOK/mo',   priceSub: 'billed yearly',  features: ['75 documents / month', 'All Starter features', 'Custom expiry dates', 'Priority email support'] },
+  ENTERPRISE:   { label: 'Business', price: '899 NOK/mo',   priceSub: 'billed yearly',  features: ['250 documents / month', 'All Team features', 'API + webhooks', 'DPA included'] },
+};
+
+const PLAN_META_USD: Record<SubscriptionPlan, PlanMetaEntry> = {
+  FREE:         { label: 'Free',     price: '$0',           priceSub: '',               features: ['3 documents / month', 'PDF & DOCX documents', 'Acceptance certificates', 'Email support'] },
+  STARTER:      { label: 'Starter',  price: '$15/mo',       priceSub: 'billed yearly',  features: ['20 documents / month', 'All Free features', 'Recipient reminders', 'Email support'] },
+  PROFESSIONAL: { label: 'Team',     price: '$39/mo',       priceSub: 'billed yearly',  features: ['75 documents / month', 'All Starter features', 'Custom expiry dates', 'Priority email support'] },
+  ENTERPRISE:   { label: 'Business', price: '$79/mo',       priceSub: 'billed yearly',  features: ['250 documents / month', 'All Team features', 'API + webhooks', 'DPA included'] },
 };
 
 const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'];
@@ -47,6 +46,9 @@ const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTE
 // ─── BillingPage ──────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
+  const locale = getLocale();
+  const PLAN_META = locale === 'no' ? PLAN_META_NOK : PLAN_META_USD;
+
   const [sub, setSub] = useState<BillingSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<SubscriptionPlan | null>(null);
@@ -128,7 +130,7 @@ export default function BillingPage() {
             )}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-(--color-text-secondary)">Deals this month</span>
+                <span className="text-(--color-text-secondary)">Documents this month</span>
                 <span className="font-semibold text-(--color-text-primary)">
                   {sub.monthlyOfferCount} / {limit ?? '∞'}
                 </span>
@@ -139,7 +141,7 @@ export default function BillingPage() {
                   aria-valuenow={usagePct}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={`${usagePct}% of monthly deal limit used`}
+                  aria-label={`${usagePct}% of monthly document limit used`}
                   className="h-2 bg-(--color-surface) rounded-full overflow-hidden"
                 >
                   <div
@@ -147,6 +149,13 @@ export default function BillingPage() {
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
+              )}
+              {limit && usagePct >= 80 && (
+                <p className="text-xs font-medium text-(--color-warning)">
+                  {usagePct >= 100
+                    ? 'Document limit reached — upgrade to send more this month.'
+                    : `You've used ${usagePct}% of your monthly limit.`}
+                </p>
               )}
               {sub.currentPeriodEnd && (
                 <p className="text-xs text-(--color-text-muted)">
@@ -185,6 +194,9 @@ export default function BillingPage() {
               <div className="mb-4">
                 <PlanBadge plan={plan} />
                 <p className="mt-2 text-2xl font-bold text-(--color-text-primary)">{meta.price}</p>
+                {meta.priceSub && (
+                  <p className="text-[11px] text-(--color-text-muted) mt-0.5">{meta.priceSub}</p>
+                )}
               </div>
               <ul className="flex-1 space-y-2 mb-5">
                 {meta.features.map((f) => (

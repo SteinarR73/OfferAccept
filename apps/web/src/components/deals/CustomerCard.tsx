@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Mail, ExternalLink, Plus } from 'lucide-react';
 import type { OfferItem } from '@offeraccept/types';
 import { Card, CardHeader, CardSection } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 
 // ─── CustomerCard ─────────────────────────────────────────────────────────────
 // Shows the customer associated with this deal.
@@ -22,7 +21,7 @@ export function CustomerCard({ offer }: CustomerCardProps) {
       <Card>
         <CardHeader title="Customer" border />
         <CardSection>
-          <p className="text-xs text-(--color-text-muted)">No customer assigned to this deal.</p>
+          <p className="text-xs text-(--color-text-muted)">No recipient assigned to this document.</p>
           <Link
             href={`/dashboard/deals/${offer.id}`}
             className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
@@ -77,7 +76,7 @@ export function CustomerCard({ offer }: CustomerCardProps) {
             className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
           >
             <Plus className="w-3 h-3" aria-hidden="true" />
-            New deal for this customer
+            New document for this recipient
           </Link>
         </div>
       </CardSection>

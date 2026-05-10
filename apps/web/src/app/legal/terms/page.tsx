@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Vilkår for bruk — OfferAccept',
+  title: 'Terms of Service — OfferAccept',
   description:
     'OfferAccept Terms of Service (v1.1). Describes what OfferAccept does and does not do, customer obligations, acceptance statement, liability, and governing law.',
 };
@@ -31,7 +31,7 @@ function LegalPageShell({
             OfferAccept
           </Link>
           <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
-            ← Tilbake
+            ← Back
           </Link>
         </div>
       </header>
@@ -40,7 +40,7 @@ function LegalPageShell({
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">{title}</h1>
           <p className="text-sm text-gray-500">
-            Versjon {version} · {effectiveLabel}
+            Version {version} · {effectiveLabel}
           </p>
         </div>
         <div className="prose prose-sm prose-gray max-w-none leading-relaxed">
@@ -56,256 +56,250 @@ function LegalPageShell({
 export default function TermsOfServicePage() {
   return (
     <LegalPageShell
-      title="Vilkår for bruk"
+      title="Terms of Service"
       version="1.1"
-      effectiveLabel="Gjelder fra lansering"
+      effectiveLabel="Effective from launch"
     >
       <section>
-        <h2>1. Partene og avtalens omfang</h2>
+        <h2>1. Parties and scope</h2>
         <p>
-          Disse vilkårene («Vilkårene») er en bindende avtale mellom OfferAccept («vi», «oss»,
-          «tjenesten») og den organisasjonen eller personen som oppretter en konto og benytter
-          tjenesten («Kunden»). Vilkårene gjelder for all bruk av OfferAccept-plattformen,
-          inkludert nettsted, API og tilhørende tjenester.
+          These Terms (&ldquo;Terms&rdquo;) are a binding agreement between OfferAccept
+          (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;the service&rdquo;) and the organisation or
+          person that creates an account and uses the service (&ldquo;Customer&rdquo;). The Terms
+          apply to all use of the OfferAccept platform, including the website, API, and associated
+          services.
         </p>
         <p>
-          Ved å opprette en konto bekrefter Kunden å ha lest, forstått og akseptert disse
-          vilkårene. Dersom du inngår avtalen på vegne av en organisasjon, bekrefter du at du
-          har fullmakt til å binde organisasjonen juridisk.
-        </p>
-      </section>
-
-      <section>
-        <h2>2. Hva OfferAccept er – og hva det ikke er</h2>
-        <h3>2.1 Hva tjenesten gjør</h3>
-        <p>OfferAccept er et SaaS-verktøy som gjør det mulig for Kunden å:</p>
-        <ul>
-          <li>Sende tilbudsdokumenter digitalt til navngitte mottakere</li>
-          <li>
-            Verifisere at mottakeren kontrollerer den angitte e-postadressen via
-            engangspassord (OTP)
-          </li>
-          <li>Registrere aksept eller avvisning med en manipuleringssikker bevislogg</li>
-          <li>
-            Generere et sertifikat med SHA-256-fingeravtrykk som dokumentasjon på
-            aksepthandlingen
-          </li>
-        </ul>
-
-        <h3>2.2 Hva tjenesten ikke gjør</h3>
-        <p>OfferAccept tilbyr ikke:</p>
-        <ul>
-          <li>
-            <strong>Kvalifisert elektronisk signatur (QES)</strong> i henhold til
-            eIDAS-forordningen. OfferAccept er ikke et kvalifisert tillitstjenestetilbyder
-            (QTSP).
-          </li>
-          <li>
-            <strong>Personidentitetsverifisering.</strong> OTP-verifisering bekrefter at
-            mottakeren kontrollerer den angitte e-postadressen på aksepttidspunktet – ikke hvem
-            personen er.
-          </li>
-          <li>
-            <strong>Juridisk rådgivning.</strong> OfferAccept er ikke et advokatfirma og gir
-            ingen juridisk rådgivning.
-          </li>
-          <li>
-            Tjenester for regulerte instrumenter som verdipapirer, fast eiendom, testamenter,
-            fullmakter eller dokumenttyper som etter gjeldende lov krever notarisering, vitner
-            eller sterkere identitetsprøving.
-          </li>
-          <li>
-            <strong>Kontroll over dokumentinnholdet.</strong> OfferAccept har ingen kontroll
-            over eller ansvar for innholdet i dokumenter som sendes gjennom tjenesten. Kunden er
-            fullt ansvarlig for innholdet i tilbud, avtaler og andre dokumenter som distribueres
-            via plattformen.
-          </li>
-        </ul>
-        <p>
-          Kunden er selv ansvarlig for å vurdere om OfferAccept er juridisk tilstrekkelig for
-          det aktuelle brukstilfellet i sin jurisdiksjon.
+          By creating an account, the Customer confirms that they have read, understood, and
+          accepted these Terms. If you are entering into the agreement on behalf of an organisation,
+          you confirm that you have authority to bind the organisation legally.
         </p>
       </section>
 
       <section>
-        <h2>3. Kundens forpliktelser</h2>
-        <h3>3.1 Lovlig bruk</h3>
-        <p>
-          Kunden forplikter seg til utelukkende å benytte tjenesten til lovlige formål og ikke
-          til:
-        </p>
+        <h2>2. What OfferAccept is — and what it is not</h2>
+        <h3>2.1 What the service does</h3>
+        <p>OfferAccept is a SaaS tool that enables the Customer to:</p>
         <ul>
-          <li>Sende villedende, bedragersk eller tvangsmessig materiale til mottakere</li>
-          <li>Bruke tjenesten til dokumenttyper som er uttrykkelig unntatt i punkt 2.2</li>
+          <li>Send documents digitally to named recipients via acceptance links</li>
           <li>
-            Forsøke å omgå, manipulere eller misbruke plattformens sikkerhetskontroller
+            Verify that the recipient controls the stated email address via a one-time passcode
+            (OTP)
           </li>
-          <li>Sende volum-spam eller uønskede kommersielle henvendelser til mottakere</li>
+          <li>Record acceptance or decline events with a tamper-evident evidence log</li>
+          <li>
+            Generate a certificate with a SHA-256 fingerprint as documentation of the acceptance
+            action
+          </li>
         </ul>
 
-        <h3>3.2 Ansvar for mottakeridentitet</h3>
+        <h3>2.2 What the service does not do</h3>
+        <p>OfferAccept does not provide:</p>
+        <ul>
+          <li>
+            <strong>Qualified Electronic Signature (QES)</strong> under the eIDAS Regulation.
+            OfferAccept is not a Qualified Trust Service Provider (QTSP).
+          </li>
+          <li>
+            <strong>Personal identity verification.</strong> OTP verification confirms that the
+            recipient controls the stated email address at the time of acceptance — not who that
+            person is.
+          </li>
+          <li>
+            <strong>Legal advice.</strong> OfferAccept is not a law firm and does not provide legal
+            advice.
+          </li>
+          <li>
+            Services for regulated instruments such as securities, real estate, wills, powers of
+            attorney, or document types that under applicable law require notarisation, witnesses,
+            or stronger identity proofing.
+          </li>
+          <li>
+            <strong>Control over document content.</strong> OfferAccept has no control over or
+            responsibility for the content of documents sent through the service. The Customer bears
+            full responsibility for the content of documents distributed via the platform.
+          </li>
+        </ul>
         <p>
-          Kunden er ansvarlig for å invitere riktig mottaker til akseptflyten. OfferAccept
-          verifiserer kun kontroll over den angitte e-postadressen, ikke identiteten til
-          personen som bruker adressen. Dersom Kunden sender en akseptinvitasjon til feil
-          e-postadresse, er dette utelukkende Kundens ansvar.
-        </p>
-
-        <h3>3.3 Nøyaktighet av data</h3>
-        <p>
-          Kunden er ansvarlig for at navn, e-postadresse og øvrig mottakerinformasjon er
-          korrekt oppgitt. Feil i mottakerdata fritar ikke Kunden for ansvar overfor sin
-          mottaker.
-        </p>
-
-        <h3>3.4 Personvernansvarlighet</h3>
-        <p>
-          Kunden er behandlingsansvarlig i henhold til GDPR for personopplysningene som
-          behandles gjennom tjenesten. OfferAccept opptrer som databehandler i henhold til
-          inngått databehandleravtale (DPA). Kunden er ansvarlig for å ha et gyldig
-          behandlingsgrunnlag for behandling av mottakernes personopplysninger.
+          The Customer is responsible for assessing whether OfferAccept is legally sufficient for
+          their particular use case in their jurisdiction.
         </p>
       </section>
 
       <section>
-        <h2>4. Aksepterklæring og beviskraft</h2>
-        <h3>4.1 Ordlyd</h3>
+        <h2>3. Customer obligations</h2>
+        <h3>3.1 Lawful use</h3>
         <p>
-          Aksepterklæringen som vises til mottakeren og lagres i sertifikatet er
-          serverside-generert og har følgende form:
+          The Customer agrees to use the service exclusively for lawful purposes and not to:
+        </p>
+        <ul>
+          <li>Send misleading, fraudulent, or coercive material to recipients</li>
+          <li>Use the service for document types expressly excluded in section 2.2</li>
+          <li>Attempt to circumvent, manipulate, or abuse the platform&rsquo;s security controls</li>
+          <li>Send volume spam or unsolicited commercial communications to recipients</li>
+        </ul>
+
+        <h3>3.2 Responsibility for recipient identity</h3>
+        <p>
+          The Customer is responsible for inviting the correct recipient to the acceptance flow.
+          OfferAccept verifies only control of the stated email address, not the identity of the
+          person using that address. If the Customer sends an acceptance link to the wrong email
+          address, this is solely the Customer&rsquo;s responsibility.
+        </p>
+
+        <h3>3.3 Accuracy of data</h3>
+        <p>
+          The Customer is responsible for ensuring that recipient name, email address, and other
+          recipient information is correct. Errors in recipient data do not relieve the Customer of
+          responsibility towards their recipient.
+        </p>
+
+        <h3>3.4 Data protection responsibility</h3>
+        <p>
+          The Customer is the data controller under the GDPR for personal data processed through
+          the service. OfferAccept acts as data processor under a signed Data Processing Agreement
+          (DPA). The Customer is responsible for having a valid lawful basis for processing
+          recipient personal data.
+        </p>
+      </section>
+
+      <section>
+        <h2>4. Acceptance statement and evidentiary value</h2>
+        <h3>4.1 Wording</h3>
+        <p>
+          The acceptance statement shown to the recipient and stored in the certificate is generated
+          server-side and takes the following form:
         </p>
         <blockquote>
           <em>
-            «I, [Mottakers navn], confirm that I have reviewed and accept the offer
-            &quot;[Tilbudstittel]&quot; presented by [Avsenders navn] ([Avsenders e-post]).
-            By confirming this acceptance, I acknowledge this action as my binding agreement
-            to the terms presented.»
+            &ldquo;I, [Recipient Name], confirm that I have reviewed and accept the offer
+            &ldquo;[Document Title]&rdquo; presented by [Sender Name] ([Sender Email]). By
+            confirming this acceptance, I acknowledge this action as my binding agreement to the
+            terms presented.&rdquo;
           </em>
         </blockquote>
         <p>
-          Se{' '}
+          See{' '}
           <Link href="/legal/acceptance-statement" className="text-blue-600 hover:text-blue-700">
-            Aksepterklæring — teknisk og juridisk spesifikasjon
+            Acceptance Statement — technical and legal specification
           </Link>{' '}
-          for detaljert beskrivelse av ordlyd, teknisk integritet og eIDAS-posisjonering.
+          for a detailed description of the wording, technical integrity, and eIDAS positioning.
         </p>
 
-        <h3>4.2 Bevisverdi</h3>
+        <h3>4.2 Evidentiary value</h3>
         <p>
-          Akseptsertifikatet dokumenterer at en OTP-verifisert e-postadresse aktivt aksepterte
-          et fryst tilbud på et spesifikt tidspunkt. OfferAccept garanterer ikke at sertifikatet
-          vil bli ansett som tilstrekkelig bevis i enhver rettslig tvist. Bevisverdien avhenger
-          av gjeldende rett i den aktuelle jurisdiksjonen.
-        </p>
-      </section>
-
-      <section>
-        <h2>5. Betaling og abonnement</h2>
-        <p>
-          Tjenesten leveres etter gjeldende prisplan på tidspunktet for bestilling.
-          Abonnementet fornyes automatisk med mindre det avsluttes før fornyelsesdato. Alle
-          priser er eksklusiv merverdiavgift der dette er aktuelt. Fakturering skjer via Stripe.
+          The acceptance certificate documents that an OTP-verified email address actively accepted
+          a frozen document at a specific timestamp. OfferAccept does not guarantee that the
+          certificate will be considered sufficient evidence in any legal dispute. Evidentiary value
+          depends on applicable law in the relevant jurisdiction.
         </p>
       </section>
 
       <section>
-        <h2>6. Tilgjengelighet og driftsstans</h2>
+        <h2>5. Payment and subscription</h2>
         <p>
-          OfferAccept tilstreber høy oppetid, men gir ingen garanti for avbruddfri tilgang.
-          Planlagte vedlikeholdsarbeider varsles på statussiden. Uplanlagte avbrudd annonseres
-          så raskt som mulig.
+          The service is provided under the pricing plan current at the time of order. Subscriptions
+          renew automatically unless cancelled before the renewal date. All prices are exclusive of
+          applicable taxes. Billing is handled via Stripe.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Availability and downtime</h2>
+        <p>
+          OfferAccept aims for high uptime but provides no guarantee of uninterrupted access.
+          Planned maintenance is announced on the status page. Unplanned outages are communicated
+          as quickly as possible.
         </p>
       </section>
 
       <section>
         <h2>7. Force majeure</h2>
         <p>
-          OfferAccept er ikke ansvarlig for forsinkelser eller manglende oppfyllelse som
-          skyldes forhold utenfor vår rimelige kontroll, inkludert men ikke begrenset til
-          naturkatastrofer, strømbrudd, nettverksfeil, myndighetspålegg, angrep fra tredjeparter
-          eller svikt hos underleverandører.
+          OfferAccept is not liable for delays or failures caused by circumstances beyond our
+          reasonable control, including but not limited to natural disasters, power outages, network
+          failures, government orders, third-party attacks, or sub-processor failures.
         </p>
       </section>
 
       <section>
-        <h2>8. Immaterielle rettigheter</h2>
+        <h2>8. Intellectual property</h2>
         <p>
-          OfferAccept eier alle rettigheter til plattformen, kode, design og merkevare. Kunden
-          eier sine egne data, inkludert tilbudsdokumenter og akseptposter. OfferAccept gis
-          begrenset lisens til å behandle disse dataene utelukkende for å levere tjenesten.
+          OfferAccept owns all rights to the platform, code, design, and brand. The Customer owns
+          their own data, including documents and acceptance records. OfferAccept is granted a
+          limited licence to process that data solely to deliver the service.
         </p>
       </section>
 
       <section>
-        <h2>9. Ansvarsbegrensning</h2>
-        <p>I den grad det er tillatt etter gjeldende rett:</p>
+        <h2>9. Limitation of liability</h2>
+        <p>To the extent permitted by applicable law:</p>
         <ul>
           <li>
-            OfferAccept fungerer som en nøytral teknisk plattform og er ikke part i avtaler
-            inngått mellom Kunden og mottakeren. Alle rettigheter og forpliktelser som følger
-            av aksepterte tilbud er utelukkende mellom Kunden og mottakeren.
+            OfferAccept acts as a neutral technical platform and is not a party to agreements
+            entered into between the Customer and recipient. All rights and obligations arising from
+            accepted documents are solely between the Customer and the recipient.
           </li>
           <li>
-            OfferAccepts samlede erstatningsansvar overfor Kunden er begrenset til det beløp
-            Kunden har betalt for tjenesten i de 12 månedene forut for kravet.
+            OfferAccept&rsquo;s total liability to the Customer is limited to the amount the
+            Customer has paid for the service in the 12 months preceding the claim.
           </li>
           <li>
-            OfferAccept er ikke ansvarlig for indirekte tap, tapt fortjeneste eller
-            følgeskader.
+            OfferAccept is not liable for indirect loss, lost profits, or consequential damages.
           </li>
           <li>
-            OfferAccept er ikke ansvarlig for innholdet i dokumenter som Kunden sender via
-            tjenesten.
+            OfferAccept is not liable for the content of documents the Customer sends via the
+            service.
           </li>
           <li>
-            OfferAccept er ikke ansvarlig for at et akseptsertifikat ikke anerkjennes som
-            tilstrekkelig bevis av en domstol eller myndighet.
+            OfferAccept is not liable if an acceptance certificate is not recognised as sufficient
+            evidence by a court or authority.
           </li>
           <li>
-            OfferAccept er ikke ansvarlig for konsekvenser av at Kunden har oppgitt feil
-            mottakerinformasjon.
+            OfferAccept is not liable for consequences arising from incorrect recipient information
+            provided by the Customer.
           </li>
         </ul>
       </section>
 
       <section>
-        <h2>10. Oppsigelse</h2>
+        <h2>10. Termination</h2>
         <p>
-          Kunden kan når som helst avslutte abonnementet. OfferAccept kan avslutte eller
-          suspendere tilgangen med 30 dagers skriftlig varsel, eller umiddelbart ved vesentlig
-          mislighold av disse vilkårene.
+          The Customer may cancel their subscription at any time. OfferAccept may terminate or
+          suspend access with 30 days&rsquo; written notice, or immediately in the event of
+          material breach of these Terms.
         </p>
       </section>
 
       <section>
-        <h2>11. Verneting og lovvalg</h2>
+        <h2>11. Governing law and jurisdiction</h2>
         <p>
-          Disse vilkårene er underlagt norsk rett. Tvister som ikke løses i minnelighet
-          bringes inn for kompetent norsk tingrett som vedtatt verneting. For kunder etablert i
-          EU gjelder ufravikelig EU-forbrukervernlovgivning i tillegg til disse vilkårene der
-          dette er relevant.
+          These Terms are governed by the laws of the State of Delaware, United States. Disputes
+          that cannot be resolved amicably shall be submitted to the competent courts of Delaware.
+          For customers established in the EU, mandatory EU consumer protection law applies in
+          addition to these Terms where relevant.
         </p>
       </section>
 
       <section>
-        <h2>12. Endringer</h2>
+        <h2>12. Changes</h2>
         <p>
-          OfferAccept kan endre disse vilkårene med 30 dagers skriftlig varsel. Fortsatt bruk
-          etter varslingsperioden anses som aksept av de endrede vilkårene.
+          OfferAccept may amend these Terms with 30 days&rsquo; written notice. Continued use after
+          the notice period constitutes acceptance of the amended Terms.
         </p>
       </section>
 
       <section>
-        <h2>13. Kontakt</h2>
+        <h2>13. Contact</h2>
         <ul>
           <li>
-            Juridiske henvendelser:{' '}
+            Legal enquiries:{' '}
             <a href="mailto:legal@offeraccept.com" className="text-blue-600 hover:text-blue-700">
               legal@offeraccept.com
             </a>
           </li>
           <li>
-            Personvernhenvendelser:{' '}
+            Privacy enquiries:{' '}
             <a
               href="mailto:privacy@offeraccept.com"
               className="text-blue-600 hover:text-blue-700"
@@ -314,7 +308,7 @@ export default function TermsOfServicePage() {
             </a>
           </li>
           <li>
-            Sikkerhet:{' '}
+            Security:{' '}
             <a
               href="mailto:security@offeraccept.com"
               className="text-blue-600 hover:text-blue-700"
@@ -326,7 +320,7 @@ export default function TermsOfServicePage() {
       </section>
 
       <div className="mt-10 pt-6 border-t border-gray-100 text-xs text-gray-400">
-        Dette er den kanoniske versjonen av Vilkår for bruk v1.1. Stabile URL:{' '}
+        Canonical version of Terms of Service v1.1. Stable URL:{' '}
         <Link href="/legal/terms/v1.1" className="underline hover:text-gray-600">
           /legal/terms/v1.1
         </Link>

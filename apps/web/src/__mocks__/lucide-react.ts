@@ -3,10 +3,10 @@
 // without requiring a full React rendering environment.
 export default new Proxy(
   {},
-  { get: (_target, name) => () => null },
+  { get: (_target, _name) => () => null },
 );
 
 module.exports = new Proxy(
   {},
-  { get: (_target, name) => () => null },
+  { get: (_target, _name) => () => null },
 );

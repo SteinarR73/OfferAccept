@@ -54,14 +54,21 @@ function layout(body: string, footerNote: string): string {
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1f2937">
 <div style="max-width:580px;margin:40px auto;padding:0 16px">
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-    <div style="background:#15803d;padding:20px 28px">
-      <span style="color:#fff;font-weight:700;font-size:18px;letter-spacing:-0.3px">OfferAccept</span>
+    <div style="background:#15803d;padding:20px 28px;display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="color:#fff;font-weight:800;font-size:14px;letter-spacing:-0.5px">OA</span>
+      </div>
+      <div>
+        <div style="color:#fff;font-weight:700;font-size:18px;letter-spacing:-0.3px;line-height:1.2">OfferAccept</div>
+        <div style="color:rgba(255,255,255,0.7);font-size:10px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-top:1px">Acceptance you can prove.</div>
+      </div>
     </div>
     <div style="padding:28px">
       ${body}
     </div>
     <div style="padding:16px 28px;border-top:1px solid #f3f4f6;background:#f9fafb;font-size:12px;color:#9ca3af">
       ${footerNote}
+      <div style="margin-top:8px;font-size:11px;color:#d1d5db">— OfferAccept · Acceptance you can prove.</div>
     </div>
   </div>
 </div>
@@ -86,7 +93,7 @@ export function otpEmail(p: OtpEmailParams): EmailTemplate {
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `You requested a verification code to review the deal "${p.offerTitle}".`,
+    `You requested a verification code to review the document "${p.offerTitle}".`,
     ``,
     `Your code is:`,
     ``,
@@ -105,7 +112,7 @@ export function otpEmail(p: OtpEmailParams): EmailTemplate {
 
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
-    <p style="margin:0 0 20px;color:#374151">You requested a verification code to review the deal <strong>${escapeHtml(p.offerTitle)}</strong>.</p>
+    <p style="margin:0 0 20px;color:#374151">You requested a verification code to review the document <strong>${escapeHtml(p.offerTitle)}</strong>.</p>
     <div style="background:#f3f4f6;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px">
       <div style="font-size:36px;font-weight:700;letter-spacing:8px;font-family:'Courier New',monospace;color:#111827">${escapeHtml(p.code)}</div>
       <div style="font-size:13px;color:#6b7280;margin-top:8px">Expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}</div>
@@ -126,16 +133,16 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
     ? `This link expires on ${formatDate(p.expiresAt)}.`
     : 'This link does not have a specific expiry date.';
 
-  const subject = `${p.senderName} has sent you a deal: "${p.offerTitle}"`;
+  const subject = `${p.senderName} is requesting your acceptance — ${p.offerTitle}`;
 
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `${p.senderName} has sent you a deal for your review:`,
+    `${p.senderName} has shared a document for your acceptance:`,
     ``,
     `  ${p.offerTitle}`,
     ``,
-    `To review and accept or decline this deal, open the link below:`,
+    `To review and accept or decline this document, open the link below:`,
     ``,
     `  ${p.signingUrl}`,
     ``,
@@ -145,22 +152,27 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
     `If you accept, OfferAccept will issue a tamper-proof acceptance certificate`,
     `as a permanent record of your decision.`,
     ``,
+    `If you were not expecting this document, you can safely ignore this message.`,
+    ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
 
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
-    <p style="margin:0 0 20px;color:#374151"><strong>${escapeHtml(p.senderName)}</strong> has sent you a deal for your review.</p>
     <div style="border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:0 0 24px;background:#f9fafb">
-      <div style="font-size:13px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deal</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">From</div>
+      <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:12px">${escapeHtml(p.senderName)}</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Document</div>
       <div style="font-size:18px;font-weight:600;color:#111827">${escapeHtml(p.offerTitle)}</div>
     </div>
-    <p style="margin:0 0 20px;color:#374151">To review and accept or decline this deal, click the button below. You will be asked to verify your email address first.</p>
-    <p style="margin:0 0 20px">${button(p.signingUrl, 'Review deal')}</p>
+    <p style="margin:0 0 20px;color:#374151">Click the button below to review this document. You will be asked to verify your email address with a one-time code before accepting.</p>
+    <p style="margin:0 0 24px">${button(p.signingUrl, `Review document from ${p.senderName}`)}</p>
     <p style="margin:0 0 8px;font-size:13px;color:#6b7280">Or copy this link into your browser:</p>
     <p style="margin:0 0 20px;font-size:12px;color:#6b7280;word-break:break-all">${escapeHtml(p.signingUrl)}</p>
     ${expiryLine ? `<p style="margin:0 0 16px;font-size:13px;color:#6b7280">${escapeHtml(expiryLine)}</p>` : ''}
-    <p style="margin:0;font-size:13px;color:#6b7280">If you accept, OfferAccept will issue a tamper-proof acceptance certificate as a permanent record of your decision.</p>`,
+    <p style="margin:0 0 8px;font-size:13px;color:#6b7280">No account required. The process takes under 60 seconds.</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#6b7280">If you accept, a tamper-proof certificate will be issued as a permanent record.</p>
+    <p style="margin:0;font-size:12px;color:#9ca3af">If you were not expecting this document, you can safely ignore this message.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -170,40 +182,43 @@ export function offerLinkEmail(p: OfferLinkEmailParams): EmailTemplate {
 // ─── 3. Acceptance confirmation to sender ─────────────────────────────────────
 
 export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSenderParams): EmailTemplate {
-  const subject = `${p.recipientName} has accepted your deal: "${p.offerTitle}"`;
+  const subject = `${p.recipientName} accepted your document — certificate ready`;
   const acceptedAtStr = formatDate(p.acceptedAt);
 
   const text = [
     `Hi ${p.senderName},`,
     ``,
-    `${p.recipientName} (${p.recipientEmail}) has accepted your deal "${p.offerTitle}".`,
+    `${p.recipientName} accepted "${p.offerTitle}".`,
     ``,
-    `Accepted at:     ${acceptedAtStr}`,
-    `Certificate ID:  ${p.certificateId}`,
+    `Accepted at:      ${acceptedAtStr}`,
+    `Certificate ID:   ${p.certificateId}`,
     `Certificate hash: ${p.certificateHash}`,
     ``,
-    `Keep this email as proof. Even if the platform is unavailable, the hash above`,
-    `lets you verify the acceptance record independently.`,
+    `This certificate proves:`,
+    `  • when the acceptance occurred`,
+    `  • which document version was accepted`,
+    `  • that the recipient verified access to their email address`,
     ``,
     `Verify online: ${p.verifyUrl}`,
+    ``,
+    `Forward this certificate to accounting, legal, or your customer.`,
+    `Anyone can independently verify it — no account required.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
 
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
-    <div style="border-left:4px solid #16a34a;padding:12px 16px;margin:0 0 24px;background:#f0fdf4;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Deal accepted</p>
-      <p style="margin:4px 0 0;color:#166534">${escapeHtml(p.recipientName)} has accepted your deal. An acceptance certificate has been issued.</p>
+
+    <div style="border-left:4px solid #16a34a;padding:14px 18px;margin:0 0 24px;background:#f0fdf4;border-radius:0 8px 8px 0">
+      <p style="margin:0 0 2px;font-size:18px;font-weight:700;color:#15803d">${escapeHtml(p.recipientName)} accepted your document</p>
+      <p style="margin:0;font-size:13px;color:#166534">${escapeHtml(p.offerTitle)}</p>
     </div>
+
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
-        <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280">Accepted by</td>
-        <td style="padding:10px 0">${escapeHtml(p.recipientName)} &lt;${escapeHtml(p.recipientEmail)}&gt;</td>
+        <td style="padding:10px 0;color:#6b7280;width:130px">Accepted by</td>
+        <td style="padding:10px 0;font-weight:500">${escapeHtml(p.recipientName)} &lt;${escapeHtml(p.recipientEmail)}&gt;</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:10px 0;color:#6b7280">Accepted at</td>
@@ -218,8 +233,29 @@ export function acceptanceConfirmationSenderEmail(p: AcceptanceConfirmationSende
         <td style="padding:10px 0;font-family:'Courier New',monospace;font-size:11px;color:#374151;word-break:break-all">${escapeHtml(p.certificateHash)}</td>
       </tr>
     </table>
-    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af">Keep this email as proof. The hash above lets you verify the acceptance record independently.</p>
-    <p style="margin:0 0 16px"><a href="${escapeHtml(p.verifyUrl)}" style="color:#15803d;font-size:13px;font-weight:600;text-decoration:underline">Verify this certificate →</a></p>`,
+
+    <p style="margin:0 0 12px;text-align:center">
+      ${button(p.verifyUrl, 'View acceptance certificate')}
+    </p>
+
+    <div style="border:1px solid #d1fae5;background:#f0fdf4;border-radius:8px;padding:16px;margin:0 0 20px">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#065f46">This certificate proves:</p>
+      <ul style="margin:0 0 10px;padding-left:0;list-style:none">
+        <li style="font-size:13px;color:#047857;padding:3px 0">· when the acceptance occurred</li>
+        <li style="font-size:13px;color:#047857;padding:3px 0">· which document version was accepted</li>
+        <li style="font-size:13px;color:#047857;padding:3px 0">· that the recipient verified access to their email address</li>
+      </ul>
+      <p style="margin:0;font-size:12px;color:#6b7280">Keep this email. Even if the platform is unavailable, the hash above lets you verify the record independently.</p>
+    </div>
+
+    <div style="border:1px solid #e5e7eb;background:#f9fafb;border-radius:8px;padding:14px;margin:0 0 16px">
+      <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#374151">Forward this certificate</p>
+      <p style="margin:0;font-size:13px;color:#6b7280">Anyone can independently verify this record. Useful for:</p>
+      <ul style="margin:6px 0 0;padding-left:0;list-style:none">
+        <li style="font-size:12px;color:#6b7280;padding:2px 0">· accounting records &amp; project documentation</li>
+        <li style="font-size:12px;color:#6b7280;padding:2px 0">· customer approvals &amp; legal or archive purposes</li>
+      </ul>
+    </div>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -235,7 +271,7 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `Your acceptance of the deal "${p.offerTitle}" from ${p.senderName} has been recorded.`,
+    `Your acceptance of the document "${p.offerTitle}" from ${p.senderName} has been recorded.`,
     ``,
     `Accepted at:     ${acceptedAtStr}`,
     `Certificate ID:  ${p.certificateId}`,
@@ -253,11 +289,11 @@ export function acceptanceConfirmationRecipientEmail(p: AcceptanceConfirmationRe
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
     <div style="border-left:4px solid #16a34a;padding:12px 16px;margin:0 0 24px;background:#f0fdf4;border-radius:0 6px 6px 0">
       <p style="margin:0;font-size:16px;font-weight:600;color:#15803d">Acceptance recorded</p>
-      <p style="margin:4px 0 0;color:#166534">You have accepted the deal from ${escapeHtml(p.senderName)}. A certificate has been issued.</p>
+      <p style="margin:4px 0 0;color:#166534">You have accepted the document from ${escapeHtml(p.senderName)}. A certificate has been issued.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Document</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">
@@ -426,15 +462,15 @@ export function orgInviteEmail(p: OrgInviteParams): EmailTemplate {
 // ─── 5b. Expiry notification to sender ────────────────────────────────────────
 
 export function expiryNotificationEmail(p: ExpiryNotificationParams): EmailTemplate {
-  const subject = `Your deal "${p.offerTitle}" has expired`;
+  const subject = `Your document "${p.offerTitle}" has expired`;
   const expiredAtStr = formatDate(p.expiredAt);
 
   const text = [
     `Hi ${p.senderName},`,
     ``,
-    `Your deal "${p.offerTitle}" expired on ${expiredAtStr} without a response from the recipient.`,
+    `Your document "${p.offerTitle}" expired on ${expiredAtStr} without a response from the recipient.`,
     ``,
-    `If you still need a response, you can create a new deal with an updated expiry date.`,
+    `If you still need a response, you can send a new document with an updated expiry date.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -442,12 +478,12 @@ export function expiryNotificationEmail(p: ExpiryNotificationParams): EmailTempl
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
     <div style="border-left:4px solid #d97706;padding:12px 16px;margin:0 0 24px;background:#fffbeb;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#92400e">Deal expired</p>
-      <p style="margin:4px 0 0;color:#78350f">Your deal expired without a response from the recipient.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#92400e">Document expired</p>
+      <p style="margin:4px 0 0;color:#78350f">Your document expired without a response from the recipient.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Document</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr>
@@ -455,7 +491,7 @@ export function expiryNotificationEmail(p: ExpiryNotificationParams): EmailTempl
         <td style="padding:10px 0">${escapeHtml(expiredAtStr)}</td>
       </tr>
     </table>
-    <p style="margin:0;font-size:13px;color:#6b7280">If you still need a response, you can create a new deal with an updated expiry date.</p>`,
+    <p style="margin:0;font-size:13px;color:#6b7280">If you still need a response, you can send a new document with an updated expiry date.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -467,26 +503,26 @@ export function expiryNotificationEmail(p: ExpiryNotificationParams): EmailTempl
 
 export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplate {
   const expiryLine = p.expiresAt
-    ? `This deal expires on ${formatDate(p.expiresAt)}.`
+    ? `This document expires on ${formatDate(p.expiresAt)}.`
     : '';
 
   const copy = {
     not_opened: {
-      subject: `Reminder: deal waiting for your review`,
-      headline: 'Deal waiting for your review',
-      body: 'You received a deal that is waiting for your response. Please review it at your earliest convenience.',
-      cta: 'Review deal',
+      subject: `Reminder: document waiting for your review`,
+      headline: 'Document waiting for your review',
+      body: 'You received a document that is waiting for your response. Please review it at your earliest convenience.',
+      cta: 'Review document',
     },
     opened: {
-      subject: `Reminder: deal awaiting your acceptance`,
-      headline: 'Deal awaiting your acceptance',
-      body: 'You previously opened this deal but have not yet accepted it. Click the button below to pick up where you left off.',
-      cta: 'Open deal',
+      subject: `Reminder: document awaiting your acceptance`,
+      headline: 'Document awaiting your acceptance',
+      body: 'You previously opened this document but have not yet accepted it. Click the button below to pick up where you left off.',
+      cta: 'Open document',
     },
     otp_started: {
-      subject: `Complete your deal acceptance`,
+      subject: `Complete your document acceptance`,
       headline: 'Complete your acceptance',
-      body: 'You started accepting this deal but did not complete the process. Click below to finish — it only takes a moment.',
+      body: 'You started accepting this document but did not complete the process. Click below to finish — it only takes a moment.',
       cta: 'Complete acceptance',
     },
   }[p.variant];
@@ -498,10 +534,10 @@ export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplat
     ``,
     copy.body,
     ``,
-    `Deal: ${p.offerTitle}`,
+    `Document: ${p.offerTitle}`,
     `Sent by: ${p.senderName}`,
     ``,
-    `To review and accept this deal, open the link below:`,
+    `To review and accept this document, open the link below:`,
     ``,
     `  ${p.signingUrl}`,
     ``,
@@ -521,7 +557,7 @@ export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplat
       <p style="margin:4px 0 0;color:#78350f;font-size:13px">${escapeHtml(copy.body)}</p>
     </div>
     <div style="border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:0 0 24px;background:#f9fafb">
-      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deal</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Document</div>
       <div style="font-size:17px;font-weight:600;color:#111827">${escapeHtml(p.offerTitle)}</div>
       <div style="font-size:13px;color:#6b7280;margin-top:4px">Sent by ${escapeHtml(p.senderName)}</div>
     </div>
@@ -541,15 +577,15 @@ export function recipientReminderEmail(p: RecipientReminderParams): EmailTemplat
 
 export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
   const timeLabel = p.warningLevel === '24h' ? '24 hours' : '2 hours';
-  const subject = `Your deal "${p.offerTitle}" expires in ${timeLabel}`;
+  const subject = `Your document "${p.offerTitle}" expires in ${timeLabel}`;
   const expiresAtStr = formatDate(p.expiresAt);
 
   const text = [
     `Hi ${p.senderName},`,
     ``,
-    `Your deal "${p.offerTitle}" has not yet been accepted and expires in approximately ${timeLabel} (${expiresAtStr}).`,
+    `Your document "${p.offerTitle}" has not yet been accepted and expires in approximately ${timeLabel} (${expiresAtStr}).`,
     ``,
-    `If the recipient needs more time, you can resend the deal link from your dashboard.`,
+    `If the recipient needs more time, you can resend the document link from your dashboard.`,
     ``,
     `${FOOTER_PRIVACY}`,
   ].join('\n');
@@ -557,12 +593,12 @@ export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
     <div style="border-left:4px solid #f59e0b;padding:12px 16px;margin:0 0 24px;background:#fffbeb;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#92400e">Deal expires in ${escapeHtml(timeLabel)}</p>
-      <p style="margin:4px 0 0;color:#78350f">This deal has not yet been accepted.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#92400e">Document expires in ${escapeHtml(timeLabel)}</p>
+      <p style="margin:4px 0 0;color:#78350f">This document has not yet been accepted.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Document</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr>
@@ -570,7 +606,7 @@ export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
         <td style="padding:10px 0">${escapeHtml(expiresAtStr)}</td>
       </tr>
     </table>
-    <p style="margin:0;font-size:13px;color:#6b7280">If the recipient needs more time, you can resend the deal link from your dashboard to give them a fresh link before expiry.</p>`,
+    <p style="margin:0;font-size:13px;color:#6b7280">If the recipient needs more time, you can resend the document link from your dashboard to give them a fresh link before expiry.</p>`,
     `${FOOTER_PRIVACY}`,
   );
 
@@ -580,17 +616,17 @@ export function expiryWarningEmail(p: ExpiryWarningParams): EmailTemplate {
 // ─── 5a. Decline confirmation to recipient ────────────────────────────────────
 
 export function declineConfirmationRecipientEmail(p: DeclineConfirmationRecipientParams): EmailTemplate {
-  const subject = `You declined a deal via OfferAccept`;
+  const subject = `You declined a document via OfferAccept`;
   const declinedAtStr = formatDate(p.declinedAt);
 
   const text = [
     `Hi ${p.recipientName},`,
     ``,
-    `You declined the deal "${p.offerTitle}" sent by ${p.senderName}.`,
+    `You declined the document "${p.offerTitle}" sent by ${p.senderName}.`,
     ``,
     `Declined at: ${declinedAtStr}`,
     ``,
-    `You declined this deal. No acceptance record was created.`,
+    `You declined this document. No acceptance record was created.`,
     ``,
     `If you declined by mistake, please contact the sender directly.`,
     ``,
@@ -600,12 +636,12 @@ export function declineConfirmationRecipientEmail(p: DeclineConfirmationRecipien
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.recipientName)},</p>
     <div style="border-left:4px solid #6b7280;padding:12px 16px;margin:0 0 24px;background:#f9fafb;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#374151">Deal declined</p>
-      <p style="margin:4px 0 0;color:#6b7280">You declined this deal. No acceptance record was created.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#374151">Document declined</p>
+      <p style="margin:4px 0 0;color:#6b7280">You declined this document. No acceptance record was created.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Document</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">
@@ -627,13 +663,13 @@ export function declineConfirmationRecipientEmail(p: DeclineConfirmationRecipien
 // ─── 5. Decline notification to sender ────────────────────────────────────────
 
 export function declineNotificationEmail(p: DeclineNotificationParams): EmailTemplate {
-  const subject = `${p.recipientName} has declined your deal: "${p.offerTitle}"`;
+  const subject = `${p.recipientName} has declined your document: "${p.offerTitle}"`;
   const declinedAtStr = formatDate(p.declinedAt);
 
   const text = [
     `Hi ${p.senderName},`,
     ``,
-    `${p.recipientName} (${p.recipientEmail}) has declined your deal "${p.offerTitle}".`,
+    `${p.recipientName} (${p.recipientEmail}) has declined your document "${p.offerTitle}".`,
     ``,
     `Declined at: ${declinedAtStr}`,
     ``,
@@ -646,12 +682,12 @@ export function declineNotificationEmail(p: DeclineNotificationParams): EmailTem
   const html = layout(
     `<p style="margin:0 0 16px">Hi ${escapeHtml(p.senderName)},</p>
     <div style="border-left:4px solid #dc2626;padding:12px 16px;margin:0 0 24px;background:#fef2f2;border-radius:0 6px 6px 0">
-      <p style="margin:0;font-size:16px;font-weight:600;color:#dc2626">Deal declined</p>
-      <p style="margin:4px 0 0;color:#991b1b">${escapeHtml(p.recipientName)} has declined your deal.</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#dc2626">Document declined</p>
+      <p style="margin:4px 0 0;color:#991b1b">${escapeHtml(p.recipientName)} has declined your document.</p>
     </div>
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px">
       <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 0;color:#6b7280;width:140px">Deal</td>
+        <td style="padding:10px 0;color:#6b7280;width:140px">Document</td>
         <td style="padding:10px 0;font-weight:500">${escapeHtml(p.offerTitle)}</td>
       </tr>
       <tr style="border-bottom:1px solid #f3f4f6">

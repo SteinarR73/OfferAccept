@@ -83,16 +83,13 @@ export function DealsPipeline({ offers, loading }: DealsPipelineProps) {
 
   if (loading) return <DealsPipelineSkeleton />;
 
-  // Hide pipeline entirely if no offers yet
-  if (offers.length === 0) return null;
-
   return (
     <section aria-labelledby="pipeline-heading">
       <h2
         id="pipeline-heading"
         className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3 px-0.5"
       >
-        Deals pipeline
+        Status at a glance
       </h2>
 
       {/* Connector line */}
@@ -105,7 +102,7 @@ export function DealsPipeline({ offers, loading }: DealsPipelineProps) {
 
         <ol
           className="relative grid grid-cols-2 gap-2 sm:flex sm:gap-0"
-          aria-label="Deal pipeline stages"
+          aria-label="Document pipeline stages"
         >
           {STAGES.map((stage, i) => {
             const count = counts[stage.key as OfferStatusValue] ?? 0;
@@ -125,9 +122,8 @@ export function DealsPipeline({ offers, loading }: DealsPipelineProps) {
                       ? cn('border-transparent', stage.color)
                       : 'border-gray-100 bg-white',
                   )}
-                  aria-label={`${stage.label}: ${count} deal${count !== 1 ? 's' : ''}`}
+                  aria-label={`${stage.label}: ${count} document${count !== 1 ? 's' : ''}`}
                 >
-                  {/* Stage dot */}
                   <span
                     className={cn(
                       'w-2 h-2 rounded-full mb-2',
@@ -135,8 +131,6 @@ export function DealsPipeline({ offers, loading }: DealsPipelineProps) {
                     )}
                     aria-hidden="true"
                   />
-
-                  {/* Count */}
                   <span
                     className={cn(
                       'text-2xl font-bold tabular-nums leading-none',
@@ -145,8 +139,6 @@ export function DealsPipeline({ offers, loading }: DealsPipelineProps) {
                   >
                     {count}
                   </span>
-
-                  {/* Label */}
                   <span
                     className={cn(
                       'text-xs font-medium mt-1',

@@ -22,14 +22,14 @@ export interface DealTemplate {
 export const DEAL_TEMPLATES: DealTemplate[] = [
   {
     id: 'tpl_consulting',
-    title: 'Consulting Deal',
-    description: 'Standard consulting services deal covering scope, fees, and IP ownership.',
+    title: 'Consulting Agreement',
+    description: 'Standard consulting services agreement covering scope, fees, and IP ownership.',
     dealType: 'proposal',
     category: 'Services',
-    message: `This Consulting Deal sets out the terms under which consulting services will be provided.
+    message: `This Consulting Agreement sets out the terms under which consulting services will be provided.
 
 Scope of Work
-The consultant agrees to provide professional services as described in this deal. All deliverables will be completed to a professional standard and within agreed timelines.
+The consultant agrees to provide professional services as described in this agreement. All deliverables will be completed to a professional standard and within agreed timelines.
 
 Fees & Payment
 Fees are as quoted. Payment is due within 30 days of invoice. Late payments accrue interest at 1.5% per month.
@@ -40,7 +40,7 @@ All work product created specifically for this engagement becomes the client's p
 Confidentiality
 Both parties agree to keep confidential information shared during this engagement private and not to disclose it to third parties without prior written consent.
 
-By accepting this deal you confirm you have read, understood, and agree to these terms.`,
+By accepting this document you confirm you have read, understood, and agree to these terms.`,
   },
   {
     id: 'tpl_sales_quote',
@@ -66,11 +66,11 @@ By accepting this quote you agree to the pricing, scope, and payment terms descr
   },
   {
     id: 'tpl_freelance',
-    title: 'Freelance Deal',
-    description: 'Freelance work deal covering project scope, ownership, and payment schedule.',
+    title: 'Freelance Agreement',
+    description: 'Freelance work agreement covering project scope, ownership, and payment schedule.',
     dealType: 'offer',
     category: 'Freelance',
-    message: `This Freelance Deal is entered into between the client and the freelancer named in this deal.
+    message: `This Freelance Agreement is entered into between the client and the freelancer named in this document.
 
 Project Scope
 The freelancer agrees to complete the project as described. Any scope changes must be agreed in writing and may affect timeline and pricing.
@@ -79,7 +79,7 @@ Ownership & Rights
 Upon final payment, the client receives full ownership of all original work created for this project. The freelancer retains the right to display the work in their portfolio unless otherwise agreed.
 
 Revisions
-This deal includes up to 3 rounds of revisions. Additional revision rounds will be quoted separately.
+This agreement includes up to 3 rounds of revisions. Additional revision rounds will be quoted separately.
 
 Payment Schedule
 - 50% upfront to commence work
@@ -88,18 +88,18 @@ Payment Schedule
 Termination
 Either party may terminate with 7 days written notice. The client pays for work completed to date; the freelancer delivers all work-in-progress upon termination.
 
-By accepting this deal you confirm you agree to the project scope and payment terms.`,
+By accepting this document you confirm you agree to the project scope and payment terms.`,
   },
   {
     id: 'tpl_nda',
-    title: 'Non-Disclosure Deal',
+    title: 'Non-Disclosure Agreement',
     description: 'Mutual NDA for sharing confidential information during business discussions.',
     dealType: 'offer',
     category: 'Legal',
     message: `This Non-Disclosure Agreement (NDA) governs the sharing of confidential information between the parties.
 
 Definition of Confidential Information
-Confidential information includes all non-public business, technical, financial, and operational information shared by either party in connection with the business relationship described in this deal.
+Confidential information includes all non-public business, technical, financial, and operational information shared by either party in connection with the business relationship described in this document.
 
 Obligations
 Each party agrees to:
@@ -129,7 +129,7 @@ export function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) 
   return (
     <div>
       <p className="text-xs text-(--color-text-muted) mb-3">
-        Choose a template to pre-fill your deal — or leave blank to start from scratch.
+        Choose a template to pre-fill your document — or leave blank to start from scratch.
       </p>
       <div className="grid grid-cols-2 gap-2">
         {DEAL_TEMPLATES.map((tpl) => {

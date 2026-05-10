@@ -17,7 +17,8 @@
     "db:migrate": "turbo run db:migrate",
     "db:studio": "turbo run db:studio",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
-    "secret-scan": "tsx scripts/secret-scan.ts"
+    "secret-scan": "tsx scripts/secret-scan.ts",
+    "terminology:audit": "tsx scripts/terminology-audit.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

@@ -103,7 +103,7 @@ export function DocumentsCard({ offer, onDocumentAdded, onDocumentRemoved }: Doc
 
               {/* Signed indicator */}
               {isAccepted && (
-                <span title="Included in accepted deal">
+                <span title="Included in accepted document">
                   <ShieldCheck className="w-3.5 h-3.5 text-green-500 flex-shrink-0" aria-label="Verified" />
                 </span>
               )}
@@ -132,7 +132,7 @@ export function DocumentsCard({ offer, onDocumentAdded, onDocumentRemoved }: Doc
         <CardSection>
           <div className="flex flex-col items-center py-4 text-center">
             <FileText className="w-6 h-6 text-gray-200 mb-2" aria-hidden="true" />
-            <p className="text-xs text-(--color-text-muted)">No documents were attached to this deal.</p>
+            <p className="text-xs text-(--color-text-muted)">No files were attached to this document.</p>
           </div>
         </CardSection>
       )}

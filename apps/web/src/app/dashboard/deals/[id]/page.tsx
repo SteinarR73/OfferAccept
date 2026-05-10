@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import {
   getOffer,
@@ -63,8 +63,18 @@ function deriveLifecycleState(offer: OfferItemExtended): OfferLifecycleState {
 
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [offer, setOffer] = useState<OfferItemExtended | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSentBanner, setShowSentBanner] = useState(searchParams.get('sent') === '1');
+
+  useEffect(() => {
+    if (showSentBanner) {
+      router.replace(pathname, { scroll: false });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(() => {
     getOffer(id)
@@ -149,6 +159,13 @@ export default function DealDetailPage() {
         backLabel="All offers"
         action={<OfferStatusBadge status={offer.status} />}
       />
+
+      {/* ── Post-send confirmation banner ──────────────────────────────────── */}
+      {showSentBanner && (
+        <Alert variant="success" dismissible onDismiss={() => setShowSentBanner(false)}>
+          <strong>Acceptance link sent.</strong> The recipient will receive an email with a secure link to review and accept this document. You&apos;ll be notified here when they respond.
+        </Alert>
+      )}
 
       {/* ── Terminal status alerts ──────────────────────────────────────────── */}
       {isRevoked && (

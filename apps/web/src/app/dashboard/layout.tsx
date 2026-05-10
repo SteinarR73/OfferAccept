@@ -14,6 +14,7 @@ import { OrgSelector } from '../../components/dashboard/OrgSelector';
 import { SpinnerPage } from '../../components/ui/Spinner';
 import { CommandPalette, useCommandPalette } from '../../components/ui/CommandPalette';
 import { cn } from '../../lib/cn';
+import { OfferAcceptIcon } from '../../components/brand/OfferAcceptIcon';
 
 // ─── Nav items ─────────────────────────────────────────────────────────────────
 
@@ -117,12 +118,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/5 flex-shrink-0">
             <Link
               href="/dashboard"
-              className="flex items-center gap-2 font-semibold text-white/90 text-sm rounded focus-visible:ring-2 focus-visible:ring-(--color-accent)"
+              title="OfferAccept — Acceptance you can prove"
+              className="flex items-center gap-2.5 rounded focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
             >
-              <span className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold select-none">
-                OA
+              <span className="flex-shrink-0 rounded-lg bg-white p-0.5">
+                <OfferAcceptIcon size="sm" priority />
               </span>
-              OfferAccept
+              <span className="font-semibold text-white/90 text-sm select-none">OfferAccept</span>
             </Link>
             <button
               ref={closeButtonRef}
@@ -222,16 +224,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Mobile top bar */}
           <header className="lg:hidden flex items-center h-16 px-4 bg-(--color-sidebar-bg) border-b border-white/5 flex-shrink-0 gap-3">
             <button
+              type="button"
               onClick={() => setSidebarOpen(true)}
-              aria-expanded={sidebarOpen}
+              aria-expanded={sidebarOpen ? 'true' : 'false'}
               aria-controls="sidebar"
               aria-label="Open navigation"
               className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-(--color-accent) transition-colors"
             >
               <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
-            <Link href="/dashboard" className="font-semibold text-sm text-white/90">
-              OfferAccept
+            <Link href="/dashboard" className="flex items-center gap-2 rounded focus-visible:ring-2 focus-visible:ring-(--color-accent)">
+              <span className="flex-shrink-0 rounded-md bg-white p-0.5">
+                <OfferAcceptIcon size="sm" />
+              </span>
             </Link>
             <button
               onClick={() => setPaletteOpen(true)}

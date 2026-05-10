@@ -10,6 +10,7 @@ import { CertificatePdfService } from './certificate-pdf.service';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 import { TraceContext } from '../../common/trace/trace.context';
 import { STORAGE_PORT, type StoragePort } from '../../common/storage/storage.port';
+import { MetricsService } from '../../common/metrics/metrics.service';
 
 // ─── CertificatesController ────────────────────────────────────────────────────
 // Mixed access: some routes are public (no auth), others require a JWT.
@@ -43,6 +44,7 @@ export class CertificatesController {
     private readonly pdfService: CertificatePdfService,
     private readonly rateLimiter: RateLimitService,
     private readonly traceContext: TraceContext,
+    private readonly metrics: MetricsService,
     config: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {
@@ -192,6 +194,7 @@ export class CertificatesController {
     res.setHeader('X-RateLimit-Reset', String(Math.ceil(resetAt.getTime() / 1000)));
 
     const result = await this.certificates.verify(id);
+    this.metrics.recordCertificateVerification();
 
     this.logger.log(JSON.stringify({
       event: 'certificate_verify',

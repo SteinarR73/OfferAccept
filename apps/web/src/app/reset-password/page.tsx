@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, Suspense, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { resetPassword } from '../../lib/offers-api';
@@ -8,8 +8,17 @@ import { Card, CardSection } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Alert } from '../../components/ui/Alert';
+import { OfferAcceptLogo } from '../../components/brand/OfferAcceptLogo';
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get('token') ?? '';
@@ -64,11 +73,8 @@ export default function ResetPasswordPage() {
   return (
     <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
       {/* Brand */}
-      <div className="flex items-center gap-2 mb-8">
-        <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
-          OA
-        </span>
-        <span className="font-semibold text-gray-900">OfferAccept</span>
+      <div className="mb-8">
+        <OfferAcceptLogo size="sm" priority />
       </div>
 
       <Card className="w-full max-w-sm">

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, Suspense, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock } from 'lucide-react';
+import { OfferAcceptLogo } from '../../components/brand/OfferAcceptLogo';
 import { login, signup } from '../../lib/offers-api';
 import { markAuthenticated } from '../../lib/auth';
 import { Card, CardSection } from '../../components/ui/Card';
@@ -15,6 +16,14 @@ import { Alert } from '../../components/ui/Alert';
 const CURRENT_TERMS_VERSION = '1.1';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
@@ -87,11 +96,8 @@ export default function LoginPage() {
   if (isSignup && signupDone) {
     return (
       <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-20 px-4">
-        <div className="flex items-center gap-2 mb-8">
-          <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
-            OA
-          </span>
-          <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>
+        <div className="mb-8">
+          <OfferAcceptLogo size="sm" priority />
         </div>
         <Card className="w-full max-w-sm text-center px-6 py-8">
           <div className="w-12 h-12 rounded-full bg-(--color-success-light) flex items-center justify-center mx-auto mb-4">
@@ -117,11 +123,8 @@ export default function LoginPage() {
   if (isSignup) {
     return (
       <main className="min-h-screen bg-(--color-bg) flex flex-col items-center justify-start pt-16 px-4 pb-16">
-        <div className="flex items-center gap-2 mb-8">
-          <span className="w-8 h-8 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-sm font-bold select-none">
-            OA
-          </span>
-          <span className="font-semibold text-(--color-text-primary)">OfferAccept</span>
+        <div className="mb-8">
+          <OfferAcceptLogo size="sm" priority />
         </div>
 
         <Card className="w-full max-w-sm">

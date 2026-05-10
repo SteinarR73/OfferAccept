@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { User, Users, Key, Webhook, Copy, Trash2, Plus, Check, FileText, CheckCircle2, Clock } from 'lucide-react';
+import { User, Key, Webhook, Copy, Trash2, Plus, Check, FileText, CheckCircle2, Clock } from 'lucide-react';
 
 // Team, API Keys, and Webhooks are hidden for v1 launch.
 // The underlying tab components remain implemented for post-launch activation.

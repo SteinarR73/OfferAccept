@@ -1,9 +1,9 @@
 // Next.js Route Handler — generates and serves the DPA as a downloadable PDF.
-// Accessible at GET /legal/dpa?format=pdf or GET /legal/dpa with Accept: application/pdf.
+// Accessible at GET /legal/dpa/download
 //
 // Uses pdf-lib (already in package.json) — no new dependencies required.
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const ACCENT = rgb(0.02, 0.59, 0.41);   // #059669 — emerald-600
@@ -271,15 +271,7 @@ async function buildDpaPdf(): Promise<Uint8Array> {
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest) {
-  const format = req.nextUrl.searchParams.get('format');
-  const accept = req.headers.get('accept') ?? '';
-
-  if (format !== 'pdf' && !accept.includes('application/pdf')) {
-    // Redirect non-PDF requests to the HTML DPA page
-    return NextResponse.redirect(new URL('/legal/dpa', req.url).toString().replace('/legal/dpa?', '/legal/dpa?') );
-  }
-
+export async function GET() {
   try {
     const pdfBytes = await buildDpaPdf();
     return new NextResponse(Buffer.from(pdfBytes), {

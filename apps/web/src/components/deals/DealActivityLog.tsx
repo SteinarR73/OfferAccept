@@ -29,7 +29,7 @@ export function deriveEvents(offer: OfferItem): DealEvent[] {
   const events: DealEvent[] = [
     {
       id: 'created',
-      label: 'Deal created',
+      label: 'Document created',
       timestamp: offer.createdAt,
       variant: 'neutral',
       icon: <FileText className={ICON_SIZE} aria-hidden="true" />,
@@ -55,7 +55,7 @@ export function deriveEvents(offer: OfferItem): DealEvent[] {
   if (status === 'ACCEPTED') {
     events.push({
       id: 'accepted',
-      label: 'Deal accepted — certificate issued',
+      label: 'Document accepted — certificate issued',
       timestamp: offer.updatedAt,
       variant: 'green',
       icon: <CheckCircle2 className={ICON_SIZE} aria-hidden="true" />,
@@ -65,7 +65,7 @@ export function deriveEvents(offer: OfferItem): DealEvent[] {
   if (status === 'DECLINED') {
     events.push({
       id: 'declined',
-      label: 'Customer declined the deal',
+      label: 'Recipient declined this document',
       timestamp: offer.updatedAt,
       variant: 'red',
       icon: <XCircle className={ICON_SIZE} aria-hidden="true" />,
@@ -75,7 +75,7 @@ export function deriveEvents(offer: OfferItem): DealEvent[] {
   if (status === 'REVOKED') {
     events.push({
       id: 'revoked',
-      label: 'Deal revoked',
+      label: 'Document revoked',
       timestamp: offer.updatedAt,
       variant: 'purple',
       icon: <RotateCcw className={ICON_SIZE} aria-hidden="true" />,
@@ -85,7 +85,7 @@ export function deriveEvents(offer: OfferItem): DealEvent[] {
   if (status === 'EXPIRED') {
     events.push({
       id: 'expired',
-      label: 'Deal expired without acceptance',
+      label: 'Document expired without acceptance',
       timestamp: offer.expiresAt ?? offer.updatedAt,
       variant: 'amber',
       icon: <Clock className={ICON_SIZE} aria-hidden="true" />,
@@ -95,15 +95,6 @@ export function deriveEvents(offer: OfferItem): DealEvent[] {
   // Return in chronological order
   return events;
 }
-
-const DOT_COLOR: Record<EventVariant, string> = {
-  neutral: 'bg-gray-400',
-  blue:    'bg-blue-500',
-  green:   'bg-green-500',
-  red:     'bg-red-500',
-  amber:   'bg-amber-400',
-  purple:  'bg-purple-500',
-};
 
 const ICON_COLOR: Record<EventVariant, string> = {
   neutral: 'text-gray-400',
@@ -126,7 +117,7 @@ export function DealActivityLog({ offer }: DealActivityLogProps) {
   return (
     <Card>
       <CardHeader title="Activity" border />
-      <ol aria-label="Deal activity log" className="px-5 py-4 space-y-4">
+      <ol aria-label="Document activity log" className="px-5 py-4 space-y-4">
         {events.map((event, i) => {
           const isLast = i === events.length - 1;
           return (

@@ -145,9 +145,9 @@ export interface BillingSubscription {
 
 export const PLAN_LIMITS: Record<SubscriptionPlan, number | null> = {
   FREE: 3,
-  STARTER: 25,
-  PROFESSIONAL: 100,
-  ENTERPRISE: null,
+  STARTER: 20,
+  PROFESSIONAL: 75,
+  ENTERPRISE: 250,
 };
 
 export async function getBillingSubscription(): Promise<BillingSubscription> {

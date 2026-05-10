@@ -25,7 +25,7 @@ function eventData(offer: OfferItem) {
 describe('deriveEvents', () => {
   it('DRAFT: single "Deal created" event', () => {
     expect(eventData(makeOffer())).toEqual([
-      { id: 'created', label: 'Deal created', variant: 'neutral' },
+      { id: 'created', label: 'Document created', variant: 'neutral' },
     ]);
   });
 
@@ -49,7 +49,7 @@ describe('deriveEvents', () => {
     expect(events).toHaveLength(3);
     expect(events[2]).toEqual({
       id: 'accepted',
-      label: 'Deal accepted — certificate issued',
+      label: 'Document accepted — certificate issued',
       variant: 'green',
     });
   });
@@ -59,7 +59,7 @@ describe('deriveEvents', () => {
     expect(events).toHaveLength(3);
     expect(events[2]).toEqual({
       id: 'declined',
-      label: 'Customer declined the deal',
+      label: 'Recipient declined this document',
       variant: 'red',
     });
   });
@@ -67,7 +67,7 @@ describe('deriveEvents', () => {
   it('REVOKED: created + sent + revoked events', () => {
     const events = eventData(makeOffer({ status: 'REVOKED' }));
     expect(events).toHaveLength(3);
-    expect(events[2]).toEqual({ id: 'revoked', label: 'Deal revoked', variant: 'purple' });
+    expect(events[2]).toEqual({ id: 'revoked', label: 'Document revoked', variant: 'purple' });
   });
 
   it('EXPIRED: created + sent + expired events', () => {
@@ -75,7 +75,7 @@ describe('deriveEvents', () => {
     expect(events).toHaveLength(3);
     expect(events[2]).toEqual({
       id: 'expired',
-      label: 'Deal expired without acceptance',
+      label: 'Document expired without acceptance',
       variant: 'amber',
     });
   });

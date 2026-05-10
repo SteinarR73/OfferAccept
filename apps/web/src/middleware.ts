@@ -52,8 +52,12 @@ export function middleware(request: NextRequest): NextResponse {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const csp   = buildCsp(nonce);
 
-  // ── Dashboard auth gate ───────────────────────────────────────────────────────
+  // ── Locale detection ─────────────────────────────────────────────────────────
+  // /no/* routes serve Norwegian copy + NOK pricing. All other routes are English.
   const { pathname } = request.nextUrl;
+  const isNorwegian = pathname.startsWith('/no/') || pathname === '/no';
+
+  // ── Dashboard auth gate ───────────────────────────────────────────────────────
   const isDashboard = pathname.startsWith('/dashboard');
   const sessionIndicator = request.cookies.get('oa_sess');
 
@@ -74,5 +78,19 @@ export function middleware(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
+
+  // Persist locale so client components (dashboard) can read it without a
+  // round-trip. The cookie is non-sensitive — it only controls display language.
+  const currentLocale = request.cookies.get('oa_locale')?.value;
+  const targetLocale = isNorwegian ? 'no' : 'en';
+  if (currentLocale !== targetLocale) {
+    response.cookies.set('oa_locale', targetLocale, {
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+
   return response;
 }

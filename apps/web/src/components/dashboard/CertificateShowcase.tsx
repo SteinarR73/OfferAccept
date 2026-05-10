@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Link2, CheckCircle2, Shield, ExternalLink } from 'lucide-react';
+import { Download, Link2, CheckCircle2, Shield, ExternalLink, PlusCircle } from 'lucide-react';
+import Link from 'next/link';
 import { getCertificate, type CertificateDetail } from '@/lib/offers-api';
 import { generateCertificatePdf } from '@/lib/certificate-pdf';
 import { Button } from '../ui/Button';
@@ -15,11 +16,18 @@ interface Props {
   certificateId: string;
 }
 
+function getLocale(): 'no' | 'en' {
+  if (typeof document === 'undefined') return 'en';
+  const m = document.cookie.match(/oa_locale=([^;]+)/);
+  return m?.[1] === 'no' ? 'no' : 'en';
+}
+
 export function CertificateShowcase({ certificateId }: Props) {
   const [cert, setCert] = useState<CertificateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const locale = getLocale();
 
   useEffect(() => {
     getCertificate(certificateId)
@@ -111,7 +119,7 @@ export function CertificateShowcase({ certificateId }: Props) {
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-1.5">
           <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" aria-hidden="true" />
-          <h2 className="text-xl font-bold text-green-800">Deal accepted</h2>
+          <h2 className="text-xl font-bold text-green-800">Document accepted</h2>
         </div>
         <p className="text-sm text-green-700 max-w-sm mx-auto">
           A tamper-proof acceptance certificate has been issued. Download the PDF to share with your team.
@@ -174,10 +182,51 @@ export function CertificateShowcase({ certificateId }: Props) {
         </Button>
       </div>
 
+      {/* ── Sharing helper ────────────────────────────────────────────────────── */}
+      <div className="mt-5 rounded-xl border border-green-200 bg-white/60 px-4 py-3">
+        <p className="text-xs font-semibold text-green-800 mb-1.5">Share or forward this certificate</p>
+        <p className="text-xs text-green-700/80 mb-1">Copy the verification link and send it to anyone who needs to confirm acceptance:</p>
+        <ul className="text-xs text-green-700/70 space-y-0.5">
+          <li>· accounting records and project documentation</li>
+          <li>· customer approvals and legal or archive purposes</li>
+          <li>· compliance reviews — no account required to verify</li>
+        </ul>
+      </div>
+
       {/* ── Footnote ──────────────────────────────────────────────────────────── */}
       <p className="text-center text-[11px] text-green-600/60 mt-4">
         tamper-evident · cryptographically sealed · verifiable by any third party
       </p>
+
+      {/* ── Second-send activation ────────────────────────────────────────────── */}
+      <div className="mt-5 border-t border-green-200 pt-4 flex justify-center">
+        <Link
+          href="/dashboard/deals/new"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-700 hover:text-green-900 transition-colors"
+        >
+          <PlusCircle className="w-4 h-4" aria-hidden="true" />
+          {locale === "no" ? "Send et nytt dokument →" : "Send another document →"}
+        </Link>
+      </div>
+
+      {/* ── Upgrade nudge ─────────────────────────────────────────────────────── */}
+      <div className="mt-3 text-center">
+        <p className="text-xs text-green-700/70 mb-0.5">
+          {locale === "no"
+            ? "Du er på Gratis-planen — 3 dokumenter per måned."
+            : "On the Free plan you get 3 documents per month."}
+        </p>
+        <p className="text-xs text-green-700/70">
+          <a
+            href={locale === "no" ? "/no/pricing" : "/pricing"}
+            className="font-semibold text-green-700 underline underline-offset-2 hover:text-green-900 transition-colors"
+          >
+            {locale === "no"
+              ? "Oppgrader til Starter for ubegrenset bruk →"
+              : "Upgrade to Starter for more documents →"}
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

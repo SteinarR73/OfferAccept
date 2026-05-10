@@ -24,7 +24,7 @@ interface Props {
   onClose: () => void;
 }
 
-const DEFAULT_DEAL_NAME = 'Test acceptance — OfferAccept';
+const DEFAULT_DEAL_NAME = 'Test document — OfferAccept';
 
 export function TryYourselfModal({ onClose }: Props) {
   const router = useRouter();
@@ -51,7 +51,7 @@ export function TryYourselfModal({ onClose }: Props) {
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Could not send the test deal. Please try again.',
+          : 'Could not send the test document. Please try again.',
       );
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export function TryYourselfModal({ onClose }: Props) {
               id="try-yourself-title"
               className="text-lg font-bold text-(--color-text-primary) leading-snug"
             >
-              Send a test deal to yourself
+              Send a test document to yourself
             </h2>
           </div>
           <button
@@ -106,10 +106,10 @@ export function TryYourselfModal({ onClose }: Props) {
                 <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
               <p className="text-base font-semibold text-(--color-text-primary) mb-2">
-                Test deal sent!
+                Test document sent!
               </p>
               <p className="text-sm text-(--color-text-secondary) leading-relaxed max-w-xs">
-                This was a test. Your real recipient will receive a similar link by email.
+                Check your inbox for the acceptance link. Click it to experience exactly what your recipients see — OTP verification, the signing screen, and the acceptance certificate.
               </p>
             </div>
             <Button
@@ -118,7 +118,7 @@ export function TryYourselfModal({ onClose }: Props) {
               className="w-full"
               onClick={() => { onClose(); router.push(`/dashboard/deals/${successDealId}?sent=1`); }}
             >
-              View test deal →
+              View test document →
             </Button>
           </div>
         ) : (
@@ -126,7 +126,7 @@ export function TryYourselfModal({ onClose }: Props) {
             {/* Body */}
             <div className="px-6 pb-2 space-y-4">
               <p className="text-sm text-(--color-text-secondary) leading-relaxed">
-                We&apos;ll send a deal to your own inbox. You&apos;ll see exactly what your
+                We&apos;ll send a document to your own inbox. You&apos;ll see exactly what your
                 recipients experience — the link, the OTP, the acceptance screen, and the
                 certificate.
               </p>
@@ -138,7 +138,7 @@ export function TryYourselfModal({ onClose }: Props) {
               )}
 
               <Input
-                label="Deal name"
+                label="Document name"
                 value={dealName}
                 onChange={(e) => setDealName(e.target.value)}
                 maxLength={200}
@@ -168,7 +168,7 @@ export function TryYourselfModal({ onClose }: Props) {
                 disabled={!emailValid}
                 leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
               >
-                Send test deal
+                Send test document
               </Button>
               <p className="text-[11px] text-(--color-text-muted) text-center leading-relaxed">
                 Takes under 60 seconds on the recipient side.

@@ -23,16 +23,16 @@ function formatRelative(isoDate: string): string {
 
 // Verb label — short, action-first, present tense where natural
 const EVENT_LABEL: Record<DealEventType, string> = {
-  'deal.created':          'Offer created',
-  'deal.sent':             'Offer sent',
-  'deal.opened':           'Offer opened',
+  'deal.created':          'Document created',
+  'deal.sent':             'Acceptance link sent',
+  'deal.opened':           'Recipient viewed the document',
   'otp.verified':          'Identity verified',
-  'deal.accepted':         'Offer accepted',
+  'deal.accepted':         'Accepted — certificate issued',
   'certificate.issued':    'Certificate issued',
   'deal.reminder_sent':    'Reminder sent',
-  'deal.revoked':          'Offer revoked',
-  'deal.expired':          'Offer expired',
-  'deal.declined':         'Offer declined',
+  'deal.revoked':          'Document revoked',
+  'deal.expired':          'Acceptance link expired',
+  'deal.declined':         'Recipient declined',
 };
 
 // Semantic accent dot per event type
@@ -79,33 +79,65 @@ export function ActivityFeed({ maxItems = 8 }: ActivityFeedProps) {
         />
       ) : (
         <ul className="divide-y divide-(--color-border-subtle)" aria-label="Offer activity feed">
-          {events.map((event) => (
-            <li key={event.id}>
-              <Link
-                href={`/dashboard/deals/${event.dealId}`}
-                className="flex items-start gap-3 px-5 py-3 hover:bg-(--color-hover) transition-colors focus-visible:outline-none focus-visible:bg-(--color-focus)"
-              >
-                {/* Semantic accent dot */}
-                <span
-                  className={`w-2 h-2 rounded-full flex-shrink-0 mt-[5px] ${EVENT_DOT[event.eventType] ?? 'bg-(--color-neutral-text)'}`}
-                  aria-hidden="true"
-                />
-
-                {/* Verb + deal title on separate lines */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-(--color-text-primary) leading-snug">
-                    {EVENT_LABEL[event.eventType] ?? event.eventType.replace(/[._]/g, ' ')}
-                  </p>
-                  <p className="text-[11px] text-(--color-text-secondary) mt-0.5 truncate leading-snug">
-                    {event.dealTitle}
-                  </p>
-                  <p className="text-[11px] text-(--color-text-muted) mt-0.5">
-                    {formatRelative(event.createdAt)}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
+          {events.map((event) => {
+            const isAccepted = event.eventType === 'deal.accepted';
+            if (isAccepted) {
+              // Accepted events: use a div wrapper to avoid nested anchors
+              return (
+                <li key={event.id}>
+                  <div className="flex items-start gap-3 px-5 py-3">
+                    <span
+                      className={`w-2 h-2 rounded-full flex-shrink-0 mt-[5px] ${EVENT_DOT[event.eventType] ?? 'bg-(--color-neutral-text)'}`}
+                      aria-hidden="true"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-(--color-text-primary) leading-snug">
+                        {EVENT_LABEL[event.eventType]}
+                      </p>
+                      <p className="text-[11px] text-(--color-text-secondary) mt-0.5 truncate leading-snug">
+                        {event.dealTitle}
+                      </p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-[11px] text-(--color-text-muted)">
+                          {formatRelative(event.createdAt)}
+                        </p>
+                        <Link
+                          href={`/dashboard/deals/${event.dealId}`}
+                          className="text-[11px] font-semibold text-(--color-accent) hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-(--color-accent) rounded"
+                        >
+                          View certificate →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            }
+            return (
+              <li key={event.id}>
+                <Link
+                  href={`/dashboard/deals/${event.dealId}`}
+                  className="flex items-start gap-3 px-5 py-3 hover:bg-(--color-hover) transition-colors focus-visible:outline-none focus-visible:bg-(--color-focus)"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 mt-[5px] ${EVENT_DOT[event.eventType] ?? 'bg-(--color-neutral-text)'}`}
+                    aria-hidden="true"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-(--color-text-primary) leading-snug">
+                      {EVENT_LABEL[event.eventType] ?? event.eventType.replace(/[._]/g, ' ')}
+                    </p>
+                    <p className="text-[11px] text-(--color-text-secondary) mt-0.5 truncate leading-snug">
+                      {event.dealTitle}
+                    </p>
+                    <p className="text-[11px] text-(--color-text-muted) mt-0.5">
+                      {formatRelative(event.createdAt)}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>
