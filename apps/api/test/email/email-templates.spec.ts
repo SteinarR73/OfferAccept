@@ -148,10 +148,14 @@ describe('Email templates', () => {
       verifyUrl: 'https://app.offeraccept.com/verify/cert-abc-123',
     };
 
-    it('subject contains recipient name and offer title', () => {
+    it('subject contains recipient name (offer title intentionally omitted for scannability)', () => {
       const { subject } = acceptanceConfirmationSenderEmail(params);
       expect(subject).toContain('Bob Client');
-      expect(subject).toContain('Web Redesign Proposal');
+    });
+
+    it('text body contains the offer title', () => {
+      const { text } = acceptanceConfirmationSenderEmail(params);
+      expect(text).toContain('Web Redesign Proposal');
     });
 
     it('text body contains certificate ID', () => {
@@ -164,9 +168,9 @@ describe('Email templates', () => {
       expect(html).toContain('cert-abc-123');
     });
 
-    it('text body contains recipient email', () => {
-      const { text } = acceptanceConfirmationSenderEmail(params);
-      expect(text).toContain('bob@client.com');
+    it('HTML body contains recipient email (text body omits it for readability)', () => {
+      const { html } = acceptanceConfirmationSenderEmail(params);
+      expect(html).toContain('bob@client.com');
     });
 
     it('HTML escapes XSS in recipient name', () => {

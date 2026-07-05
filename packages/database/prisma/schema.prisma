@@ -390,6 +390,14 @@ model OfferSnapshot {
   contentHash  String
   // No updatedAt — this record is immutable after creation
   frozenAt     DateTime  @default(now())
+  // Always 1 today: offerId is @unique above (one snapshot per offer, forever)
+  // and SendOfferService.resend() reuses this same snapshot rather than
+  // freezing a new one. This field exists so the acceptance statement and
+  // certificate can reference a stable version number, and so it's
+  // forward-compatible if a future amend/re-send flow ever creates multiple
+  // snapshots per offer. Not a live-incrementing counter today — do not build
+  // logic that assumes it varies.
+  version      Int       @default(1)
 
   offer       Offer                   @relation(fields: [offerId], references: [id])
   documents   OfferSnapshotDocument[]

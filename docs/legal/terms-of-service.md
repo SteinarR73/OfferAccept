@@ -1,6 +1,6 @@
 ---
 title: Terms of Service
-version: "1.1"
+version: "1.2"
 effectiveDate: "[DATO VED LANSERING]"
 product: OfferAccept
 immutable: true
@@ -9,7 +9,7 @@ language: "no"
 
 # OfferAccept — Vilkår for bruk
 
-**Versjon 1.1** | Gjelder fra: [DATO VED LANSERING]
+**Versjon 1.2** | Gjelder fra: [DATO VED LANSERING]
 
 ---
 
@@ -77,7 +77,7 @@ Kunden er behandlingsansvarlig i henhold til GDPR for personopplysningene som be
 
 Aksepterklæringen som vises til mottakeren og lagres i sertifikatet er serverside-generert og har følgende form:
 
-> *«I, [Mottakers navn], confirm that I have reviewed and accept the offer "[Tilbudstittel]" presented by [Avsenders navn] ([Avsenders e-post]). By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.»*
+> *«I, [Mottakers navn], confirm that I have reviewed and accept the offer "[Tilbudstittel]" (version [Tilbudsversjon], dated [Tilbudsdato]) presented by [Avsenders navn] ([Avsenders e-post]). This acceptance is made via my verified email address [Mottakers e-post]. By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented, and I confirm that I have authority to bind myself or, where applicable, the legal entity I represent. This confirmation constitutes an advanced electronic signature under the Norwegian Act on Electronic Commerce and Other Information Society Services (ehandelsloven), and not a qualified electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date and time of this confirmation is recorded in the certificate issued for this acceptance.»*
 
 ### 4.2 Bevisverdi
 
@@ -130,7 +130,7 @@ Kunden kan når som helst avslutte abonnementet. OfferAccept kan avslutte eller 
 
 ## 11. Verneting og lovvalg
 
-Disse vilkårene er underlagt norsk rett. Tvister som ikke løses i minnelighet bringes inn for kompetent norsk tingrett som vedtatt verneting. For kunder etablert i EU gjelder ufravikelig EU-forbrukervernlovgivning i tillegg til disse vilkårene der dette er relevant.
+Disse vilkårene er underlagt norsk rett. Tvister som ikke løses i minnelighet bringes inn for Stavanger tingrett som vedtatt verneting. For kunder etablert i EØS utenfor Norge gjelder ufravikelig lokal forbrukervernlovgivning i tillegg til disse vilkårene der dette er relevant.
 
 ---
 

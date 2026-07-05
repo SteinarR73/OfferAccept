@@ -50,9 +50,9 @@ function drawHRule(page: ReturnType<PDFDocument['addPage']>, y: number) {
 async function buildDpaPdf(): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle('OfferAccept Data Processing Agreement');
-  doc.setAuthor('OfferAccept, Inc.');
+  doc.setAuthor('OfferAccept AS');
   doc.setCreator('OfferAccept');
-  doc.setSubject('DPA v1.0');
+  doc.setSubject('DPA v1.1');
 
   const helvetica     = await doc.embedFont(StandardFonts.Helvetica);
   const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -98,7 +98,7 @@ async function buildDpaPdf(): Promise<Uint8Array> {
   // Document title
   page.drawText('Data Processing Agreement', { x: MARGIN, y, size: 18, font: helveticaBold, color: BLACK });
   y -= 24;
-  page.drawText('DPA Version 1.0  ·  Effective March 2026', { x: MARGIN, y, size: 9, font: helvetica, color: MUTED });
+  page.drawText('DPA Version 1.1  ·  Effective March 2026', { x: MARGIN, y, size: 9, font: helvetica, color: MUTED });
   y -= 6;
   drawHRule(page, y);
   y -= 20;
@@ -106,8 +106,8 @@ async function buildDpaPdf(): Promise<Uint8Array> {
   // ── Parties ───────────────────────────────────────────────────────────────
   drawSection(
     '1. Parties',
-    'This Data Processing Agreement ("DPA") is between OfferAccept, Inc. ("Processor"), a Delaware ' +
-    'corporation, and the organisation that has accepted the OfferAccept Terms of Service ("Controller"). ' +
+    'This Data Processing Agreement ("DPA") is between OfferAccept AS ("Processor"), a Norwegian ' +
+    'company, and the organisation that has accepted the OfferAccept Terms of Service ("Controller"). ' +
     'Together, the parties are referred to as "the parties". By using the OfferAccept service the Controller ' +
     'agrees to the terms of this DPA.',
   );
@@ -115,10 +115,12 @@ async function buildDpaPdf(): Promise<Uint8Array> {
   // ── Processing purpose ────────────────────────────────────────────────────
   drawSection(
     '2. Processing purpose',
-    'The Processor processes personal data solely to provide the OfferAccept service as described in the ' +
-    'Terms of Service: sending deal documents to recipients, verifying recipient email via one-time passcode ' +
-    '(OTP), recording acceptance or decline events, and issuing tamper-evident acceptance certificates. ' +
-    'Processing occurs only on documented instructions from the Controller.',
+    '(a) The Processor processes personal data solely to provide the OfferAccept service as described in ' +
+    'the Terms of Service: sending deal documents to recipients, verifying recipient email via one-time ' +
+    'passcode (OTP), recording acceptance or decline events, and issuing tamper-evident acceptance ' +
+    'certificates. Processing occurs only on documented instructions from the Controller, per GDPR Art. ' +
+    '28(3)(a). (b) Personnel authorised to process personal data under this DPA are subject to ' +
+    'confidentiality obligations, per Art. 28(3)(b).',
   );
 
   // ── Categories of data ────────────────────────────────────────────────────
@@ -134,30 +136,40 @@ async function buildDpaPdf(): Promise<Uint8Array> {
   // ── Security obligations ──────────────────────────────────────────────────
   drawSection(
     '4. Security obligations',
-    'The Processor implements and maintains appropriate technical and organisational measures to protect ' +
-    'personal data, including: encryption in transit (TLS 1.2+) and at rest; access controls limiting data ' +
-    'access to authorised personnel; SHA-256 certificate integrity sealing to detect unauthorised alteration; ' +
-    'rate limiting and monitoring on authentication endpoints; HttpOnly, Secure, SameSite=Strict cookies; ' +
-    'and immutable append-only acceptance evidence tables.',
+    '(c) The Processor implements and maintains appropriate technical and organisational measures to ' +
+    'protect personal data, as required by GDPR Art. 32, including: encryption in transit (TLS 1.2+) and ' +
+    'at rest; access controls limiting data access to authorised personnel; SHA-256 certificate integrity ' +
+    'sealing to detect unauthorised alteration; rate limiting and monitoring on authentication endpoints; ' +
+    'HttpOnly, Secure, SameSite=Strict cookies; and immutable append-only acceptance evidence tables. ' +
+    '(f) The Processor assists the Controller, insofar as possible, in fulfilling its obligations under ' +
+    'Art. 32-36, including via the breach notification commitment in Clause 7.',
   );
 
   // ── Data retention ────────────────────────────────────────────────────────
   drawSection(
     '5. Data retention',
-    'Acceptance certificates and associated evidence records are retained for the lifetime of the ' +
-    'Controller\'s account and for a minimum of 7 years after acceptance to support legal and compliance ' +
-    'use cases. Personal data in mutable records (user accounts, draft offers) may be deleted on request ' +
-    'subject to the erasure procedure described in Clause 9. Acceptance records cannot be deleted because ' +
-    'deletion would invalidate the certificate integrity guarantees.',
+    'Acceptance certificates and associated evidence records (AcceptanceRecord, OfferSnapshot, ' +
+    'SigningEvent, AcceptanceCertificate) are retained for the lifetime of the Controller\'s account and ' +
+    'for a minimum of 7 years after acceptance to support legal and compliance use cases. This floor ' +
+    'reflects the 5-year bookkeeping retention period under the Norwegian Bookkeeping Act ' +
+    '(bokforingsloven) Section 13 and the general 3-year (up to 10-year, in cases with a qualifying legal ' +
+    'basis) limitation periods under the Norwegian Limitation Act (foreldelsesloven) Section 2 for ' +
+    'contract-related claims. Separate, shorter-lived operational data (such as in-progress email ' +
+    'verification sessions) is purged automatically as part of the Processor\'s data minimisation ' +
+    'practices, independent of this retention floor. (e)(g) Personal data in mutable records (user ' +
+    'accounts, draft offers) may be deleted or returned on request, subject to the erasure procedure ' +
+    'described in Clause 9; verified requests are processed within 30 days. Acceptance records cannot be ' +
+    'deleted because deletion would invalidate the certificate integrity guarantees.',
   );
 
   // ── Sub-processors ────────────────────────────────────────────────────────
   drawSection(
     '6. Sub-processors',
-    'The Processor uses the following categories of sub-processors to deliver the service: cloud ' +
-    'infrastructure (hosting and database); transactional email delivery; and payment processing. The ' +
-    'Processor will notify the Controller with at least 14 days\' notice of material changes to ' +
-    'sub-processors.',
+    '(d) The Processor uses the following categories of sub-processors to deliver the service, engaged ' +
+    'subject to the same data protection obligations set out in this DPA: cloud infrastructure (hosting, ' +
+    'database, and object storage); transactional email delivery; payment processing; and error ' +
+    'monitoring. See offeraccept.com/legal/subprocessors for the confirmed list. The Processor will ' +
+    'notify the Controller with at least 14 days\' notice of material changes to sub-processors.',
   );
 
   // ── Breach notification ───────────────────────────────────────────────────
@@ -172,9 +184,12 @@ async function buildDpaPdf(): Promise<Uint8Array> {
   // ── International transfers ───────────────────────────────────────────────
   drawSection(
     '8. International transfers',
-    'The Processor is based in the United States. Transfers of personal data from the EEA to the Processor ' +
-    'are made under Standard Contractual Clauses (SCCs) as adopted by the European Commission (Commission ' +
-    'Decision 2021/914). A copy of the applicable SCCs is available on request from privacy@offeraccept.com.',
+    'The Processor is based in Norway. Certain sub-processors used to deliver the service are located ' +
+    'outside the EEA (see offeraccept.com/legal/subprocessors for the confirmed list and each ' +
+    'sub-processor\'s location). Transfers of personal data to sub-processors located outside the EEA are ' +
+    'made under Standard Contractual Clauses (SCCs) as adopted by the European Commission (Commission ' +
+    'Decision 2021/914), or another valid transfer mechanism under GDPR Art. 46. A copy of the applicable ' +
+    'SCCs is available on request from privacy@offeraccept.com.',
   );
 
   // ── Data subject rights ───────────────────────────────────────────────────
@@ -183,16 +198,27 @@ async function buildDpaPdf(): Promise<Uint8Array> {
     'The Controller is responsible for managing data subject rights requests from its own staff and ' +
     'customers. The Processor provides: (a) a data export endpoint (GET /api/v1/account/export) returning ' +
     'all personal data held for the requesting user; and (b) an erasure request endpoint ' +
-    '(POST /api/v1/account/erasure-request) that initiates the account deletion workflow. Acceptance records ' +
-    'and certificate evidence cannot be deleted or pseudonymised because doing so would invalidate the ' +
-    'certificate hash and destroy the evidentiary record.',
+    '(POST /api/v1/account/erasure-request) that initiates the account deletion workflow, processed within ' +
+    '30 days of a verified request. Acceptance records and certificate evidence cannot be deleted or ' +
+    'pseudonymised because doing so would invalidate the certificate hash and destroy the evidentiary ' +
+    'record.',
+  );
+
+  // ── Audits and compliance ─────────────────────────────────────────────────
+  drawSection(
+    '10. Audits and compliance',
+    '(h) The Processor makes available to the Controller information reasonably necessary to demonstrate ' +
+    'compliance with this DPA, and permits and contributes to audits, including inspections, conducted by ' +
+    'the Controller or an auditor mandated by the Controller, subject to reasonable advance notice and ' +
+    'confidentiality.',
   );
 
   // ── Governing law ─────────────────────────────────────────────────────────
   drawSection(
-    '10. Governing law',
-    'This DPA is governed by the laws of the State of Delaware, United States, without regard to its ' +
-    'conflict of law provisions.',
+    '11. Governing law',
+    'This DPA is governed by Norwegian law, without regard to its conflict of law provisions. Disputes ' +
+    'that cannot be resolved amicably shall be brought before Stavanger tingrett (Stavanger District ' +
+    'Court) as the exclusive venue of first instance.',
   );
 
   // ── Signature blocks ──────────────────────────────────────────────────────
@@ -229,10 +255,10 @@ async function buildDpaPdf(): Promise<Uint8Array> {
 
   // Processor block (right)
   fieldY = y;
-  page.drawText('PROCESSOR — OfferAccept, Inc.', { x: rightX, y: fieldY + 16, size: 8, font: helveticaBold, color: ACCENT });
+  page.drawText('PROCESSOR — OfferAccept AS', { x: rightX, y: fieldY + 16, size: 8, font: helveticaBold, color: ACCENT });
 
   const processorDefaults: Record<string, string> = {
-    'Company name': 'OfferAccept, Inc.',
+    'Company name': 'OfferAccept AS',
     'Title': 'Chief Executive Officer',
   };
 
@@ -257,7 +283,7 @@ async function buildDpaPdf(): Promise<Uint8Array> {
   const pages = doc.getPages();
   for (let i = 0; i < pages.length; i++) {
     const p = pages[i];
-    p.drawText(`OfferAccept DPA v1.0  ·  Page ${i + 1} of ${pages.length}  ·  privacy@offeraccept.com`, {
+    p.drawText(`OfferAccept DPA v1.1  ·  Page ${i + 1} of ${pages.length}  ·  privacy@offeraccept.com`, {
       x: MARGIN,
       y: 28,
       size: 7,
@@ -278,7 +304,7 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="offeraccept-dpa-v1.0.pdf"',
+        'Content-Disposition': 'attachment; filename="offeraccept-dpa-v1.1.pdf"',
         'Content-Length': String(pdfBytes.byteLength),
         'Cache-Control': 'public, max-age=86400',
       },

@@ -10,6 +10,7 @@ import { RateLimitModule } from '../../src/common/rate-limit/rate-limit.module';
 import { REDIS_CLIENT } from '../../src/common/rate-limit/rate-limit.service';
 import { JobService } from '../../src/modules/jobs/job.service';
 import { STORAGE_PORT } from '../../src/common/storage/storage.port';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 
 // ─── Minimal global stub for JobsModule ──────────────────────────────────────
 // JobsModule is @Global() in the real app (imported in AppModule) but is NOT
@@ -38,6 +39,20 @@ class StubJobsModule {
   exports: [STORAGE_PORT],
 })
 class MockStorageModule {}
+
+// ── Global mock for MetricsService ───────────────────────────────────────────
+// MetricsModule is @Global() in production (via AppModule) but not imported here.
+// CertificatePdfService (via CertificatesModule, pulled in by SigningModule) depends on it.
+@Global()
+@Module({
+  providers: [{ provide: MetricsService, useValue: {
+    recordDealAccepted: () => undefined,
+    recordCertificateVerification: () => undefined,
+    recordCertificatePdfGenerated: () => undefined,
+  }}],
+  exports: [MetricsService],
+})
+class MockMetricsModule {}
 import { AuthModule } from '../../src/common/auth/auth.module';
 import { EmailModule } from '../../src/common/email/email.module';
 import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
@@ -103,6 +118,7 @@ describe('Public Signing Flow (e2e)', () => {
         // MockStorageModule must come before SigningModule so STORAGE_PORT is
         // globally visible when CertificatesController's dependencies are resolved.
         MockStorageModule,
+        MockMetricsModule,
         SigningModule,
       ],
     })

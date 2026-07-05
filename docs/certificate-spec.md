@@ -33,6 +33,7 @@ Sourced exclusively from `OfferSnapshot`. Never from mutable `Offer` fields.
 | `offer.message` | string \| null | `OfferSnapshot.message` | Frozen at send time |
 | `offer.expiresAt` | ISO 8601 \| null | `OfferSnapshot.expiresAt` | Offer expiry as set at send time |
 | `offer.sentAt` | ISO 8601 | `OfferSnapshot.frozenAt` | When the offer was frozen/sent |
+| `offer.version` | integer | `OfferSnapshot.version` | Snapshot version number (always 1 today — see schema comment on `OfferSnapshot.version`) |
 | `offer.snapshotContentHash` | hex string | `OfferSnapshot.contentHash` | SHA-256 of canonical snapshot JSON |
 
 ### 3. Sender Identity
@@ -133,7 +134,8 @@ The `certificateHash` is the SHA-256 of the canonical JSON serialization of the 
     "message": "..." | null,
     "sentAt": "...",
     "snapshotContentHash": "...",
-    "title": "..."
+    "title": "...",
+    "version": 1
   },
   "recipient": {
     "name": "...",

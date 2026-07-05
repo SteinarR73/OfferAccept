@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { LoginLockoutService } from '../../src/modules/auth/login-lockout.service';
 import { UnauthorizedException } from '@nestjs/common';
 import {
   AuthTokenInvalidError,
@@ -61,6 +62,11 @@ async function buildController() {
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: LoginLockoutService, useValue: {
+        check: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        recordFailure: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        clearFailures: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      } },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
       { provide: ConfigService, useValue: { get: () => undefined } },
     ],

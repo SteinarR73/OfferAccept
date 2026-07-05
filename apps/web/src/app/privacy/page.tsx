@@ -25,7 +25,7 @@ export default function PrivacyPage() {
       <main className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
         <p className="text-sm text-gray-500 mb-8">
-          Version 1.1 · Effective March 2026 · OfferAccept, Inc.
+          Version 1.2 · Effective March 2026 · OfferAccept AS
         </p>
 
         <div className="prose prose-sm prose-gray max-w-none space-y-6 text-sm text-gray-700 leading-relaxed">
@@ -107,8 +107,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">GDPR (EEA residents)</h2>
             <p className="mb-2">
-              <strong>Data Controller:</strong> OfferAccept, Inc., incorporated in Delaware, United
-              States. Contact:{' '}
+              <strong>Data Controller:</strong> OfferAccept AS, incorporated in Norway. Contact:{' '}
               <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
                 privacy@offeraccept.com
               </a>

@@ -144,7 +144,10 @@ export class SigningFlowService {
       })),
       acceptanceStatement: buildAcceptanceStatement({
         recipientName: recipient.name,
+        recipientEmail: recipient.email,
         offerTitle: snapshot.title,
+        offerVersion: snapshot.version,
+        offerDate: snapshot.frozenAt,
         senderName: snapshot.senderName,
         senderEmail: snapshot.senderEmail,
       }),

@@ -24,6 +24,7 @@ function makePayload(overrides: Partial<CertificatePayload> = {}): CertificatePa
       message: 'Please review.',
       expiresAt: null,
       sentAt: '2024-05-31T10:00:00.000Z',
+      version: 1,
       snapshotContentHash: 'a'.repeat(64),
     },
     sender: { name: 'Alice Sender', email: 'alice@co.com' },

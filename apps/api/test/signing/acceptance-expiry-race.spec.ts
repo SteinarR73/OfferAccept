@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import {
   OfferExpiredError,
@@ -197,6 +198,7 @@ async function buildService(db: MockDb) {
       AcceptanceService,
       SigningEventService,
       { provide: 'PRISMA', useValue: db },
+      { provide: ConfigService, useValue: { get: () => undefined } },
     ],
   }).compile();
 

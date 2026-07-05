@@ -1,6 +1,6 @@
 ---
 title: Acceptance Statement Specification
-version: "1.1"
+version: "2.0"
 effectiveDate: "[DATO VED LANSERING]"
 product: OfferAccept
 immutable: true
@@ -9,7 +9,7 @@ language: "no"
 
 # OfferAccept — Teknisk og juridisk spesifikasjon av aksepterklæringen
 
-**Versjon 1.1**
+**Versjon 2.0**
 
 ---
 
@@ -17,11 +17,11 @@ language: "no"
 
 Følgende tekst genereres av `buildAcceptanceStatement()` på serveren og er identisk i visningsflaten og i det lagrede sertifikatet:
 
-> *«I, [Recipient Name], confirm that I have reviewed and accept the offer "[Offer Title]" presented by [Sender Name] ([Sender Email]). By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.»*
+> *«I, [Recipient Name], confirm that I have reviewed and accept the offer "[Offer Title]" (version [Offer Version], dated [Offer Date]) presented by [Sender Name] ([Sender Email]). This acceptance is made via my verified email address [Recipient Email]. By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented, and I confirm that I have authority to bind myself or, where applicable, the legal entity I represent. This confirmation constitutes an advanced electronic signature under the Norwegian Act on Electronic Commerce and Other Information Society Services (ehandelsloven), and not a qualified electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date and time of this confirmation is recorded in the certificate issued for this acceptance.»*
 
 **Eksempel med faktiske verdier:**
 
-> *«I, Kari Nordmann, confirm that I have reviewed and accept the offer "Ansettelsestilbud – Seniorutvikler" presented by Steinar Reilstad (steinar@bedrift.no). By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.»*
+> *«I, Kari Nordmann, confirm that I have reviewed and accept the offer "Ansettelsestilbud – Seniorutvikler" (version 1, dated 12 May 2026) presented by Steinar Reilstad (steinar@bedrift.no). This acceptance is made via my verified email address kari.nordmann@example.no. By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented, and I confirm that I have authority to bind myself or, where applicable, the legal entity I represent. This confirmation constitutes an advanced electronic signature under the Norwegian Act on Electronic Commerce and Other Information Society Services (ehandelsloven), and not a qualified electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date and time of this confirmation is recorded in the certificate issued for this acceptance.»*
 
 ---
 

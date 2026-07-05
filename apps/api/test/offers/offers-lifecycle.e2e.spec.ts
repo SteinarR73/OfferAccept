@@ -13,6 +13,7 @@ import { DevEmailAdapter } from '../../src/common/email/dev-email.adapter';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
 import { SubscriptionService } from '../../src/modules/billing/subscription.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 
 @Global()
 @Module({
@@ -22,8 +23,9 @@ import { SubscriptionService } from '../../src/modules/billing/subscription.serv
       assertCanSendOffer: () => Promise.resolve(),
       incrementOfferCount: () => Promise.resolve(),
     }},
+    { provide: MetricsService, useValue: { recordDealSent: () => undefined, recordDealAccepted: () => undefined, recordCertificateVerification: () => undefined } },
   ],
-  exports: [RateLimitService, SubscriptionService],
+  exports: [RateLimitService, SubscriptionService, MetricsService],
 })
 class MockRateLimitModule {}
 import {

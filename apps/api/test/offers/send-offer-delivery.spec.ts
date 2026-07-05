@@ -14,9 +14,10 @@ import { ResendDeliveryError } from '../../src/common/email/resend-email.adapter
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
 import { SubscriptionService } from '../../src/modules/billing/subscription.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 import { PlanLimitExceededError } from '../../src/common/errors/domain.errors';
 
-// ── Global mock for RateLimitService + SubscriptionService ───────────────────
+// ── Global mock for RateLimitService + SubscriptionService + MetricsService ──
 @Global()
 @Module({
   providers: [
@@ -25,8 +26,9 @@ import { PlanLimitExceededError } from '../../src/common/errors/domain.errors';
       assertCanSendOffer: () => Promise.resolve(),
       incrementOfferCount: () => Promise.resolve(),
     }},
+    { provide: MetricsService, useValue: { recordDealSent: () => undefined, recordDealAccepted: () => undefined, recordCertificateVerification: () => undefined } },
   ],
-  exports: [RateLimitService, SubscriptionService],
+  exports: [RateLimitService, SubscriptionService, MetricsService],
 })
 class MockRateLimitModule {}
 import {

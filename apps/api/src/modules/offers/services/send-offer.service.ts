@@ -182,6 +182,11 @@ export class SendOfferService {
     // ── Atomic transaction ────────────────────────────────────────────────────
     const snapshot = await this.db.$transaction(async (tx) => {
       // 1. Create immutable snapshot
+      // NOTE: version defaults to 1 (schema default) and is never passed here.
+      // offerId is @unique on OfferSnapshot, so this is the only snapshot this
+      // offer will ever have — resend() below reuses it rather than freezing a
+      // new one. If a future amend/re-send flow needs real multi-version
+      // snapshots, see the OfferSnapshot.version comment in schema.prisma first.
       const snap = await tx.offerSnapshot.create({
         data: {
           offerId: offer.id,

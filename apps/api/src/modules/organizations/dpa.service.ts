@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** DPA document version served at /legal/dpa. Bump when the document changes. */
-export const CURRENT_DPA_VERSION = '1.0';
+export const CURRENT_DPA_VERSION = '1.1';
 
 // ─── DpaService ────────────────────────────────────────────────────────────────
 // Handles DPA acceptance recording and status retrieval.

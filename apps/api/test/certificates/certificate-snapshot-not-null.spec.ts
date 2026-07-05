@@ -5,6 +5,7 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 
 // ─── P1-5: AcceptanceCertificate.snapshotId NOT NULL enforcement ───────────────
 //
@@ -33,6 +34,7 @@ function makePayload() {
       message: null,
       expiresAt: null,
       sentAt: '2025-01-14T08:00:00.000Z',
+      version: 1,
       snapshotContentHash: 'a'.repeat(64),
     },
     sender:    { name: 'Alice', email: 'alice@co.com' },
@@ -109,6 +111,7 @@ async function buildService(db: MockDb) {
           getRecentForOrg: (jest.fn() as AnyMock).mockResolvedValue([]),
         },
       },
+      { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
     ],
   }).compile();
 

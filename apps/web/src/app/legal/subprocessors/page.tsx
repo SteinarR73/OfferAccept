@@ -35,6 +35,20 @@ const CONFIRMED: {
     location: 'United States',
     transfer: 'Standard Contractual Clauses (SCCs)',
   },
+  {
+    name: 'Amazon Web Services (S3)',
+    purpose: 'Object storage for uploaded documents and generated certificate PDFs',
+    data: 'Document files, certificate PDFs (no separate personal data beyond what the file contains)',
+    location: 'Ireland (eu-west-1)',
+    transfer: 'N/A — stored within the EEA',
+  },
+  {
+    name: 'Vercel',
+    purpose: 'Frontend application hosting',
+    data: 'Request metadata (IP address, browser information) for the web application',
+    location: 'United States',
+    transfer: 'Standard Contractual Clauses (SCCs)',
+  },
 ];
 
 export default function SubprocessorsPage() {
@@ -58,7 +72,7 @@ export default function SubprocessorsPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Sub-processors</h1>
           <p className="text-sm text-gray-500">
-            Last updated: May 2026 · OfferAccept, Inc.
+            Last updated: July 2026 · OfferAccept AS
           </p>
         </div>
 
@@ -125,9 +139,9 @@ export default function SubprocessorsPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Infrastructure</h2>
             <p>
-              OfferAccept uses cloud infrastructure for hosting, database, object storage, and
-              caching. Details of specific providers will be added to this page when finalised. In
-              the interim, please contact{' '}
+              Object storage (AWS S3) and frontend hosting (Vercel) are confirmed above. The
+              production database, cache, and API compute provider are not yet finalised. Details
+              will be added to this page once confirmed. In the interim, please contact{' '}
               <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
                 privacy@offeraccept.com
               </a>{' '}

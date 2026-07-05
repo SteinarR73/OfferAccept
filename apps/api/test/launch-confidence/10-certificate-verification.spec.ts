@@ -72,6 +72,7 @@ const CERT_PAYLOAD: CertificatePayload = {
     message: 'Please review and accept.',
     expiresAt: '2026-04-01T00:00:00.000Z',
     sentAt: '2026-02-28T09:00:00.000Z',
+    version: 1,
     snapshotContentHash: COMPUTED_SNAPSHOT_HASH,
   },
   sender: { name: 'Acme Corp', email: 'sender@acme.com' },

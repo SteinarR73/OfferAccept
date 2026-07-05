@@ -10,6 +10,7 @@ import {
 } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
 
 // ─── Certificate tampering detection tests ────────────────────────────────────
@@ -52,6 +53,7 @@ function makeSnapshotData() {
     senderEmail: 'alice@corp.com',
     expiresAt: null,
     frozenAt: new Date('2024-05-01T10:00:00.000Z'),
+    version: 1,
     // Correct contentHash computed from the docs above
     contentHash: computeSnapshotHash({
       title: 'Service Agreement 2024',
@@ -77,6 +79,7 @@ function makePayload(issuedAt = ISSUED_AT) {
       message: snapshot.message,
       expiresAt: null,
       sentAt: snapshot.frozenAt.toISOString(),
+      version: snapshot.version,
       snapshotContentHash: snapshot.contentHash,
     },
     sender: { name: snapshot.senderName, email: snapshot.senderEmail },
@@ -183,6 +186,7 @@ async function buildService(overrides: {
       { provide: CertificatePayloadBuilder, useValue: builder },
       { provide: SigningEventService, useValue: eventService },
       { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
+      { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
     ],
   }).compile();
 

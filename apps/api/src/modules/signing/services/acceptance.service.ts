@@ -6,7 +6,7 @@ import { offerStateMachine } from '../../offers/domain/offer.state-machine';
 import { recipientStateMachine } from '../../offers/domain/offer-recipient.state-machine';
 import { sessionStateMachine } from '../domain/signing-session.state-machine';
 import { SigningEventService } from './signing-event.service';
-import { buildAcceptanceStatement } from '../domain/acceptance-statement';
+import { buildAcceptanceStatement, ACCEPTANCE_STATEMENT_TEMPLATE_VERSION } from '../domain/acceptance-statement';
 import {
   SessionNotVerifiedError,
   OtpChallengeMismatchError,
@@ -108,7 +108,10 @@ export class AcceptanceService {
     const acceptedAt = new Date();
     const acceptanceStatement = buildAcceptanceStatement({
       recipientName: recipient.name,
+      recipientEmail: challenge.deliveryAddress,
       offerTitle: snapshot.title,
+      offerVersion: snapshot.version,
+      offerDate: snapshot.frozenAt,
       senderName: snapshot.senderName,
       senderEmail: snapshot.senderEmail,
     });
@@ -154,6 +157,7 @@ export class AcceptanceService {
             recipientId: recipient.id,
             snapshotId: snapshot.id,
             acceptanceStatement,
+            acceptanceStatementVersion: ACCEPTANCE_STATEMENT_TEMPLATE_VERSION,
             verifiedEmail: challenge.deliveryAddress,
             emailVerifiedAt: challenge.verifiedAt!,
             acceptedAt,

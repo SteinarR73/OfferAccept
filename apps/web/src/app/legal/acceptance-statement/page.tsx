@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Acceptance Statement — OfferAccept',
   description:
-    'Acceptance Statement Specification v1.1. Exact wording, use-case examples, technical integrity guarantees, and eIDAS positioning for the OfferAccept acceptance statement.',
+    'Acceptance Statement Specification v2.0. Exact wording, use-case examples, technical integrity guarantees, and eIDAS positioning for the OfferAccept acceptance statement.',
 };
 
 export default function AcceptanceStatementPage() {
@@ -27,7 +27,7 @@ export default function AcceptanceStatementPage() {
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Acceptance Statement</h1>
-          <p className="text-sm text-gray-500">Version 1.1 · Technical and legal specification</p>
+          <p className="text-sm text-gray-500">Version 2.0 · Technical and legal specification</p>
         </div>
 
         <div className="space-y-8 text-sm text-gray-700 leading-relaxed">
@@ -52,10 +52,23 @@ export default function AcceptanceStatementPage() {
             </p>
             <blockquote className="border-l-4 border-(--color-accent) pl-4 py-2 bg-gray-50 rounded-r-lg italic text-gray-800">
               &ldquo;I, [Recipient Name], confirm that I have reviewed and accept the offer
-              &ldquo;[Document Title]&rdquo; presented by [Sender Name] ([Sender Email]). By
-              confirming this acceptance, I acknowledge this action as my binding agreement to the
-              terms presented.&rdquo;
+              &ldquo;[Document Title]&rdquo; (version [Offer Version], dated [Offer Date])
+              presented by [Sender Name] ([Sender Email]). This acceptance is made via my
+              verified email address [Recipient Email]. By confirming this acceptance, I
+              acknowledge this action as my binding agreement to the terms presented, and I
+              confirm that I have authority to bind myself or, where applicable, the legal entity
+              I represent. This confirmation constitutes an advanced electronic signature under
+              the Norwegian Act on Electronic Commerce and Other Information Society Services
+              (ehandelsloven), and not a qualified electronic signature under EU Regulation No
+              910/2014 (eIDAS). The exact date and time of this confirmation is recorded in the
+              certificate issued for this acceptance.&rdquo;
             </blockquote>
+            {/*
+              MUST be updated whenever buildAcceptanceStatement() in
+              apps/api/src/modules/signing/domain/acceptance-statement.ts changes — there is
+              no automated check tying this page to that source file. /legal/terms §4.1 mirrors
+              this same wording and must move in lockstep too.
+            */}
           </section>
 
           {/* ── 2. Use-case examples ─────────────────────────────────────── */}
@@ -82,13 +95,23 @@ export default function AcceptanceStatementPage() {
                 <div className="px-4 py-3 bg-white">
                   <blockquote className="italic text-gray-800 text-sm border-l-4 border-blue-200 pl-3">
                     &ldquo;I, Sarah Chen, confirm that I have reviewed and accept the offer
-                    &ldquo;Website Redesign Proposal — Q2 2026&rdquo; presented by Alex Rivera
-                    (alex@designstudio.co). By confirming this acceptance, I acknowledge this
-                    action as my binding agreement to the terms presented.&rdquo;
+                    &ldquo;Website Redesign Proposal — Q2 2026&rdquo; (version 1, dated 28 April
+                    2026) presented by Alex Rivera (alex@designstudio.co). This acceptance is
+                    made via my verified email address sarah@clientco.com. By confirming this
+                    acceptance, I acknowledge this action as my binding agreement to the terms
+                    presented, and I confirm that I have authority to bind myself or, where
+                    applicable, the legal entity I represent. This confirmation constitutes an
+                    advanced electronic signature under the Norwegian Act on Electronic Commerce
+                    and Other Information Society Services (ehandelsloven), and not a qualified
+                    electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date
+                    and time of this confirmation is recorded in the certificate issued for this
+                    acceptance.&rdquo;
                   </blockquote>
                   <p className="text-xs text-gray-500 mt-2">
-                    What this records: Sarah, using the email sarah@clientco.com, confirmed
-                    acceptance of the proposal as presented at 14:22 UTC on 3 May 2026.
+                    What this records: Sarah, using the verified email sarah@clientco.com,
+                    confirmed acceptance of version 1 of the proposal (frozen 28 April 2026) — the
+                    exact acceptance timestamp is recorded in the issued certificate, not in the
+                    statement text itself.
                   </p>
                 </div>
               </div>
@@ -106,13 +129,22 @@ export default function AcceptanceStatementPage() {
                 <div className="px-4 py-3 bg-white">
                   <blockquote className="italic text-gray-800 text-sm border-l-4 border-blue-200 pl-3">
                     &ldquo;I, Marcus Johnson, confirm that I have reviewed and accept the offer
-                    &ldquo;Offer of Employment — Senior Engineer&rdquo; presented by Acme Corp
-                    (talent@acmecorp.com). By confirming this acceptance, I acknowledge this
-                    action as my binding agreement to the terms presented.&rdquo;
+                    &ldquo;Offer of Employment — Senior Engineer&rdquo; (version 1, dated 2 May
+                    2026) presented by Acme Corp (talent@acmecorp.com). This acceptance is made
+                    via my verified email address marcus.johnson@gmail.com. By confirming this
+                    acceptance, I acknowledge this action as my binding agreement to the terms
+                    presented, and I confirm that I have authority to bind myself or, where
+                    applicable, the legal entity I represent. This confirmation constitutes an
+                    advanced electronic signature under the Norwegian Act on Electronic Commerce
+                    and Other Information Society Services (ehandelsloven), and not a qualified
+                    electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date
+                    and time of this confirmation is recorded in the certificate issued for this
+                    acceptance.&rdquo;
                   </blockquote>
                   <p className="text-xs text-gray-500 mt-2">
-                    What this records: Marcus, using marcus.johnson@gmail.com, confirmed acceptance
-                    of the offer letter and attached documents at a specific timestamp. The
+                    What this records: Marcus, using the verified email
+                    marcus.johnson@gmail.com, confirmed acceptance of the offer letter and
+                    attached documents, with the exact timestamp recorded in the certificate. The
                     certificate provides evidence the candidate received and accepted the stated
                     terms.
                   </p>
@@ -132,14 +164,25 @@ export default function AcceptanceStatementPage() {
                 <div className="px-4 py-3 bg-white">
                   <blockquote className="italic text-gray-800 text-sm border-l-4 border-blue-200 pl-3">
                     &ldquo;I, Priya Sharma, confirm that I have reviewed and accept the offer
-                    &ldquo;Annual Software Maintenance Agreement 2026–2027&rdquo; presented by
-                    TechSolutions Ltd (contracts@techsolutions.io). By confirming this acceptance,
-                    I acknowledge this action as my binding agreement to the terms presented.&rdquo;
+                    &ldquo;Annual Software Maintenance Agreement 2026–2027&rdquo; (version 1,
+                    dated 1 June 2026) presented by TechSolutions Ltd
+                    (contracts@techsolutions.io). This acceptance is made via my verified email
+                    address priya.sharma@enterprise.com. By confirming this acceptance, I
+                    acknowledge this action as my binding agreement to the terms presented, and I
+                    confirm that I have authority to bind myself or, where applicable, the legal
+                    entity I represent. This confirmation constitutes an advanced electronic
+                    signature under the Norwegian Act on Electronic Commerce and Other
+                    Information Society Services (ehandelsloven), and not a qualified electronic
+                    signature under EU Regulation No 910/2014 (eIDAS). The exact date and time of
+                    this confirmation is recorded in the certificate issued for this
+                    acceptance.&rdquo;
                   </blockquote>
                   <p className="text-xs text-gray-500 mt-2">
-                    What this records: Priya, using priya.sharma@enterprise.com, confirmed
-                    acceptance of the maintenance agreement and all attached schedules. The
-                    immutable certificate can be shared with legal, finance, or auditors.
+                    What this records: Priya, using the verified email
+                    priya.sharma@enterprise.com, confirmed acceptance of the maintenance
+                    agreement and all attached schedules, with the exact acceptance timestamp
+                    captured in the certificate. The immutable certificate can be shared with
+                    legal, finance, or auditors.
                   </p>
                 </div>
               </div>

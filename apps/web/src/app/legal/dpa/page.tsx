@@ -28,14 +28,14 @@ export default function DpaPage() {
           <h1 className="text-2xl font-bold text-gray-900">Data Processing Agreement</h1>
           <a
             href="/legal/dpa/download"
-            download="offeraccept-dpa-v1.0.pdf"
+            download="offeraccept-dpa-v1.1.pdf"
             className="flex items-center gap-1.5 text-xs font-medium text-(--color-accent) hover:text-(--color-accent-hover) border border-(--color-accent) rounded-lg px-3 py-1.5 flex-shrink-0 transition-colors"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
             Download PDF
           </a>
         </div>
-        <p className="text-sm text-gray-500 mb-2">DPA Version 1.0 — effective March 2026</p>
+        <p className="text-sm text-gray-500 mb-2">DPA Version 1.1 — effective March 2026</p>
         <p className="text-xs text-gray-400 mb-8">
           For a countersigned copy, email{' '}
           <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
@@ -47,7 +47,7 @@ export default function DpaPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Parties</h2>
             <p>
-              This Data Processing Agreement (&ldquo;DPA&rdquo;) is between OfferAccept, Inc.
+              This Data Processing Agreement (&ldquo;DPA&rdquo;) is between OfferAccept AS
               (&ldquo;Processor&rdquo;) and the organisation that has accepted the OfferAccept Terms
               of Service (&ldquo;Controller&rdquo;). Together, the parties are referred to as
               &ldquo;the parties&rdquo;.
@@ -57,10 +57,15 @@ export default function DpaPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Processing purpose</h2>
             <p>
-              The Processor processes personal data solely to provide the OfferAccept service as
+              (a) The Processor processes personal data solely to provide the OfferAccept service as
               described in the Terms of Service: sending documents to recipients, verifying
               recipient email via OTP, recording acceptance or decline events, and issuing tamper-evident
-              certificates. Processing occurs only on documented instructions from the Controller.
+              certificates. Processing occurs only on documented instructions from the Controller, per
+              GDPR Art. 28(3)(a).
+            </p>
+            <p className="mt-2">
+              (b) Personnel authorised to process personal data under this DPA are subject to
+              confidentiality obligations, per Art. 28(3)(b).
             </p>
           </section>
 
@@ -80,8 +85,8 @@ export default function DpaPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Security obligations</h2>
             <p>
-              The Processor implements and maintains appropriate technical and organisational measures
-              to protect personal data, including:
+              (c) The Processor implements and maintains appropriate technical and organisational
+              measures to protect personal data, as required by GDPR Art. 32, including:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1">
               <li>Encryption in transit (TLS) and at rest</li>
@@ -89,28 +94,50 @@ export default function DpaPage() {
               <li>SHA-256 certificate integrity sealing to detect unauthorised alteration</li>
               <li>Rate limiting and monitoring on authentication endpoints</li>
             </ul>
+            <p className="mt-2">
+              (f) The Processor assists the Controller, insofar as possible, in fulfilling its
+              obligations under Art. 32–36 (security, breach notification, and — where required —
+              data protection impact assessments), including via the breach notification
+              commitment below.
+            </p>
           </section>
 
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Data retention</h2>
             <p>
-              Acceptance certificates and associated records are retained for the lifetime of the
+              Acceptance certificates and associated records (AcceptanceRecord, OfferSnapshot,
+              SigningEvent, AcceptanceCertificate) are retained for the lifetime of the
               Controller&rsquo;s account and for a minimum of 7 years after acceptance to support
-              legal and compliance use cases. The Controller may request deletion of non-certificate
-              data by contacting{' '}
+              legal and compliance use cases. This floor reflects the 5-year bookkeeping retention
+              period under the Norwegian Bookkeeping Act (bokføringsloven) § 13 and the general
+              3-year (up to 10-year, in cases with a qualifying legal basis) limitation periods
+              under the Norwegian Limitation Act (foreldelsesloven) § 2 for contract-related claims.
+              These evidentiary records are never automatically deleted, including after the
+              retention floor has passed.
+            </p>
+            <p className="mt-2">
+              Separate, shorter-lived operational data — such as in-progress email verification
+              sessions and one-time codes — is purged automatically as part of the Processor&rsquo;s
+              data minimisation practices, independent of the certificate retention period above.
+            </p>
+            <p className="mt-2">
+              (e) (g) The Controller may request deletion of non-certificate personal data, or
+              return/deletion of personal data at the end of the provision of services, by
+              contacting{' '}
               <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
                 privacy@offeraccept.com
               </a>
-              .
+              . Verified requests are processed within 30 days.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">Sub-processors</h2>
             <p>
-              The Processor uses third-party sub-processors to deliver the service, including cloud
-              infrastructure, transactional email delivery, payment processing, and error monitoring.
-              A full list of confirmed sub-processors, including purpose, data categories, location,
+              (d) The Processor uses third-party sub-processors to deliver the service, including cloud
+              infrastructure, transactional email delivery, payment processing, and error monitoring,
+              engaged subject to the same data protection obligations set out in this DPA. A full
+              list of confirmed sub-processors, including purpose, data categories, location,
               and transfer mechanism, is maintained at{' '}
               <Link href="/legal/subprocessors" className="text-blue-600 hover:text-blue-700">
                 /legal/subprocessors
@@ -133,13 +160,30 @@ export default function DpaPage() {
           <section>
             <h2 className="text-base font-semibold text-gray-900 mb-2">International transfers</h2>
             <p>
-              The Processor is based in the United States. Transfers of personal data from the EEA
-              to the Processor are made under Standard Contractual Clauses (SCCs) as adopted by the
-              European Commission. A signed copy of the SCCs is available on request from{' '}
+              The Processor is based in Norway. Certain sub-processors used to deliver the service
+              are located outside the EEA — see{' '}
+              <Link href="/legal/subprocessors" className="text-blue-600 hover:text-blue-700">
+                /legal/subprocessors
+              </Link>{' '}
+              for the confirmed list and each sub-processor&rsquo;s location. Transfers of personal
+              data to sub-processors located outside the EEA are made under Standard Contractual
+              Clauses (SCCs) as adopted by the European Commission, or another valid transfer
+              mechanism under GDPR Art. 46. A signed copy of the applicable SCCs is available on
+              request from{' '}
               <a href="mailto:privacy@offeraccept.com" className="text-blue-600 hover:text-blue-700">
                 privacy@offeraccept.com
               </a>
               .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Audits and compliance</h2>
+            <p>
+              (h) The Processor makes available to the Controller information reasonably necessary
+              to demonstrate compliance with this DPA, and permits and contributes to audits,
+              including inspections, conducted by the Controller or an auditor mandated by the
+              Controller, subject to reasonable advance notice and confidentiality.
             </p>
           </section>
 

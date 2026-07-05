@@ -577,8 +577,13 @@ function StepReview({ state, uploadedDocs }: { state: WizardState; uploadedDocs:
           <blockquote className="text-xs text-(--color-text-secondary) leading-relaxed border-l-4 border-(--color-accent) pl-3 italic">
             I, <span className="font-medium not-italic">{state.customerName || state.customerEmail || '[recipient name]'}</span>,
             confirm that I have reviewed and accept the attached document &ldquo;<span className="font-medium not-italic">{state.dealName || '[document name]'}</span>&rdquo;
-            presented by <span className="text-(--color-text-muted) not-italic">[your name] ([your email])</span>.
-            By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.
+            (version 1, dated [date sent]) presented by <span className="text-(--color-text-muted) not-italic">[your name] ([your email])</span>.
+            This acceptance is made via my verified email address <span className="font-medium not-italic">{state.customerEmail || '[recipient email]'}</span>.
+            By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented, and I confirm
+            that I have authority to bind myself or, where applicable, the legal entity I represent. This confirmation constitutes
+            an advanced electronic signature under the Norwegian Act on Electronic Commerce and Other Information Society Services
+            (ehandelsloven), and not a qualified electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date and
+            time of this confirmation is recorded in the certificate issued for this acceptance.
           </blockquote>
           <p className="text-[11px] text-(--color-text-muted) mt-2.5">
             Sender name and email are filled in from your account when the document is sent.
@@ -702,9 +707,15 @@ function RecipientPreviewModal({
           </p>
           <blockquote className="text-xs text-(--color-text-secondary) leading-relaxed border border-(--color-border-subtle) rounded-lg bg-(--color-bg) px-3 py-3 italic">
             I, <span className="font-medium not-italic">{recipientName || '[recipient]'}</span>, confirm that I have reviewed
-            and accept the attached document &ldquo;<span className="font-medium not-italic">{dealName}</span>&rdquo; presented by{' '}
+            and accept the attached document &ldquo;<span className="font-medium not-italic">{dealName}</span>&rdquo;
+            (version 1, dated [date sent]) presented by{' '}
             <span className="not-italic text-(--color-text-muted)">[your name] ([your email])</span>.
-            By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented.
+            This acceptance is made via my verified email address <span className="not-italic text-(--color-text-muted)">[recipient email]</span>.
+            By confirming this acceptance, I acknowledge this action as my binding agreement to the terms presented, and I confirm
+            that I have authority to bind myself or, where applicable, the legal entity I represent. This confirmation constitutes
+            an advanced electronic signature under the Norwegian Act on Electronic Commerce and Other Information Society Services
+            (ehandelsloven), and not a qualified electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date and
+            time of this confirmation is recorded in the certificate issued for this acceptance.
           </blockquote>
           <p className="text-[10px] text-(--color-text-muted) mt-2">
             This statement is sealed into the acceptance certificate. It cannot be changed after sending.

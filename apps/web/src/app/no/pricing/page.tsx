@@ -237,7 +237,7 @@ function NoLegal() {
         <Link href="/privacy" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">
           Personvernerklæring
         </Link>
-        <Link href="/terms" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">
+        <Link href="/legal/terms" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">
           Vilkår for bruk
         </Link>
         <Link href="/contact" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">

@@ -5,6 +5,7 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { CertificatePayloadBuilder, computeCertificateHash, computeCanonicalAcceptanceHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ function makePayload() {
       message: null,
       expiresAt: null,
       sentAt: '2024-05-31T10:00:00.000Z',
+      version: 1,
       snapshotContentHash: 'a'.repeat(64),
     },
     sender: { name: 'Alice', email: 'alice@co.com' },
@@ -83,6 +85,7 @@ describe('CertificateService.verify()', () => {
         { provide: CertificatePayloadBuilder, useValue: builder },
         { provide: SigningEventService, useValue: eventService },
         { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
+        { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
       ],
     }).compile();
 
@@ -413,6 +416,7 @@ describe('CertificateService.generateForAcceptance()', () => {
         { provide: CertificatePayloadBuilder, useValue: builder },
         { provide: SigningEventService, useValue: eventService },
         { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
+        { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
       ],
     }).compile();
 
@@ -489,6 +493,7 @@ describe('CertificateService.exportPayload() — metadata', () => {
         { provide: CertificatePayloadBuilder, useValue: builder },
         { provide: SigningEventService, useValue: { verifyChain: jest.fn() } },
         { provide: DealEventService, useValue: { emit: () => Promise.resolve() } },
+        { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
       ],
     }).compile();
 
@@ -572,6 +577,7 @@ describe('CertificateService.getExportForJob()', () => {
         { provide: CertificatePayloadBuilder, useValue: builder },
         { provide: SigningEventService, useValue: { verifyChain: jest.fn() } },
         { provide: DealEventService, useValue: { emit: () => Promise.resolve() } },
+        { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
       ],
     }).compile();
 

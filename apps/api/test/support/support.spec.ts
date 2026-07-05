@@ -21,6 +21,7 @@ import { TraceModule } from '../../src/common/trace/trace.module';
 import { JobService } from '../../src/modules/jobs/job.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
 import { SubscriptionService } from '../../src/modules/billing/subscription.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 
 // ── Global stub for JobService ────────────────────────────────────────────────
 @Global()
@@ -63,6 +64,21 @@ class MockStorageModule {}
   exports: [SubscriptionService],
 })
 class MockBillingModule {}
+
+// ── Global mock for MetricsService ───────────────────────────────────────────
+// MetricsModule is @Global() in production (via AppModule) but not imported here.
+// SendOfferService, CertificateService, and CertificatePdfService all depend on it.
+@Global()
+@Module({
+  providers: [{ provide: MetricsService, useValue: {
+    recordDealSent: () => undefined,
+    recordDealAccepted: () => undefined,
+    recordCertificateVerification: () => undefined,
+    recordCertificatePdfGenerated: () => undefined,
+  }}],
+  exports: [MetricsService],
+})
+class MockMetricsModule {}
 
 // ─── Support tooling tests ─────────────────────────────────────────────────────
 //
@@ -275,6 +291,7 @@ async function buildApp(db: MockDb) {
       }),
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
       MockBillingModule,
+      MockMetricsModule,
       StubJobsModule,
       MockStorageModule,
       TraceModule,

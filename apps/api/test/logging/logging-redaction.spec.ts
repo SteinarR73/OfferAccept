@@ -117,7 +117,10 @@ describe('Logging redaction — acceptance statement excludes sensitive data', (
 
   const stmt = buildAcceptanceStatement({
     recipientName: 'Alice Johnson',
+    recipientEmail: 'alice.johnson@example.com',
     offerTitle: 'Consulting Agreement',
+    offerVersion: 1,
+    offerDate: new Date('2024-05-15T00:00:00.000Z'),
     senderName: 'Bob Smith',
     senderEmail: 'bob@example.com',
   });
@@ -190,6 +193,7 @@ describe('Production guard — DevEmailAdapter must not be active in production'
         WEBHOOK_SECRET_KEY: '0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20',
         COOKIE_SECURE: 'true',
         TRUST_PROXY: 'true',
+        LEGAL_MODE_STRICT: 'true',
       }),
     ).not.toThrow();
   });

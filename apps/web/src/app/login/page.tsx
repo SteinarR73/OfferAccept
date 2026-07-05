@@ -13,7 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { Alert } from '../../components/ui/Alert';
 
 // Current Terms of Service version — must match the version in docs/legal/terms-of-service.md
-const CURRENT_TERMS_VERSION = '1.1';
+const CURRENT_TERMS_VERSION = '1.2';
 
 export default function LoginPage() {
   return (

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
+import { LoginLockoutService } from '../../src/modules/auth/login-lockout.service';
 import {
   InvalidCredentialsError,
   EmailNotVerifiedError,
@@ -60,12 +61,18 @@ async function buildController(configOverrides: { COOKIE_SECURE?: boolean; COOKI
     login: jest.fn<() => Promise<typeof TOKENS>>().mockResolvedValue(TOKENS),
   };
   const rateLimiterMock = { check: jest.fn() };
+  const lockoutMock = {
+    check: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    recordFailure: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    clearFailures: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  };
 
   const module = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [
       { provide: AuthService, useValue: authSvcMock },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: LoginLockoutService, useValue: lockoutMock },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
       { provide: ConfigService, useValue: buildConfigMock(configOverrides) },
     ],

@@ -8,6 +8,7 @@ import { CertificatePdfService } from '../../src/modules/certificates/certificat
 import { TraceContext } from '../../src/common/trace/trace.context';
 import { RateLimitService } from '../../src/common/rate-limit/rate-limit.service';
 import { STORAGE_PORT } from '../../src/common/storage/storage.port';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 
 // ─── Certificate verify — rate limit headers tests ─────────────────────────────
 //
@@ -68,8 +69,9 @@ async function buildController() {
       { provide: CertificatePdfService, useValue: { generate: jest.fn() } },
       { provide: TraceContext, useValue: { get: jest.fn<() => string | undefined>().mockReturnValue(undefined), run: jest.fn((_, fn: () => unknown) => fn()) } },
       { provide: RateLimitService, useValue: rateLimiterMock },
+      { provide: MetricsService, useValue: { recordCertificateVerification: jest.fn() } },
       { provide: JwtService, useValue: { sign: jest.fn(), verify: jest.fn() } },
-      { provide: ConfigService, useValue: { getOrThrow: (_key: string) => 'https://app.test' } },
+      { provide: ConfigService, useValue: { getOrThrow: (_key: string) => 'https://app.test', get: (_key: string, defaultValue?: unknown) => defaultValue } },
       { provide: STORAGE_PORT, useValue: { getPresignedDownloadUrl: jest.fn() } },
     ],
   }).compile();

@@ -5,6 +5,7 @@ import { CertificateService } from '../../src/modules/certificates/certificate.s
 import { CertificatePayloadBuilder, computeCertificateHash } from '../../src/modules/certificates/certificate-payload.builder';
 import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { DealEventService } from '../../src/modules/deal-events/deal-events.service';
+import { MetricsService } from '../../src/common/metrics/metrics.service';
 import { computeSnapshotHash } from '../../src/modules/signing/domain/signing-event.builder';
 
 // ─── Certificate access control tests ─────────────────────────────────────────
@@ -34,6 +35,7 @@ function makePayload() {
       message: null,
       expiresAt: null,
       sentAt: '2024-06-30T10:00:00.000Z',
+      version: 1,
       snapshotContentHash: 'b'.repeat(64),
     },
     sender: { name: 'Corp', email: 'corp@co.com' },
@@ -105,6 +107,7 @@ async function buildService(db: MockDb, builder: { build: AnyMock }, eventServic
       { provide: CertificatePayloadBuilder, useValue: builder },
       { provide: SigningEventService, useValue: eventService },
       { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
+      { provide: MetricsService, useValue: { recordDealAccepted: jest.fn(), recordCertificateVerification: jest.fn() } },
     ],
   }).compile();
   return module.get(CertificateService);

@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Terms of Service — OfferAccept',
   description:
-    'OfferAccept Terms of Service (v1.1). Describes what OfferAccept does and does not do, customer obligations, acceptance statement, liability, and governing law.',
+    'OfferAccept Terms of Service (v1.2). Describes what OfferAccept does and does not do, customer obligations, acceptance statement, liability, and governing law.',
 };
 
 // ─── Layout helper ────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ export default function TermsOfServicePage() {
   return (
     <LegalPageShell
       title="Terms of Service"
-      version="1.1"
+      version="1.2"
       effectiveLabel="Effective from launch"
     >
       <section>
@@ -173,11 +173,25 @@ export default function TermsOfServicePage() {
         <blockquote>
           <em>
             &ldquo;I, [Recipient Name], confirm that I have reviewed and accept the offer
-            &ldquo;[Document Title]&rdquo; presented by [Sender Name] ([Sender Email]). By
-            confirming this acceptance, I acknowledge this action as my binding agreement to the
-            terms presented.&rdquo;
+            &ldquo;[Document Title]&rdquo; (version [Offer Version], dated [Offer Date]) presented
+            by [Sender Name] ([Sender Email]). This acceptance is made via my verified email
+            address [Recipient Email]. By confirming this acceptance, I acknowledge this action as
+            my binding agreement to the terms presented, and I confirm that I have authority to
+            bind myself or, where applicable, the legal entity I represent. This confirmation
+            constitutes an advanced electronic signature under the Norwegian Act on Electronic
+            Commerce and Other Information Society Services (ehandelsloven), and not a qualified
+            electronic signature under EU Regulation No 910/2014 (eIDAS). The exact date and time
+            of this confirmation is recorded in the certificate issued for this
+            acceptance.&rdquo;
           </em>
         </blockquote>
+        {/*
+          This blockquote MUST be updated whenever buildAcceptanceStatement() in
+          apps/api/src/modules/signing/domain/acceptance-statement.ts changes — there is
+          no automated check tying this page to that source file. See also
+          /legal/acceptance-statement, which mirrors this same wording and must move
+          in lockstep.
+        */}
         <p>
           See{' '}
           <Link href="/legal/acceptance-statement" className="text-blue-600 hover:text-blue-700">
@@ -274,10 +288,10 @@ export default function TermsOfServicePage() {
       <section>
         <h2>11. Governing law and jurisdiction</h2>
         <p>
-          These Terms are governed by the laws of the State of Delaware, United States. Disputes
-          that cannot be resolved amicably shall be submitted to the competent courts of Delaware.
-          For customers established in the EU, mandatory EU consumer protection law applies in
-          addition to these Terms where relevant.
+          These Terms are governed by Norwegian law. Disputes that cannot be resolved amicably
+          shall be brought before Stavanger tingrett (Stavanger District Court) as the exclusive
+          venue of first instance. For customers established in the EEA outside Norway, mandatory
+          local consumer protection law applies in addition to these Terms where relevant.
         </p>
       </section>
 
@@ -320,9 +334,9 @@ export default function TermsOfServicePage() {
       </section>
 
       <div className="mt-10 pt-6 border-t border-gray-100 text-xs text-gray-400">
-        Canonical version of Terms of Service v1.1. Stable URL:{' '}
-        <Link href="/legal/terms/v1.1" className="underline hover:text-gray-600">
-          /legal/terms/v1.1
+        Canonical version of Terms of Service v1.2. Stable URL:{' '}
+        <Link href="/legal/terms/v1.2" className="underline hover:text-gray-600">
+          /legal/terms/v1.2
         </Link>
       </div>
     </LegalPageShell>

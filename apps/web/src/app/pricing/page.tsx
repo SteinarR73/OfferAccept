@@ -240,7 +240,7 @@ function Legal() {
         <Link href="/privacy" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">
           Privacy policy
         </Link>
-        <Link href="/terms" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">
+        <Link href="/legal/terms" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">
           Terms of service
         </Link>
         <Link href="/contact" className="text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors">

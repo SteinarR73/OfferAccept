@@ -29,6 +29,7 @@ export interface CertificatePayload {
     message: string | null;
     expiresAt: string | null; // ISO 8601
     sentAt: string;           // OfferSnapshot.frozenAt ISO 8601
+    version: number;          // OfferSnapshot.version
     snapshotContentHash: string;
   };
   sender: {
@@ -108,6 +109,7 @@ export class CertificatePayloadBuilder {
         message: snapshot.message,
         expiresAt: snapshot.expiresAt?.toISOString() ?? null,
         sentAt: snapshot.frozenAt.toISOString(),
+        version: snapshot.version,
         snapshotContentHash: snapshot.contentHash,
       },
       sender: {

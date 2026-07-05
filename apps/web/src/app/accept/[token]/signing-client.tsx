@@ -74,6 +74,9 @@ const EN = {
     expiredBody: 'Codes are valid for 10 minutes.',
     expiredResend: 'Send a new code →',
     resendLink: "Didn’t receive a code? Send a new one",
+    identityTitle: 'What entering the code confirms',
+    identityBody: (name: string) =>
+      `By entering the code, you confirm you are ${name} and that you are authorized to accept this offer. This process verifies access to the email address, not personal identity.`,
   },
   acceptance: {
     heading: 'Accept this document',
@@ -184,6 +187,9 @@ const NO = {
     expiredBody: 'Koder er gyldige i 10 minutter.',
     expiredResend: 'Send ny kode →',
     resendLink: 'Mottok du ikke koden? Send en ny',
+    identityTitle: 'Hva det å skrive inn koden bekrefter',
+    identityBody: (name: string) =>
+      `Ved å skrive inn koden bekrefter du at du er ${name}, og at du har fullmakt til å akseptere dette tilbudet. Denne prosessen bekrefter tilgang til e-postadressen, ikke personlig identitet.`,
   },
   acceptance: {
     heading: 'Bekreft dette dokumentet',
@@ -820,6 +826,16 @@ function OtpEntry({
           >
             {s.otp.gdprLink}
           </a>
+        </div>
+
+        {/* ── Identity-verification disclaimer ───────────────────────────────── */}
+        <div className="rounded-lg border border-(--color-border-subtle) bg-(--color-bg) px-4 py-3 mb-5">
+          <p className="text-xs font-semibold text-(--color-text-primary) mb-1">
+            {s.otp.identityTitle}
+          </p>
+          <p className="text-xs text-(--color-text-secondary) leading-relaxed">
+            {s.otp.identityBody(ctx.recipientName)}
+          </p>
         </div>
 
         <p className="text-sm text-(--color-text-secondary) mb-1">
