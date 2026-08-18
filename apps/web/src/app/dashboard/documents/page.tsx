@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { FileText, ShieldCheck, ExternalLink } from 'lucide-react';
-import { listOffers } from '../../../lib/offers-api';
+import { useOffers } from '../../../hooks/useOffers';
 import type { OfferItem, OfferDocumentItem } from '@offeraccept/types';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { cn } from '@/lib/cn';
@@ -49,20 +49,17 @@ const STATUS_BADGE: Record<OfferItem['status'], { label: string; classes: string
 // ─── DocumentsPage ─────────────────────────────────────────────────────────────
 
 export default function DocumentsPage() {
-  const [flatDocs, setFlatDocs] = useState<FlatDocument[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    listOffers(1, 200)
-      .then(({ data }) => {
-        const all: FlatDocument[] = data.flatMap((offer) =>
-          offer.documents.map((doc) => ({ doc, offer })),
-        );
-        setFlatDocs(all);
-      })
-      .catch(() => { /* graceful degradation */ })
-      .finally(() => setLoading(false));
-  }, []);
+  const { offers, loading } = useOffers(1, 200);
+  const flatDocs = useMemo<FlatDocument[]>(
+    // GET /offers (list) returns `_count.documents` rather than the full
+    // `documents` array the OfferItem type declares — the array is only
+    // populated on the single-offer detail response. Guard against that
+    // mismatch instead of crashing; see PR discussion for the real fix
+    // (either a list endpoint that includes documents, or a dedicated
+    // documents-index endpoint).
+    () => offers.flatMap((offer) => (offer.documents ?? []).map((doc) => ({ doc, offer }))),
+    [offers],
+  );
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col gap-6">

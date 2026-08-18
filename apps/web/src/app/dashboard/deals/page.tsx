@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { listOffers } from '../../../lib/offers-api';
-import type { OfferItem } from '@offeraccept/types';
+import { useOffers } from '../../../hooks/useOffers';
 import { OfferTable } from '../../../components/dashboard/OfferTable';
 import { DealsPipeline } from '../../../components/dashboard/DealsPipeline';
 import { Button } from '../../../components/ui/Button';
@@ -13,15 +11,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 // ─── DealsPage ─────────────────────────────────────────────────────────────────
 
 export default function DealsPage() {
-  const [offers, setOffers] = useState<OfferItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    listOffers(1, 200)
-      .then(({ data }) => setOffers(data))
-      .catch(() => { /* graceful degradation */ })
-      .finally(() => setLoading(false));
-  }, []);
+  const { offers, loading } = useOffers(1, 200);
 
   return (
     <div className="max-w-[1200px] mx-auto flex flex-col gap-6">

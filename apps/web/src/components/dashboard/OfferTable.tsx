@@ -165,6 +165,14 @@ export function OfferTable({
     return result;
   }, [offers, activeTab, search, sortKey, sortDir]);
 
+  // Per-tab counts for the filter bar — computed once per `offers` change
+  // rather than re-scanning the full list for every tab on every render.
+  const tabCounts = useMemo(() => {
+    const counts = new Map<FilterTab, number>();
+    for (const o of offers) counts.set(o.status, (counts.get(o.status) ?? 0) + 1);
+    return counts;
+  }, [offers]);
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -252,7 +260,7 @@ export function OfferTable({
         {TABS.map((tab) => {
           const count = tab.key === 'ALL'
             ? offers.length
-            : offers.filter((o) => o.status === tab.key).length;
+            : (tabCounts.get(tab.key) ?? 0);
           if (count === 0 && tab.key !== 'ALL') return null;
           return (
             <button

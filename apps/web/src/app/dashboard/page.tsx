@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listOffers } from '../../lib/offers-api';
@@ -96,7 +96,7 @@ export default function DashboardPage() {
   }, []);
 
   const hasDeals = !loading && offers.length > 0;
-  const stats = computeStats(offers);
+  const stats = useMemo(() => computeStats(offers), [offers]);
 
   return (
     <>

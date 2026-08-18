@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Users } from 'lucide-react';
-import { listOffers } from '../../../lib/offers-api';
+import { useOffers } from '../../../hooks/useOffers';
 import type { OfferItem } from '@offeraccept/types';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -61,16 +61,8 @@ function relativeTime(iso: string): string {
 // ─── CustomersPage ─────────────────────────────────────────────────────────────
 
 export default function CustomersPage() {
-  const [offers, setOffers] = useState<OfferItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { offers, loading } = useOffers(1, 200);
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    listOffers(1, 200)
-      .then(({ data }) => setOffers(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const customers = useMemo(() => deriveCustomers(offers), [offers]);
 

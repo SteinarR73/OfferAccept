@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -35,8 +35,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Build commands — stable because router/onClose/logout don't change
-  const commands: PaletteCommand[] = [
+  // Build commands — stable because router/onClose/logout don't change.
+  // Memoized so the array (and its JSX icon elements) isn't rebuilt on every
+  // render of this always-mounted component (query typing, sidebar toggles, etc).
+  const commands: PaletteCommand[] = useMemo(() => [
     {
       id: 'new-offer',
       label: 'New offer',
@@ -82,7 +84,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       action: async () => { onClose(); await logout(); router.replace('/login'); },
       keywords: ['exit', 'log out'],
     },
-  ];
+  ], [router, onClose]);
 
   // Filter by query
   const filtered = query.trim() === ''
