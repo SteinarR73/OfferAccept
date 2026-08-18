@@ -59,3 +59,27 @@ Add a dependency only when the existing stack genuinely cannot cover the need.
 ### Schema changes require migrations
 
 Every Prisma schema change must be accompanied by a migration file in `packages/database/prisma/migrations/`. Do not edit the schema without also providing the migration SQL.
+
+**Verify new migrations against a fresh database, not just a schema review.** On
+2026-08-19, this history was found to have gone since inception without ever being
+replayed end-to-end from empty — no migration created `users` or most of the core
+schema, and five further migrations had their own independent, fresh-install-only
+bugs (redundant enum values, a missing `CREATE EXTENSION`, two ordering bugs
+between same-day migrations, a partial unique index incompatible with the
+application's own `upsert()` call). None of this was visible from reading the
+migration files or the schema in isolation — only from actually running
+`prisma migrate deploy` against an empty, disposable Postgres container. Do this
+for any new migration that isn't a trivial, obviously-additive change. Full
+writeup: `docs/database/postgres-migration.md` §10.
+
+### This repo is pnpm-only
+
+`package.json`'s `preinstall` script (`npx only-allow pnpm`) rejects `npm install`/`yarn install`. There is no `package-lock.json`, only `pnpm-lock.yaml`. Both Dockerfiles were broken for a long time because they ran `npm ci` — if you touch either Dockerfile, or write install instructions anywhere, use `pnpm install --frozen-lockfile`, and actually run `docker build` to confirm before calling it done (see next rule).
+
+### The CSP requires every page to render dynamically
+
+`apps/web/src/middleware.ts` sets a strict, nonce-based CSP; `apps/web/src/app/layout.tsx` sets `export const dynamic = 'force-dynamic'` to make that possible. A nonce only exists once a request exists — a statically-generated page is built once with no nonce available, so its baked-in HTML can never match a fresh per-request CSP nonce, and React silently fails to hydrate (the page renders but nothing is clickable). This is not obvious from reading either file in isolation; it only showed up by actually loading a page in a browser and reading the console. If you ever reintroduce static generation for a route (removing `force-dynamic`, adding a per-page `export const dynamic = 'force-static'`, etc.), that route will silently break — verify in a real browser, not just a successful build.
+
+### Verify by actually running things, not by reading code
+
+`docs/ops/launch-readiness-report.md` declared this app launch-ready in April 2026 on the strength of "DONE | evidence: file exists" checklist entries. In August, actually building the Docker images, actually booting the API against a live database, and actually loading the web app in a browser surfaced multiple fully-blocking bugs that checklist missed entirely — the API couldn't build, couldn't boot, couldn't reach a fresh database, couldn't run a single background job, and the frontend couldn't hydrate at all. None of these were visible from code review. Before reporting a fix, a migration, a Dockerfile change, or a security control as working: run it against something real (a live database, an actual `docker build`, a real browser), not just against the mocked test suite or a reading of the diff.

@@ -4,6 +4,36 @@
 **Prepared by:** Architecture Hardening Review (AI-assisted)  
 **Verdict:** READY — no blocking issues remain
 
+> **Superseded — 2026-08-19.** The verdict above did not hold. A later, independent
+> pass actually built the Docker images, actually booted the API against a live
+> database, and actually drove the web app in a browser — none of which this report's
+> checklist did — and found several genuinely blocking issues this report missed
+> entirely:
+> - **Neither Dockerfile could build.** Both ran `npm ci` against a pnpm-only repo
+>   (no `package-lock.json` exists).
+> - **The API could not boot even once built** — a broken compiled-entry path, a
+>   missing direct dependency (`jsonwebtoken`), a missing dev dependency
+>   (`pino-pretty`), and a job-scheduler startup race, stacked on top of each other.
+> - **A fresh database could never be migrated.** No migration in the history ever
+>   created the `users` table or most of the core schema — see
+>   [docs/database/postgres-migration.md §10](../database/postgres-migration.md#10-migration-history-integrity).
+> - **No background job could ever successfully run** — `jobs.pgBossId`'s partial
+>   unique index was incompatible with the `upsert()` call that claims every job.
+> - **The web app's CSP (checked off below as "PASS") broke all client-side
+>   interactivity** — nonces never reached Next's own inline scripts because the
+>   app statically generates pages, and a nonce only exists once a request exists.
+>   No form on the site could actually submit.
+> - **A circular-reference input to the log sanitizer crashed the entire API
+>   process** — found while exercising real request objects, not from a code read.
+>
+> All of the above are now fixed and verified — see the commit history from
+> 2026-08-19 (`perf:`/`fix:`/`security:` prefixed commits) for what changed and how
+> each fix was proven against a real running system. The lesson this report's
+> gap points at: a checklist of "DONE | evidence: file exists" is not the same
+> as "this was actually run." Every item below should be read with that caveat —
+> treat a checkmark here as "the code for this exists," not as "this was executed
+> end-to-end and confirmed working."
+
 ---
 
 ## Executive Summary

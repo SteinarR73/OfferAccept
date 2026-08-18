@@ -19,8 +19,12 @@ can independently verify.
 | Email | Resend | — |
 | Payments | Stripe | — |
 | Storage | AWS S3 / local dev | — |
-| Monorepo | npm workspaces + Turborepo | 2 |
+| Monorepo | pnpm workspaces + Turborepo | 2 |
 | Runtime | Node.js | ≥ 20 LTS |
+
+**This repo is pnpm-only.** `package.json`'s `preinstall` script (`npx only-allow pnpm`)
+rejects `npm install`/`yarn install` outright — there is no `package-lock.json`, only
+`pnpm-lock.yaml`. Use `pnpm`, not `npm`, for every command below.
 
 See [docs/architecture.md](docs/architecture.md) for the full domain model and design rationale.
 
@@ -46,7 +50,7 @@ offeraccept/
 | Requirement | Version |
 |-------------|---------|
 | Node.js | ≥ 20 LTS |
-| npm | ≥ 10 |
+| pnpm | 10.20.0 (pinned via `packageManager` in `package.json`; `corepack enable` picks it up automatically) |
 | PostgreSQL | ≥ 16 |
 | Redis | ≥ 7 |
 
@@ -57,7 +61,7 @@ offeraccept/
 ### 1. Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Configure the API
@@ -102,23 +106,49 @@ This value is **blocked at startup** in `NODE_ENV=production`.
 > Rate limit checks **fail-open** if Redis is unreachable — the API stays up
 > but rate limiting is suspended. Monitor `[rate_limit_redis_error]` logs.
 
+> **Windows + a native PostgreSQL install:** if you already have PostgreSQL installed
+> as a Windows service, it will already be listening on `5432` and will silently
+> intercept connections meant for `docker compose`'s Postgres container — you'll get
+> an authentication error that has nothing to do with your actual credentials. Either
+> stop the native service, or map the container to a different host port
+> (`docker run -p 5433:5432 ...` / override the `ports:` mapping in `docker-compose.yml`)
+> and point `DATABASE_URL` at that port instead.
+
 ### 3. Set up the database
 
 ```bash
-npm run db:migrate       # apply all pending migrations
-npm run db:studio        # optional: Prisma Studio at http://localhost:5555
+pnpm run db:migrate       # apply all pending migrations
+pnpm run db:studio        # optional: Prisma Studio at http://localhost:5555
 ```
+
+`db:migrate` runs `prisma migrate dev`, which replays every migration in
+`packages/database/prisma/migrations/` against your database in order. As of
+2026-08-19 this history has been verified end-to-end: 34 migrations apply cleanly
+against a genuinely empty database (`prisma migrate deploy`), confirmed by diffing
+the result against `schema.prisma` for drift. If you ever see a fresh-database
+migration fail, that's a regression — see
+[docs/database/postgres-migration.md](docs/database/postgres-migration.md) for how
+this was verified and what to check.
 
 ### 4. Start services
 
 ```bash
-npm run dev              # all workspaces in watch mode
+pnpm run dev              # all workspaces in watch mode
 ```
 
 | Service | URL |
 |---------|-----|
 | API | http://localhost:3001/api/v1 |
 | Frontend | http://localhost:3000 |
+
+> **CSP note:** the web app enforces a strict, nonce-based `Content-Security-Policy`
+> (`apps/web/src/middleware.ts`) on every route — this only works because every page
+> renders dynamically (`export const dynamic = 'force-dynamic'` in
+> `apps/web/src/app/layout.tsx`). If you add a new top-level layout, or otherwise
+> reintroduce static generation for a route, that route's client-side JavaScript will
+> silently fail to hydrate (CSP will block Next's own inline scripts — check the
+> browser console for `script-src` violations). Don't disable the CSP to "fix" this;
+> fix the rendering mode instead.
 
 ---
 
@@ -128,16 +158,16 @@ npm run dev              # all workspaces in watch mode
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start all services in watch mode (Turborepo) |
-| `npm run dev --workspace=apps/api` | API only |
-| `npm run dev --workspace=apps/web` | Web only |
+| `pnpm run dev` | Start all services in watch mode (Turborepo) |
+| `pnpm --filter @offeraccept/api run dev` | API only |
+| `pnpm --filter @offeraccept/web run dev` | Web only |
 
 ### Testing
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | All Jest tests (unit + integration) |
-| `npm test --workspace=apps/api` | API tests only |
+| `pnpm test` | All Jest tests (unit + integration) |
+| `pnpm --filter @offeraccept/api test` | API tests only |
 
 Tests use `EMAIL_PROVIDER=dev` automatically. No real Redis or email required —
 the rate limiter injected in tests is a no-op mock.
@@ -146,7 +176,7 @@ the rate limiter injected in tests is a no-op mock.
 
 | Command | Description |
 |---------|-------------|
-| `npm run lint` | ESLint across all workspaces |
+| `pnpm run lint` | ESLint across all workspaces |
 | `npx tsc --noEmit --project apps/api/tsconfig.json` | Type-check the API |
 | `npx tsc --noEmit --project apps/web/tsconfig.json` | Type-check the web app |
 
@@ -154,9 +184,9 @@ the rate limiter injected in tests is a no-op mock.
 
 | Command | Description |
 |---------|-------------|
-| `npm run db:migrate` | `prisma migrate dev` (interactive) |
-| `npm run db:generate` | Regenerate Prisma client after schema changes |
-| `npm run db:studio` | Open Prisma Studio |
+| `pnpm run db:migrate` | `prisma migrate dev` (interactive) |
+| `pnpm run db:generate` | Regenerate Prisma client after schema changes |
+| `pnpm run db:studio` | Open Prisma Studio |
 
 Production migration (no interactive prompts):
 ```bash
@@ -166,7 +196,7 @@ npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
 ### Build
 
 ```bash
-npm run build            # build all workspaces
+pnpm run build            # build all workspaces
 ```
 
 ---
@@ -175,26 +205,30 @@ npm run build            # build all workspaces
 
 ### Docker (API)
 
-```dockerfile
-# apps/api/Dockerfile
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY package*.json turbo.json ./
-COPY apps/api/package.json ./apps/api/
-COPY packages/ ./packages/
-RUN npm ci --workspace=apps/api
-COPY . .
-RUN npm run build --workspace=apps/api
+Build from the **repo root** (both Dockerfiles `COPY` files from sibling
+workspace packages, so the build context must be the monorepo root, not
+`apps/api/`):
 
-FROM node:22-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/database/prisma ./prisma
-EXPOSE 3001
-CMD ["node", "dist/main"]
+```bash
+docker build -f apps/api/Dockerfile -t offeraccept-api .
 ```
+
+See [apps/api/Dockerfile](apps/api/Dockerfile) for the actual, verified build —
+don't hand-roll a copy of it here; it drifts. Two things worth knowing if you
+touch it:
+- It installs with `pnpm install --frozen-lockfile`, not `npm ci` — this repo
+  has no `package-lock.json`, so `npm ci` fails immediately.
+- The compiled entry point is `apps/api/dist/apps/api/src/main.js`, **not**
+  `apps/api/dist/main.js` — `apps/api/tsconfig.json`'s cross-package `paths`
+  (pointing at `packages/database` and `packages/types` source) make `tsc`
+  infer a repo-root `rootDir` instead of `src`, so the compiled output mirrors
+  the full path from the repo root. `nest-cli.json`'s `entryFile` and the
+  Dockerfile's `CMD` are both already set to the correct path — if you ever
+  see `Cannot find module '.../dist/main'`, this is why.
+
+Verified: `docker build --no-cache -f apps/api/Dockerfile -t offeraccept-api .`
+builds successfully, and the resulting image boots to `Nest application
+successfully started` against a live Postgres/Redis (2026-08-19).
 
 Required environment variables in production:
 
@@ -240,43 +274,39 @@ NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api/v1
 ```
 
 > **Cookie note:** The API sets `accessToken` and `refreshToken` as HttpOnly cookies.
-> For cross-origin requests (frontend on Vercel, API elsewhere), the API `CORS_ORIGIN`
-> must match the Vercel domain exactly, and requests must include `credentials: 'include'`.
+> For cross-origin requests (frontend on Vercel, API elsewhere), the API's
+> `WEB_BASE_URL` env var must match the Vercel domain exactly (CORS is not
+> wildcarded — see `apps/api/src/main.ts`), and requests must include
+> `credentials: 'include'`.
 
-### docker-compose (local full-stack)
+Building the web image manually (instead of Vercel) has the same "build from the
+repo root" requirement as the API:
 
-```yaml
-# docker-compose.yml
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: offeraccept_dev
-      POSTGRES_USER: offeraccept
-      POSTGRES_PASSWORD: offeraccept
-    ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
-
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-
-  api:
-    build: ./apps/api
-    env_file: apps/api/.env
-    depends_on: [postgres, redis]
-    ports: ["3001:3001"]
-
-  web:
-    build: ./apps/web
-    environment:
-      NEXT_PUBLIC_API_URL: http://api:3001/api/v1
-    depends_on: [api]
-    ports: ["3000:3000"]
-
-volumes:
-  pgdata:
+```bash
+docker build -f apps/web/Dockerfile \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api/v1 \
+  -t offeraccept-web .
 ```
+
+`NEXT_PUBLIC_API_URL` must be passed as a build arg — it's inlined into the client
+JS bundle at build time, not read at runtime. It's also read at server start by
+`apps/web/src/middleware.ts` to add the API's origin to the CSP `connect-src`
+directive; if you change this value, both places pick it up automatically since
+they both read the same env var, but you do need a rebuild for the client bundle.
+
+### docker-compose (local backing services)
+
+[docker-compose.yml](docker-compose.yml) starts Postgres + Redis only by default —
+run `apps/api` and `apps/web` on the host with `pnpm run dev` in normal local dev:
+
+```bash
+docker compose up -d              # Postgres + Redis only
+docker compose --profile full up -d   # + api and web, built from their Dockerfiles
+docker compose down -v            # stop and wipe volumes
+```
+
+Don't copy the compose file's content into other docs — reference it instead; it
+already documents itself and drifts if duplicated.
 
 ---
 
@@ -312,7 +342,8 @@ non-HttpOnly `oa_sess` indicator cookie (no sensitive data) used for routing dec
 | Tenant isolation | All offer queries require `organizationId` in the WHERE clause |
 | Rate limiting | Redis sliding-window (Lua, atomic); distributed; fail-open on Redis outage |
 | Auth cookies | HttpOnly, SameSite=Strict, Secure (prod), scoped `Path` |
-| Security headers | Helmet (CSP, HSTS, referrer policy, etc.) |
+| Security headers (API) | Helmet (CSP, HSTS, referrer policy, etc.) on `apps/api` responses |
+| Security headers (web) | Separate nonce-based CSP on `apps/web` HTML responses — see `apps/web/src/middleware.ts`. Requires every page to render dynamically; see the CSP note under [Local development](#local-development) |
 | Multi-org RBAC | `Membership` table; `OWNER > ADMIN > MEMBER > VIEWER` hierarchy |
 
 See [docs/architecture.md](docs/architecture.md) for the full security model.
