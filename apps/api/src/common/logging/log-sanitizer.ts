@@ -70,29 +70,42 @@ function sanitizeString(value: string): string {
  *
  * Handles: plain objects, arrays, strings, numbers, booleans, null, undefined.
  * Does NOT mutate the input — returns a new object when changes are needed.
- * Cycles are not expected in pino log objects; no cycle guard is included.
+ *
+ * `seen` tracks objects on the current recursion path (ancestors), not every
+ * object visited overall — an object added to `seen` is removed again once
+ * its branch finishes. This lets a real cycle (an object nested inside
+ * itself) be caught and replaced with '[Circular]', while a DAG — the same
+ * object legitimately referenced from two different, non-overlapping
+ * branches, which is common in real request/error objects — is still walked
+ * and sanitized normally instead of being misreported as circular.
  */
-function sanitizeValue(value: unknown): unknown {
+function sanitizeValue(value: unknown, seen: WeakSet<object>): unknown {
   if (typeof value === 'string') {
     return sanitizeString(value);
   }
   if (Array.isArray(value)) {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
     let changed = false;
     const result = value.map((item) => {
-      const sanitized = sanitizeValue(item);
+      const sanitized = sanitizeValue(item, seen);
       if (sanitized !== item) changed = true;
       return sanitized;
     });
+    seen.delete(value);
     return changed ? result : value;
   }
   if (value !== null && typeof value === 'object') {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
     let changed = false;
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      const sanitized = sanitizeValue(v);
+      const sanitized = sanitizeValue(v, seen);
       if (sanitized !== v) changed = true;
       result[k] = sanitized;
     }
+    seen.delete(value);
     return changed ? result : value;
   }
   return value;
@@ -109,6 +122,6 @@ function sanitizeValue(value: unknown): unknown {
  */
 export function buildLogSanitizer(): (obj: Record<string, unknown>) => Record<string, unknown> {
   return function sanitizeLog(obj: Record<string, unknown>): Record<string, unknown> {
-    return sanitizeValue(obj) as Record<string, unknown>;
+    return sanitizeValue(obj, new WeakSet()) as Record<string, unknown>;
   };
 }

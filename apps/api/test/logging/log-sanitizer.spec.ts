@@ -105,4 +105,36 @@ describe('buildLogSanitizer()', () => {
       expect(input.msg).toBe(original); // original untouched
     });
   });
+
+  describe('Circular references', () => {
+    // Regression test: pino-http logs the raw HTTP request object, which can
+    // contain genuine cycles (e.g. req.socket referencing structures that
+    // loop back to req). Without a cycle guard, sanitizeValue recursed
+    // infinitely and crashed the whole process with a RangeError — this must
+    // never happen no matter what shape reaches the logger.
+    it('does not crash on a self-referencing object', () => {
+      const obj: Record<string, unknown> = { msg: 'sk_live_AbCdEfGhIjKlMnOpQrSt' };
+      obj['self'] = obj;
+      expect(() => sanitize(obj)).not.toThrow();
+      const result = sanitize(obj);
+      expect(result['msg']).toBe('[REDACTED:stripe-live-secret]');
+      expect(result['self']).toBe('[Circular]');
+    });
+
+    it('does not crash on a cycle nested inside an array', () => {
+      const inner: Record<string, unknown> = {};
+      const arr: unknown[] = [inner];
+      inner['loop'] = arr;
+      expect(() => sanitize({ arr })).not.toThrow();
+    });
+
+    it('still sanitizes a value shared (non-circularly) from two branches', () => {
+      // Same object reachable from two different, non-overlapping paths —
+      // a DAG, not a cycle. Must be walked normally, not flagged as circular.
+      const shared = { secret: 'sk_live_AbCdEfGhIjKlMnOpQrSt' };
+      const result = sanitize({ a: shared, b: shared });
+      expect((result['a'] as Record<string, unknown>)['secret']).toBe('[REDACTED:stripe-live-secret]');
+      expect((result['b'] as Record<string, unknown>)['secret']).toBe('[REDACTED:stripe-live-secret]');
+    });
+  });
 });
