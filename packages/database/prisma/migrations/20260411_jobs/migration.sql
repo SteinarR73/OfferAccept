@@ -30,11 +30,17 @@ CREATE TABLE "jobs" (
 );
 
 -- pgBossId uniqueness: prevents two tracking rows for the same pg-boss job.
--- Partial (WHERE pgBossId IS NOT NULL) to allow multiple NULL values during
--- the brief window between requeue and first re-delivery.
+-- A plain (non-partial) unique index already permits unlimited NULL values —
+-- Postgres never considers NULL equal to NULL for uniqueness purposes — so no
+-- WHERE clause is needed for that. A partial index was tried here originally,
+-- but Postgres's ON CONFLICT target resolution (which JobTrackingService's
+-- `job.upsert({ where: { pgBossId } })` relies on) cannot match a partial
+-- unique index unless the INSERT statement repeats its WHERE clause, which
+-- Prisma's generated upsert SQL does not do — every job claim failed with
+-- "there is no unique or exclusion constraint matching the ON CONFLICT
+-- specification" (Postgres 42P10) on a fresh database.
 CREATE UNIQUE INDEX "jobs_pgBossId_key"
-    ON "jobs"("pgBossId")
-    WHERE "pgBossId" IS NOT NULL;
+    ON "jobs"("pgBossId");
 
 -- Index: filter jobs by status (admin DLQ, monitoring)
 CREATE INDEX "jobs_status_idx"         ON "jobs"("status");

@@ -12,6 +12,11 @@
 -- The generated id uses a cuid-compatible prefix ('c') followed by 24 random hex
 -- characters. This is structurally compatible with the application cuid format.
 -- Role is set to OWNER because pre-Membership users were always org creators.
+--
+-- gen_random_bytes() below requires the pgcrypto extension. No earlier migration
+-- enables it — on a fresh database this migration fails with "function
+-- gen_random_bytes(integer) does not exist" before ever reaching the backfill.
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 INSERT INTO "memberships" (
   "id",
