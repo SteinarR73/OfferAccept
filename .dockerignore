@@ -1,0 +1,29 @@
+# Keep Docker build context small and fast — without this file, every
+# `docker build` sends the entire repo (node_modules, .git, build artifacts)
+# as context, since Dockerfiles COPY only specific source paths anyway.
+
+node_modules
+**/node_modules
+
+.git
+.github
+
+**/dist
+**/.next
+**/build
+
+**/.env
+**/.env.*
+!**/.env.example
+
+test-results
+playwright-report
+**/coverage
+
+.claude
+*.zip
+*.log
+*.tsbuildinfo
+
+.DS_Store
+Thumbs.db

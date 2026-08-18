@@ -31,6 +31,10 @@ try {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // Required for apps/web/Dockerfile, which copies .next/standalone into the
+  // runtime image — without this, next build never produces that directory.
+  output: 'standalone',
+
   // Allow cross-origin requests from local dev network interface
   allowedDevOrigins: ['192.168.128.1'],
 
