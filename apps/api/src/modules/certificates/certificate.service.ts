@@ -178,25 +178,14 @@ export class CertificateService {
     const built = await this.builder.build(acceptanceRecordId, certificateId, issuedAt);
 
     // ── Canonical acceptance hash (5-field fingerprint) ───────────────────────
-    // Re-loads the AcceptanceRecord fields needed for the canonical hash.
-    // These are already in scope from the builder's DB read but not returned
-    // in BuiltCertificate — load them here to keep the builder interface clean.
-    const fullRecord = await this.db.acceptanceRecord.findUniqueOrThrow({
-      where: { id: acceptanceRecordId },
-      select: {
-        verifiedEmail: true,
-        acceptedAt: true,
-        ipAddress: true,
-        userAgent: true,
-      },
-    });
-
+    // `record` above was loaded without a `select`, so it already carries every
+    // scalar field needed here — no need for a second identical row fetch.
     const { hash: canonicalHash } = computeCanonicalAcceptanceHash({
-      acceptedAt:     fullRecord.acceptedAt.toISOString(),
+      acceptedAt:     record.acceptedAt.toISOString(),
       dealId:         record.snapshot.offerId,
-      ipAddress:      fullRecord.ipAddress,
-      recipientEmail: fullRecord.verifiedEmail,
-      userAgent:      fullRecord.userAgent,
+      ipAddress:      record.ipAddress,
+      recipientEmail: record.verifiedEmail,
+      userAgent:      record.userAgent,
     });
 
     // ── Persist certificate ────────────────────────────────────────────────────

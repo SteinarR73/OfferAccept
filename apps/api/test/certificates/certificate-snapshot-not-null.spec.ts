@@ -72,22 +72,20 @@ function makeMockDb(): MockDb {
   };
 }
 
-// Stubs the two sequential findUniqueOrThrow calls inside generateForAcceptance():
-//   call 1 — record with snapshotId + snapshot.offerId
-//   call 2 — record fields for canonical hash computation
+// Stubs the single findUniqueOrThrow call inside generateForAcceptance().
+// Called with no `select`, so — matching real Prisma behavior — it returns every
+// scalar field (not just snapshotId/snapshot.offerId) in one round trip; the
+// service no longer issues a second, redundant fetch for the hash fields.
 function stubRecord(db: MockDb, snapshotId: string | null = SNAPSHOT_ID) {
-  (db.acceptanceRecord.findUniqueOrThrow as AnyMock)
-    .mockResolvedValueOnce({
-      id: RECORD_ID,
-      snapshotId,
-      snapshot: { offerId: OFFER_ID },
-    })
-    .mockResolvedValueOnce({
-      verifiedEmail: 'bob@co.com',
-      acceptedAt:    new Date('2025-01-15T09:59:00.000Z'),
-      ipAddress:     '10.0.0.1',
-      userAgent:     'TestAgent/1.0',
-    });
+  (db.acceptanceRecord.findUniqueOrThrow as AnyMock).mockResolvedValueOnce({
+    id: RECORD_ID,
+    snapshotId,
+    snapshot:      { offerId: OFFER_ID },
+    verifiedEmail: 'bob@co.com',
+    acceptedAt:    new Date('2025-01-15T09:59:00.000Z'),
+    ipAddress:     '10.0.0.1',
+    userAgent:     'TestAgent/1.0',
+  });
 }
 
 async function buildService(db: MockDb) {
@@ -138,9 +136,15 @@ describe('AcceptanceCertificate.snapshotId — written on creation', () => {
   it('snapshotId in db.create data matches the AcceptanceRecord.snapshotId', async () => {
     const customSnapshotId = 'snap-custom-xyz';
     const db = makeMockDb();
-    (db.acceptanceRecord.findUniqueOrThrow as AnyMock)
-      .mockResolvedValueOnce({ id: RECORD_ID, snapshotId: customSnapshotId, snapshot: { offerId: OFFER_ID } })
-      .mockResolvedValueOnce({ verifiedEmail: 'bob@co.com', acceptedAt: new Date(), ipAddress: null, userAgent: null });
+    (db.acceptanceRecord.findUniqueOrThrow as AnyMock).mockResolvedValueOnce({
+      id: RECORD_ID,
+      snapshotId: customSnapshotId,
+      snapshot: { offerId: OFFER_ID },
+      verifiedEmail: 'bob@co.com',
+      acceptedAt: new Date(),
+      ipAddress: null,
+      userAgent: null,
+    });
     (db.acceptanceCertificate.findUnique as AnyMock).mockResolvedValue(null);
     (db.acceptanceCertificate.create as AnyMock).mockResolvedValue({ id: CERT_ID, certificateHash: 'h' });
 

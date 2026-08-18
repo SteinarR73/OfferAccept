@@ -34,6 +34,7 @@ export function createMockOffersDb() {
     },
     offerSnapshotDocument: {
       create: jest.fn(),
+      createMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
     },
     offerDeliveryAttempt: {
       create: jest.fn(),

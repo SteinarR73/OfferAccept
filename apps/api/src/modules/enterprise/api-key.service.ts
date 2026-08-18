@@ -61,8 +61,9 @@ export class ApiKeyService {
     if (apiKey.revokedAt) throw new ApiKeyInvalidError();
     if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) throw new ApiKeyInvalidError();
 
-    // Update lastUsedAt best-effort — do not fail the request if this update fails.
-    await this.db.apiKey.update({
+    // Update lastUsedAt best-effort — fire-and-forget so this telemetry write
+    // never adds latency to (or can fail) the request path it's guarding.
+    void this.db.apiKey.update({
       where: { id: apiKey.id },
       data: { lastUsedAt: new Date() },
     }).catch(() => {/* best-effort */});

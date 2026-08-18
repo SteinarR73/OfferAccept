@@ -396,12 +396,23 @@ export class SupportService {
       select: { id: true, startedAt: true },
     });
 
-    for (const session of sessions) {
-      const events = await this.db.signingEvent.findMany({
-        where: { sessionId: session.id },
-        orderBy: { sequenceNumber: 'asc' },
-      });
+    const allEvents = sessions.length > 0
+      ? await this.db.signingEvent.findMany({
+          where: { sessionId: { in: sessions.map((s) => s.id) } },
+          orderBy: { sequenceNumber: 'asc' },
+        })
+      : [];
+    const eventsBySession = new Map<string, typeof allEvents>();
+    for (const ev of allEvents) {
+      const bucket = eventsBySession.get(ev.sessionId);
+      if (bucket) bucket.push(ev);
+      else eventsBySession.set(ev.sessionId, [ev]);
+    }
 
+    // Iterate sessions in their (already startedAt-ascending) order so the
+    // timeline stays chronological, then each session's events by sequenceNumber.
+    for (const session of sessions) {
+      const events = eventsBySession.get(session.id) ?? [];
       for (const ev of events) {
         const entry = this.signingEventToTimelineEntry(ev);
         if (entry) entries.push(entry);

@@ -200,19 +200,17 @@ export class SendOfferService {
       });
 
       // 2. Create immutable snapshot documents
-      for (const doc of offer.documents) {
-        await tx.offerSnapshotDocument.create({
-          data: {
-            snapshotId: snap.id,
-            documentId: doc.id,
-            filename: doc.filename,
-            storageKey: doc.storageKey,
-            mimeType: doc.mimeType,
-            sizeBytes: doc.sizeBytes,
-            sha256Hash: doc.sha256Hash,
-          },
-        });
-      }
+      await tx.offerSnapshotDocument.createMany({
+        data: offer.documents.map((doc) => ({
+          snapshotId: snap.id,
+          documentId: doc.id,
+          filename: doc.filename,
+          storageKey: doc.storageKey,
+          mimeType: doc.mimeType,
+          sizeBytes: doc.sizeBytes,
+          sha256Hash: doc.sha256Hash,
+        })),
+      });
 
       // 3. Replace draft token placeholder with real token on recipient
       await tx.offerRecipient.update({
