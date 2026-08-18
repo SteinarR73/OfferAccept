@@ -4,21 +4,53 @@ import { NextRequest, NextResponse } from 'next/server';
 // Runs on the Edge runtime for every HTML page request.
 //
 // 1. Nonce-based CSP — replaces the static unsafe-inline in next.config.ts.
-//    A fresh cryptographic nonce is generated per request. Next.js 15 App Router
-//    reads the x-nonce request header and attaches it to its own inline scripts,
-//    removing the need for unsafe-inline in script-src.
+//    A fresh cryptographic nonce is generated per request. During SSR, Next.js
+//    parses the nonce out of this response's own Content-Security-Policy header
+//    and attaches it to every script tag it renders (framework runtime, page
+//    bundles, hydration data, and any <Script nonce={nonce}> you write) — no
+//    extra per-component wiring needed. This depends on one hard requirement:
+//    every page must render dynamically (root layout sets `export const
+//    dynamic = 'force-dynamic'`), because a nonce only exists once a request
+//    exists — a statically-generated page has no nonce to embed at build
+//    time, so its CSP-header nonce can never match anything in its (pre-built,
+//    nonce-less) HTML and hydration silently fails.
+//
+//    'strict-dynamic' lets a nonce-authorized script load further scripts
+//    (e.g. webpack's dynamic chunk loading) without each one needing its own
+//    nonce — required alongside a nonce-based script-src, per Next's own CSP
+//    guide. 'unsafe-eval' is dev-only: React's dev build uses eval() for
+//    richer error stack traces; it is never included in production.
+//
+//    connect-src must include the API's own origin: lib/auth.ts and
+//    lib/offers-api.ts call NEXT_PUBLIC_API_URL directly (a different origin
+//    than the web app whenever they're deployed separately, which is the
+//    normal case — see apps/api/Dockerfile). Without this, CSP silently
+//    blocked every fetch() the app makes to its own backend.
 //
 // 2. Dashboard protection — redirects unauthenticated users to /login.
 //    The `oa_sess` cookie is a non-HttpOnly indicator set on login and cleared on
 //    logout. It is readable on the Edge; the actual auth boundary is JwtAuthGuard
 //    on every API request.
 
+const isDev = process.env.NODE_ENV === 'development';
+
+// The API origin the browser actually calls — see lib/auth.ts / lib/offers-api.ts.
+// Falls back to no extra origin (same-origin only) if the env var is unset or
+// unparseable, rather than throwing at module load.
+const apiOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_URL ?? '').origin;
+  } catch {
+    return null;
+  }
+})();
+
 // Static portions of the CSP — concatenated with the per-request nonce below.
 const CSP_PARTS = {
   default: "default-src 'self'",
   style:   "style-src 'self' 'unsafe-inline'",        // Tailwind v4 + Next.js require this
   img:     "img-src 'self' data:",
-  connect: "connect-src 'self' https://*.ingest.sentry.io",
+  connect: `connect-src 'self' https://*.ingest.sentry.io${apiOrigin ? ` ${apiOrigin}` : ''}`,
   font:    "font-src 'self'",
   frame:   "frame-ancestors 'none'",
   base:    "base-uri 'self'",
@@ -28,7 +60,7 @@ const CSP_PARTS = {
 function buildCsp(nonce: string): string {
   return [
     CSP_PARTS.default,
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     CSP_PARTS.style,
     CSP_PARTS.img,
     CSP_PARTS.connect,

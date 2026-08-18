@@ -6,6 +6,19 @@ import { ToastContainer } from '../components/ui/Toast';
 import { RouteProgressBar } from '../components/ui/RouteProgressBar';
 import { ConditionalFooter } from '../components/ConditionalFooter';
 
+// Required for the nonce-based CSP in middleware.ts to work at all: a nonce
+// only exists once a request exists, so every page must render per-request
+// rather than being statically generated at build time (which would bake in
+// HTML with no nonce, permanently mismatched against each request's fresh
+// CSP header). This applies to every route under this layout — i.e. all of
+// them. Trade-off: no static generation or CDN caching for any page,
+// including marketing/legal pages that would otherwise be static-friendly.
+// Accepted deliberately — this app's product is built on trust/tamper-
+// evidence, so a consistently strict CSP (not weakened to 'unsafe-inline',
+// not a partial/mixed strategy that risks misclassifying a sensitive route
+// as "safe to leave static") outweighs the SSR/hosting cost at current scale.
+export const dynamic = 'force-dynamic';
+
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   display: 'swap',
