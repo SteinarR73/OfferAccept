@@ -31,12 +31,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
 // pg-boss uses the same PostgreSQL database as Prisma (DATABASE_URL).
 // It manages its own schema under the `pgboss` namespace — no manual migrations.
 //
-// Module startup order:
-//   JobWorker.onApplicationBootstrap()   → boss.start(), createQueues, work()
-//   JobScheduler.onApplicationBootstrap() → boss.schedule() for cron jobs
-//
-// NestJS guarantees OnApplicationBootstrap hooks run after all providers are
-// resolved and injected, so the PgBoss instance is ready when workers register.
+// Module startup order (all driven from JobWorker.onApplicationBootstrap(),
+// since NestJS does NOT guarantee OnApplicationBootstrap hook order across
+// providers — see the comment in job.worker.ts):
+//   1. jobTracking.onApplicationBootstrap() — stale lock recovery
+//   2. boss.start(), createQueues, work()   — pg-boss connects and workers register
+//   3. jobScheduler.registerSchedules()     — boss.schedule() for cron jobs
 //
 // Dead-letter queue (DLQ):
 //   pg-boss archives exhausted jobs to pgboss.archive automatically.

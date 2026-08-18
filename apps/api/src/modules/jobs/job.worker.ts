@@ -11,6 +11,7 @@ import { SpanStatusCode } from '@opentelemetry/api';
 import { JOB_BOSS } from './job.service';
 import { QUEUE_OPTIONS, JobName, JobPayloadMap } from './job.types';
 import { JobTrackingService } from './job-tracking.service';
+import { JobScheduler } from './job.scheduler';
 import { MetricsService } from '../../common/metrics/metrics.service';
 import { getAppTracer } from '../../instrument';
 import { ExpireSessionsHandler } from './handlers/expire-sessions.handler';
@@ -112,6 +113,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
   constructor(
     @Inject(JOB_BOSS) private readonly boss: PgBoss,
     private readonly jobTracking: JobTrackingService,
+    private readonly jobScheduler: JobScheduler,
     private readonly metrics: MetricsService,
     private readonly expireSessions: ExpireSessionsHandler,
     private readonly expireOffers: ExpireOffersHandler,
@@ -270,6 +272,14 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     );
 
     this.logger.log('All job workers registered');
+
+    // Cron schedule registration must happen after boss.start() above.
+    // NestJS does not guarantee OnApplicationBootstrap hook order across
+    // providers (see JobTrackingService call above) — invoking it explicitly
+    // here, rather than letting JobScheduler implement its own bootstrap
+    // hook, avoids a race where schedule() runs before the pg-boss
+    // connection is open.
+    await this.jobScheduler.registerSchedules();
   }
 
   async onApplicationShutdown(signal?: string): Promise<void> {

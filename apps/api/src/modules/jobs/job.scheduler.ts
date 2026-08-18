@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { PgBoss } from 'pg-boss';
 import { JOB_BOSS } from './job.service';
 
@@ -34,16 +34,15 @@ import { JOB_BOSS } from './job.service';
 // reconcile-certificates re-enqueues issue-certificate for any missed certificates.
 
 @Injectable()
-export class JobScheduler implements OnApplicationBootstrap {
+export class JobScheduler {
   private readonly logger = new Logger(JobScheduler.name);
 
   constructor(@Inject(JOB_BOSS) private readonly boss: PgBoss) {}
 
-  async onApplicationBootstrap(): Promise<void> {
-    await this.registerSchedules();
-  }
-
-  private async registerSchedules(): Promise<void> {
+  // Called explicitly by JobWorker.onApplicationBootstrap() after boss.start()
+  // completes — see the comment there for why this isn't its own
+  // OnApplicationBootstrap hook.
+  async registerSchedules(): Promise<void> {
     // expire-sessions: every 5 minutes
     await this.boss.schedule('expire-sessions', '*/5 * * * *', {}, {
       tz: 'UTC',
