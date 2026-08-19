@@ -43,7 +43,6 @@ export function DemoClient() {
 
   useEffect(() => {
     track('demo.started', { locale: 'en' });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleOtpSubmit(e: FormEvent) {

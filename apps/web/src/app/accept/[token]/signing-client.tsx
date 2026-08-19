@@ -49,7 +49,7 @@ const EN = {
     documentsIncluded: (n: number) => `Documents included (${n})`,
     expiresOn: (date: string) => `Expires ${date}`,
     platformBox: (senderName: string) =>
-      `This document was shared using OfferAccept, which records a verified acceptance certificate when you confirm. No account required.`,
+      `This document was shared by ${senderName} using OfferAccept, which records a verified acceptance certificate when you confirm. No account required.`,
     continueBtn: 'Continue to accept',
     declineBtn: 'Decline',
   },
@@ -63,7 +63,7 @@ const EN = {
     gdprItems: ['email address', 'time of confirmation', 'device information'],
     gdprBasis: 'This creates a verifiable acceptance record. Processing is based on legitimate interests.',
     gdprLink: 'Privacy notice →',
-    sentTo: (masked: string) => `A 6-digit code was sent to`,
+    sentTo: () => `A 6-digit code was sent to`,
     verifyingAddress: (name: string) =>
       `We are verifying that you control this address — the one ${name} used to send this document.`,
     codeLabel: 'Verification code',
@@ -160,7 +160,7 @@ const NO = {
     documentsIncluded: (n: number) => `Vedlagte dokumenter (${n})`,
     expiresOn: (date: string) => `Utløper ${date}`,
     platformBox: (senderName: string) =>
-      `Dette dokumentet ble delt via OfferAccept, som registrerer et bekreftet akseptbevis når du godkjenner. Ingen konto nødvendig.`,
+      `Dette dokumentet ble delt av ${senderName} via OfferAccept, som registrerer et bekreftet akseptbevis når du godkjenner. Ingen konto nødvendig.`,
     continueBtn: 'Fortsett til godkjenning',
     declineBtn: 'Avslå',
   },
@@ -175,7 +175,7 @@ const NO = {
     gdprBasis:
       'Dette oppretter et etterprøvbart akseptbevis. Grunnlaget for behandlingen er berettiget interesse.',
     gdprLink: 'Personvernerklæring →',
-    sentTo: (masked: string) => `En 6-sifret kode ble sendt til`,
+    sentTo: () => `En 6-sifret kode ble sendt til`,
     verifyingAddress: (name: string) =>
       `Vi bekrefter at du kontrollerer denne adressen — den ${name} brukte for å sende dette dokumentet.`,
     codeLabel: 'Verifiseringskode',
@@ -839,7 +839,7 @@ function OtpEntry({
         </div>
 
         <p className="text-sm text-(--color-text-secondary) mb-1">
-          {s.otp.sentTo(otp.deliveryAddressMasked)}{' '}
+          {s.otp.sentTo()}{' '}
           <strong className="text-gray-900">{otp.deliveryAddressMasked}</strong>.
         </p>
         <p className="text-sm text-(--color-text-secondary) mb-4">

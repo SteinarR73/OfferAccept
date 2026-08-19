@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -38,7 +38,7 @@ export default function CertificateVerifyPage() {
   const [state, setState] = useState<PageState>({ phase: 'loading' });
   const [showDetails, setShowDetails] = useState(false);
 
-  function runVerification() {
+  const runVerification = useCallback(() => {
     if (!certificateId) return;
     setState({ phase: 'loading' });
 
@@ -68,9 +68,9 @@ export default function CertificateVerifyPage() {
           });
         }
       });
-  }
+  }, [certificateId]);
 
-  useEffect(() => { runVerification(); }, [certificateId]);
+  useEffect(() => { runVerification(); }, [runVerification]);
 
   return (
     <div className="min-h-screen bg-(--color-bg) flex flex-col">

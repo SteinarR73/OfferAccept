@@ -15,7 +15,7 @@ COPY packages/database/package.json ./packages/database/
 
 RUN pnpm install --frozen-lockfile
 
-COPY tsconfig.base.json ./
+COPY tsconfig.base.json eslint.config.mjs ./
 COPY apps/web ./apps/web
 COPY packages/types ./packages/types
 
