@@ -15,7 +15,7 @@ import { DealEventService } from '../../src/modules/deal-events/deal-events.serv
 type FakeOffer = { id: string; createdAt: Date; deletedAt: null; organizationId: string; [key: string]: unknown };
 
 function makeOffer(id: string, createdAt: Date, orgId = 'org-1'): FakeOffer {
-  return { id, createdAt, deletedAt: null, organizationId: orgId, recipient: null, _count: { documents: 0 } };
+  return { id, createdAt, deletedAt: null, organizationId: orgId, recipient: null, documents: [] };
 }
 
 // Build a list of N offers ordered newest-first (descending createdAt)

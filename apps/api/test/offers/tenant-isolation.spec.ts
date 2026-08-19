@@ -33,7 +33,6 @@ const OFFER_IN_ORG_A = {
   recipient: null,
   documents: [],
   snapshot: null,
-  _count: { documents: 0 },
 };
 
 function makeDb(offerInOrgA = OFFER_IN_ORG_A) {

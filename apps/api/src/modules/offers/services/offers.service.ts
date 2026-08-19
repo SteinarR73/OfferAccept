@@ -71,7 +71,16 @@ export class OffersService {
     const [data, total] = await this.db.$transaction([
       this.db.offer.findMany({
         where: { organizationId: orgId, deletedAt: null },
-        include: { recipient: true, _count: { select: { documents: true } } },
+        include: {
+          recipient: true,
+          // Selected (not bare `documents: true`) to match OfferDocumentItem
+          // exactly and avoid leaking storageKey, which findOne's detail query
+          // over-fetches today.
+          documents: {
+            select: { id: true, filename: true, mimeType: true, sizeBytes: true, sha256Hash: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * safePageSize,
         take: safePageSize,
@@ -103,7 +112,16 @@ export class OffersService {
       // Malformed cursor: fall back to first page without offset
       const data = await this.db.offer.findMany({
         where: { organizationId: orgId, deletedAt: null },
-        include: { recipient: true, _count: { select: { documents: true } } },
+        include: {
+          recipient: true,
+          // Selected (not bare `documents: true`) to match OfferDocumentItem
+          // exactly and avoid leaking storageKey, which findOne's detail query
+          // over-fetches today.
+          documents: {
+            select: { id: true, filename: true, mimeType: true, sizeBytes: true, sha256Hash: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: pageSize + 1,
       });
@@ -114,7 +132,13 @@ export class OffersService {
     // We fetch pageSize + 1 to determine whether a next page exists.
     const data = await this.db.offer.findMany({
       where: { organizationId: orgId, deletedAt: null },
-      include: { recipient: true, _count: { select: { documents: true } } },
+      include: {
+        recipient: true,
+        documents: {
+          select: { id: true, filename: true, mimeType: true, sizeBytes: true, sha256Hash: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       cursor: { id: decoded.id },
       skip: 1,     // skip the cursor item itself

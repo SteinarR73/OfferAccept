@@ -51,12 +51,6 @@ const STATUS_BADGE: Record<OfferItem['status'], { label: string; classes: string
 export default function DocumentsPage() {
   const { offers, loading } = useOffers(1, 200);
   const flatDocs = useMemo<FlatDocument[]>(
-    // GET /offers (list) returns `_count.documents` rather than the full
-    // `documents` array the OfferItem type declares — the array is only
-    // populated on the single-offer detail response. Guard against that
-    // mismatch instead of crashing; see PR discussion for the real fix
-    // (either a list endpoint that includes documents, or a dedicated
-    // documents-index endpoint).
     () => offers.flatMap((offer) => (offer.documents ?? []).map((doc) => ({ doc, offer }))),
     [offers],
   );
