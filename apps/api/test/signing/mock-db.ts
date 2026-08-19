@@ -8,8 +8,10 @@ import { jest } from '@jest/globals';
 export function createMockDb() {
   const mock = {
     $transaction: jest.fn(),
-    // pg_advisory_xact_lock is called inside transactions via $queryRaw.
-    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    // pg_advisory_xact_lock is called inside transactions via $executeRaw (not
+    // $queryRaw — pg_advisory_xact_lock() returns void, which $queryRaw cannot
+    // deserialize against a real Postgres client).
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
     offerRecipient: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),

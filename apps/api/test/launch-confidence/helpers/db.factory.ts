@@ -21,7 +21,10 @@ export function createRaceDb(state: RaceState) {
 
   const mock = {
     $transaction: jest.fn(),
-    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    // pg_advisory_xact_lock() returns void; SigningEventService/DealEventService
+    // call it via $executeRaw, not $queryRaw (which cannot deserialize a void
+    // column against a real Postgres client).
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
 
     offer: {
       findUniqueOrThrow: jest.fn<any>().mockImplementation(async () => ({
@@ -140,7 +143,10 @@ export interface OtpState {
 export function createOtpDb(state: OtpState) {
   const mock = {
     $transaction: jest.fn(),
-    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    // pg_advisory_xact_lock() returns void; SigningEventService/DealEventService
+    // call it via $executeRaw, not $queryRaw (which cannot deserialize a void
+    // column against a real Postgres client).
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
 
     signingOtpChallenge: {
       findUnique: jest.fn<any>().mockImplementation(async () => ({

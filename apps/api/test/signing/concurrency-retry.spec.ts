@@ -38,7 +38,7 @@ function makeSession(version = 3) {
 function createRetryMockDb() {
   let callCount = 0;
   const txMock = {
-    $queryRaw: jest.fn<() => Promise<never[]>>().mockResolvedValue([]),
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
     signingSession: {
       updateMany: jest.fn<() => Promise<{ count: number }>>().mockImplementation(async () => {
         callCount += 1;
@@ -118,7 +118,7 @@ describe('SigningSessionService.transition() — auto-retry on ConcurrencyConfli
   it('throws ConcurrencyConflictError when BOTH attempts fail', async () => {
     // Both attempts return count=0
     const txMock = {
-      $queryRaw: jest.fn<() => Promise<never[]>>().mockResolvedValue([]),
+      $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
       signingSession: {
         updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 0 }),
         findUniqueOrThrow: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession(4)),

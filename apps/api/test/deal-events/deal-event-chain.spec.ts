@@ -51,7 +51,7 @@ function makeDb(events: ReturnType<typeof makeEvent>[]) {
   return {
     $transaction: jest.fn<any>().mockImplementation(
       async (cb: (tx: any) => Promise<unknown>) => cb({
-        $queryRaw: jest.fn<any>().mockResolvedValue([]),
+        $executeRaw: jest.fn<any>().mockResolvedValue(0),
         dealEvent: {
           findFirst: jest.fn<any>().mockImplementation(({ orderBy }: any) => {
             const chained = created.filter((e) => e.sequenceNumber !== null);

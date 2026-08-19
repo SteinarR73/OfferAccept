@@ -128,7 +128,14 @@ export class DealEventService {
       await this.db.$transaction(async (tx) => {
         // Serialize concurrent emit() calls for the same deal.
         // pg_advisory_xact_lock is released automatically at transaction end.
-        await (tx as unknown as PrismaClient).$queryRaw`
+        //
+        // $executeRaw, not $queryRaw: pg_advisory_xact_lock() returns void, and
+        // Prisma's query engine cannot deserialize a void column — $queryRaw threw
+        // on every call, which emit()'s outer catch silently swallowed into a
+        // logger.warn. That meant no DealEvent was ever successfully written by
+        // this path. $executeRaw only reports an affected-row count, so it never
+        // tries to deserialize the (nonexistent) result columns.
+        await (tx as unknown as PrismaClient).$executeRaw`
           SELECT pg_advisory_xact_lock(hashtext(${dealId})::bigint)
         `;
 

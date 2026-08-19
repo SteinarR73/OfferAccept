@@ -36,7 +36,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
 
 function createMockDb(updateCount: number = 1) {
   const txMock = {
-    $queryRaw: jest.fn<() => Promise<never[]>>().mockResolvedValue([]),
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
     signingSession: {
       updateMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: updateCount }),
       findUniqueOrThrow: (jest.fn() as jest.Mock<(...args: any[]) => any>).mockResolvedValue(makeSession()),

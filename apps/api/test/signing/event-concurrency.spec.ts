@@ -7,8 +7,11 @@ import { SigningEventService } from '../../src/modules/signing/services/signing-
 // Verifies that SigningEventService.append() acquires pg_advisory_xact_lock
 // before reading the last sequence number and that sequence numbers are correct.
 //
-// The advisory lock SQL is tested by asserting that $queryRaw is called with
+// The advisory lock SQL is tested by asserting that $executeRaw is called with
 // a hashtext-based lock key before any signingEvent.findFirst is called.
+// (pg_advisory_xact_lock() returns void; SigningEventService uses $executeRaw,
+// not $queryRaw, since $queryRaw cannot deserialize a void column against a
+// real Postgres client.)
 // Concurrent correctness is a property of Postgres itself — unit tests verify
 // the protocol (lock → read → write), not the DB internals.
 
@@ -34,9 +37,9 @@ function createMockDb(lastSeqNumber: number | null = null) {
   const callOrder: string[] = [];
 
   const txMock = {
-    $queryRaw: jest.fn().mockImplementation(async () => {
-      callOrder.push('$queryRaw');
-      return [];
+    $executeRaw: jest.fn().mockImplementation(async () => {
+      callOrder.push('$executeRaw');
+      return 0;
     }),
     signingEvent: {
       findFirst: jest.fn().mockImplementation(async () => {
@@ -92,7 +95,7 @@ describe('SigningEventService.append() — advisory lock protocol', () => {
 
     // Lock must be acquired BEFORE reading the last sequence number
     const txOrder = db._callOrder.filter((c) => c !== '$transaction');
-    expect(txOrder[0]).toBe('$queryRaw');
+    expect(txOrder[0]).toBe('$executeRaw');
     expect(txOrder[1]).toBe('findFirst');
     expect(txOrder[2]).toBe('create');
   });
@@ -111,7 +114,7 @@ describe('SigningEventService.append() — advisory lock protocol', () => {
     expect(db.$transaction).not.toHaveBeenCalled();
 
     // But the lock must still be acquired
-    expect(db._txMock.$queryRaw).toHaveBeenCalled();
+    expect(db._txMock.$executeRaw).toHaveBeenCalled();
   });
 
   it('assigns sequenceNumber = 1 when there are no prior events', async () => {

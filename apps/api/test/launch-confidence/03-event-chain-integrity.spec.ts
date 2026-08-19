@@ -81,7 +81,7 @@ function buildChain(sessionId: string): ChainEvent[] {
 function makeEventDb(events: ChainEvent[]) {
   return {
     $transaction: jest.fn(),
-    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
     signingEvent: {
       findMany: jest.fn<any>().mockResolvedValue(events),
       findFirst: jest.fn<any>().mockResolvedValue(events[events.length - 1] ?? null),

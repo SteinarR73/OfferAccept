@@ -102,7 +102,7 @@ function makeJwt(jwtService: JwtService, role = 'INTERNAL_SUPPORT') {
 function createMockDb() {
   const mock = {
     $transaction: jest.fn(),
-    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
     offer: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),

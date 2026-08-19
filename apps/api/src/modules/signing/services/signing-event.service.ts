@@ -31,8 +31,10 @@ import { computeEventHash } from '../domain/signing-event.builder';
 //     2. Take the first 8 bytes of the digest and interpret as a signed int64.
 //     3. Pass that value to pg_advisory_xact_lock() directly.
 //   This gives 64 bits of entropy and reduces collision probability to ≈ 1/2^64.
-//   Implementation requires a native SHA library or a Postgres UDF; Prisma $queryRaw
+//   Implementation requires a native SHA library or a Postgres UDF; Prisma $executeRaw
 //   can call the UDF as:  SELECT pg_advisory_xact_lock(sha256_to_int64(${sessionId}))
+//   (not $queryRaw — pg_advisory_xact_lock() returns void, which $queryRaw cannot
+//   deserialize against a real Postgres client; see the comment in appendWithLock below.)
 
 export interface AppendEventInput {
   sessionId: string;
@@ -80,7 +82,15 @@ export class SigningEventService {
     // Acquire a session-scoped advisory transaction lock.
     // Blocks until the lock is free; released automatically on transaction end.
     // This serializes concurrent appends to the same session across all processes.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId})::bigint)`;
+    //
+    // $executeRaw, not $queryRaw: pg_advisory_xact_lock() returns void, and
+    // Prisma's query engine cannot deserialize a void column — $queryRaw threw
+    // on every call here. Unlike DealEventService.emit() (best-effort, catches
+    // internally), this method has no catch: every append() — i.e. every
+    // signing event, including SESSION_STARTED on first load — would fail the
+    // whole request. $executeRaw only reports an affected-row count, so it
+    // never attempts to deserialize the (nonexistent) result columns.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId})::bigint)`;
 
     // Read the last event AFTER acquiring the lock — safe from TOCTOU.
     const lastEvent = await tx.signingEvent.findFirst({

@@ -173,7 +173,7 @@ function createMockDb() {
       deleteMany: jest.fn<() => Promise<{ count: number }>>().mockResolvedValue({ count: 1 }),
     },
     $transaction: jest.fn(),
-    $queryRaw: jest.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    $executeRaw: jest.fn<() => Promise<number>>().mockResolvedValue(0),
   };
 
   // The transaction callback receives the same mock as the `tx` argument.
@@ -190,7 +190,7 @@ type MockDb = ReturnType<typeof createMockDb>;
 // ── Service builder ────────────────────────────────────────────────────────────
 
 async function buildService(db: MockDb) {
-  // SigningEventService uses $queryRaw + signingEvent.create/findFirst internally.
+  // SigningEventService uses $executeRaw + signingEvent.create/findFirst internally.
   // We inject the real SigningEventService with the mock DB so we can verify
   // whether append() was called via the signingEvent.create spy.
   const module = await Test.createTestingModule({
