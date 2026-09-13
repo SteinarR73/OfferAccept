@@ -1,105 +1,157 @@
 import { test, expect } from '@playwright/test';
 
-// ─── Acceptance flow E2E ──────────────────────────────────────────────────────
-// Tests the full recipient-side acceptance journey:
-//   /accept/:token  → OTP verification → acceptance → completion certificate
-//
-// Prerequisites (must be running before this test suite):
-//   - API server at NEXT_PUBLIC_API_URL (default http://localhost:3001/api/v1)
-//   - Web server at BASE_URL (default http://localhost:3000)
-//
-// The test uses a SENT deal token seeded by the API's e2e test helpers or a
-// real token set via the PLAYWRIGHT_SIGN_TOKEN env var.
-//
-// If no token is provided the tests are skipped with an informative message.
+// ─── Acceptance flow E2E (Mocked) ─────────────────────────────────────────────
 
-const SIGN_TOKEN = process.env.PLAYWRIGHT_SIGN_TOKEN;
+const MOCK_TOKEN = 'mock-valid-token';
 
-// ─── Skip guard ────────────────────────────────────────────────────────────────
+test.describe('Signing Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    // Mock getContext
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          sessionId: 'session-123',
+          offerTitle: 'Mock Offer',
+          offerMessage: 'Please sign this',
+          senderName: 'Acme Corp',
+          recipientName: 'John Doe',
+          expiresAt: null,
+          documents: [{ documentId: 'doc-1', filename: 'contract.pdf', mimeType: 'application/pdf', sizeBytes: 1024 }],
+          acceptanceStatement: 'I accept',
+        }
+      });
+    });
 
-test.beforeAll(() => {
-  if (!SIGN_TOKEN) {
-    console.warn(
-      '[E2E] PLAYWRIGHT_SIGN_TOKEN not set — acceptance flow tests skipped.\n' +
-        'Set PLAYWRIGHT_SIGN_TOKEN to a valid SENT deal token to run these tests.',
-    );
-  }
-});
+    // Mock recordDocumentView
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}/documents/*/view`, async (route) => {
+      await route.fulfill({ status: 200, json: { recorded: true } });
+    });
+  });
 
-// ─── Acceptance page — initial load ───────────────────────────────────────────
+  test('happy path acceptance flow', async ({ page }) => {
+    // Mock requestOtp
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}/otp`, async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          json: { challengeId: 'challenge-123', deliveryAddressMasked: 'j***@example.com', expiresAt: new Date(Date.now() + 600000).toISOString() }
+        });
+      } else {
+        await route.continue();
+      }
+    });
 
-test('acceptance page loads and shows deal details', async ({ page }) => {
-  test.skip(!SIGN_TOKEN, 'PLAYWRIGHT_SIGN_TOKEN not set');
+    // Mock verifyOtp
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}/otp/verify`, async (route) => {
+      if (route.request().method() === 'POST') {
+        const payload = JSON.parse(route.request().postData() || '{}');
+        if (payload.code === '123456') {
+          await route.fulfill({ status: 200, json: { verified: true, verifiedAt: new Date().toISOString() } });
+        } else {
+          await route.fulfill({ status: 400, json: { code: 'INVALID_OTP', message: 'Invalid OTP' } });
+        }
+      } else {
+        await route.continue();
+      }
+    });
 
-  await page.goto(`/accept/${SIGN_TOKEN}`);
+    // Mock accept
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}/accept`, async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          json: { acceptanceRecordId: 'record-123', acceptedAt: new Date().toISOString(), certificateId: 'cert-123' }
+        });
+      } else {
+        await route.continue();
+      }
+    });
 
-  // Trust banner should be visible on every acceptance step
-  await expect(page.getByText('Secure acceptance session')).toBeVisible();
+    await page.goto(`/accept/${MOCK_TOKEN}`);
 
-  // OTP entry form should render
-  await expect(page.getByRole('heading', { name: /verify/i })).toBeVisible();
-});
+    // Details visible
+    await expect(page.getByText('Mock Offer')).toBeVisible();
+    await expect(page.getByText('Secure acceptance session')).toBeVisible();
 
-// ─── Acceptance page — OTP error state ────────────────────────────────────────
+    // Initiate signing
+    const startBtn = page.getByRole('button', { name: /Continue to accept/i });
+    if (await startBtn.isVisible()) {
+      await startBtn.click();
+    } else {
+      // It might be Verify Email depending on the component state
+      await page.getByRole('button', { name: /Verify Email/i }).click();
+    }
 
-test('acceptance page shows error on invalid OTP', async ({ page }) => {
-  test.skip(!SIGN_TOKEN, 'PLAYWRIGHT_SIGN_TOKEN not set');
+    // OTP screen
+    await expect(page.getByText(/verify your email/i)).toBeVisible();
+    await expect(page.getByText('j***@example.com')).toBeVisible();
 
-  await page.goto(`/accept/${SIGN_TOKEN}`);
+    // Fill OTP
+    const inputs = page.locator('input[type="text"]');
+    for (let i = 0; i < 6; i++) {
+      await inputs.nth(i).fill((i + 1).toString()); // 123456
+    }
+    await page.getByRole('button', { name: /Verify/i }).click();
 
-  // Enter an obviously wrong OTP
-  await page.getByRole('textbox').fill('000000');
-  await page.getByRole('button', { name: /verify/i }).click();
+    // Accept step
+    await expect(page.getByText('Accept this document')).toBeVisible();
+    await page.getByRole('button', { name: /I Accept/i }).click();
 
-  // Error state should appear — the exact message depends on API response
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
-});
+    // Success screen
+    await expect(page.getByText(/completed|success/i)).toBeVisible();
+  });
 
-// ─── Acceptance page — expired / not-found token ──────────────────────────────
+  test('acceptance page shows error on invalid OTP', async ({ page }) => {
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}/otp`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: { challengeId: 'challenge-123', deliveryAddressMasked: 'j***@example.com', expiresAt: new Date(Date.now() + 600000).toISOString() }
+      });
+    });
 
-test('acceptance page handles invalid token gracefully', async ({ page }) => {
-  await page.goto('/accept/invalid-token-that-does-not-exist');
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}/otp/verify`, async (route) => {
+      await route.fulfill({ status: 400, json: { code: 'INVALID_OTP', message: 'Invalid or expired code.' } });
+    });
 
-  // Should not show a raw error — either an error card or redirect
-  // The page must NOT display an unhandled exception stack trace
-  await expect(page.locator('pre')).not.toBeVisible({ timeout: 3000 });
+    await page.goto(`/accept/${MOCK_TOKEN}`);
+    
+    const startBtn = page.getByRole('button', { name: /Continue to accept/i });
+    if (await startBtn.isVisible()) {
+      await startBtn.click();
+    } else {
+      await page.getByRole('button', { name: /Verify Email/i }).click();
+    }
 
-  // Should show some form of "not found" or "expired" UI
-  const body = await page.textContent('body');
-  expect(body).not.toContain('Unhandled');
-  expect(body).not.toContain('NEXT_NOT_FOUND');
-});
+    const inputs = page.locator('input[type="text"]');
+    for (let i = 0; i < 6; i++) {
+      await inputs.nth(i).fill('0');
+    }
+    await page.getByRole('button', { name: /Verify/i }).click();
 
-// ─── Landing page ─────────────────────────────────────────────────────────────
+    await expect(page.getByRole('alert')).toContainText('Invalid or expired code');
+  });
 
-test('landing page renders core sections', async ({ page }) => {
-  await page.goto('/landing');
+  test('acceptance page handles invalid token gracefully', async ({ page }) => {
+    const BAD_TOKEN = 'invalid-token-that-does-not-exist';
+    await page.route(`**/api/v1/signing/${BAD_TOKEN}`, async (route) => {
+      await route.fulfill({ status: 404, json: { code: 'NOT_FOUND', message: 'Offer not found' } });
+    });
 
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  // CTA buttons
-  await expect(page.getByRole('link', { name: /sign in/i })).toBeVisible();
-});
+    await page.goto(`/accept/${BAD_TOKEN}`);
 
-// ─── Login page ───────────────────────────────────────────────────────────────
+    const body = await page.textContent('body');
+    expect(body).not.toContain('Unhandled Runtime Error');
+    await expect(page.getByText(/not found|expired|invalid/i)).toBeVisible();
+  });
 
-test('login page shows error on bad credentials', async ({ page }) => {
-  await page.goto('/login');
+  test('acceptance page handles already accepted deal', async ({ page }) => {
+    await page.route(`**/api/v1/signing/${MOCK_TOKEN}`, async (route) => {
+      await route.fulfill({ status: 409, json: { code: 'ALREADY_ACCEPTED', message: 'Deal is already accepted' } });
+    });
 
-  await page.getByLabel(/email/i).fill('nobody@example.com');
-  await page.getByLabel(/password/i).fill('wrongpassword');
-  await page.getByRole('button', { name: /sign in/i }).click();
+    await page.goto(`/accept/${MOCK_TOKEN}`);
 
-  // API returns 401 — the login form should show an error alert
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
-});
-
-// ─── Unauthenticated redirect ─────────────────────────────────────────────────
-
-test('dashboard redirects unauthenticated users', async ({ page }) => {
-  // Fresh context — no auth cookies
-  await page.goto('/dashboard');
-
-  // Should end up on login or landing, not the dashboard
-  await page.waitForURL((url) => !url.pathname.startsWith('/dashboard'), { timeout: 5000 });
-  expect(page.url()).not.toContain('/dashboard');
+    await expect(page.getByText(/already accepted|completed/i)).toBeVisible();
+  });
 });

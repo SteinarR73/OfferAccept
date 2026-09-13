@@ -220,6 +220,12 @@ export class InviteExpiredError extends DomainError {
   constructor() { super('This invitation has expired.'); }
 }
 
+export class DuplicateInviteError extends DomainError {
+  constructor() {
+    super('An active invitation for this email address already exists in this organization.');
+  }
+}
+
 export class CannotRemoveLastOwnerError extends DomainError {
   constructor() { super('Cannot remove the last owner of an organization.'); }
 }

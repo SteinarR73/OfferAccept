@@ -12,12 +12,11 @@
  *
  * Verifies:
  *   - getOfferContext() throws OfferAlreadyAcceptedError when offer is ACCEPTED
- *   - requestOtp() throws OfferAlreadyAcceptedError when offer is ACCEPTED
- *   - No SigningSession.create() is called in either case
+ *   - No SigningSession.create() is called
  */
 
 import { jest } from '@jest/globals';
-import { SigningFlowService } from '../../src/modules/signing/services/signing-flow.service';
+import { SigningContextService } from '../../src/modules/signing/services/signing-context.service';
 import { OfferAlreadyAcceptedError, OfferExpiredError, TokenInvalidError } from '../../src/common/errors/domain.errors';
 
 const RAW_TOKEN = 'oa_' + 'a'.repeat(43); // valid format
@@ -91,36 +90,9 @@ function makeStubs() {
       findResumable: jest.fn<any>().mockResolvedValue(null),
       createSession: jest.fn(),
     },
-    otpService: {
-      issueOtp: jest.fn(),
-      verifyOtp: jest.fn(),
-    },
-    acceptanceService: {
-      accept: jest.fn(),
-    },
     eventService: {
       append: jest.fn(),
       verifyChain: jest.fn(),
-    },
-    certificateService: {
-      generateForAcceptance: jest.fn(),
-      verify: jest.fn(),
-    },
-    notificationsService: {
-      onDealExpired: jest.fn(),
-      onDealDeclined: jest.fn(),
-    },
-    webhookService: {
-      triggerForOffer: jest.fn(),
-    },
-    dealEventService: {
-      emit: jest.fn<any>().mockResolvedValue(undefined),
-    },
-    jobService: {
-      enqueue: jest.fn(),
-    },
-    traceContext: {
-      getTraceId: jest.fn<any>().mockReturnValue('trace-1'),
     },
   };
 }
@@ -132,19 +104,11 @@ describe('TEST 8 — Token Replay After Acceptance', () => {
     const stubs = makeStubs();
     const tokenService = makeTokenService(makeRecipient());
 
-    const svc = new SigningFlowService(
+    const svc = new SigningContextService(
       db as never,
       tokenService as never,
       stubs.sessionService as never,
-      stubs.otpService as never,
-      stubs.acceptanceService as never,
       stubs.eventService as never,
-      stubs.certificateService as never,
-      stubs.notificationsService as never,
-      stubs.webhookService as never,
-      stubs.dealEventService as never,
-      stubs.jobService as never,
-      stubs.traceContext as never,
     );
 
     await expect(svc.getOfferContext(RAW_TOKEN)).rejects.toThrow(OfferAlreadyAcceptedError);
@@ -160,19 +124,11 @@ describe('TEST 8 — Token Replay After Acceptance', () => {
     const db = makeDb(makeAcceptedOffer(), sessionCreateSpy);
     const stubs = makeStubs();
 
-    const svc = new SigningFlowService(
+    const svc = new SigningContextService(
       db as never,
       makeTokenService(makeRecipient()) as never,
       stubs.sessionService as never,
-      stubs.otpService as never,
-      stubs.acceptanceService as never,
       stubs.eventService as never,
-      stubs.certificateService as never,
-      stubs.notificationsService as never,
-      stubs.webhookService as never,
-      stubs.dealEventService as never,
-      stubs.jobService as never,
-      stubs.traceContext as never,
     );
 
     let thrown: OfferAlreadyAcceptedError | undefined;
@@ -193,19 +149,11 @@ describe('TEST 8 — Token Replay After Acceptance', () => {
     const db = makeDb(declinedOffer, jest.fn());
     const stubs = makeStubs();
 
-    const svc = new SigningFlowService(
+    const svc = new SigningContextService(
       db as never,
       makeTokenService(makeRecipient()) as never,
       stubs.sessionService as never,
-      stubs.otpService as never,
-      stubs.acceptanceService as never,
       stubs.eventService as never,
-      stubs.certificateService as never,
-      stubs.notificationsService as never,
-      stubs.webhookService as never,
-      stubs.dealEventService as never,
-      stubs.jobService as never,
-      stubs.traceContext as never,
     );
 
     await expect(svc.getOfferContext(RAW_TOKEN)).rejects.toThrow(TokenInvalidError);
@@ -220,19 +168,11 @@ describe('TEST 8 — Token Replay After Acceptance', () => {
     const db = makeDb(expiredOffer, jest.fn());
     const stubs = makeStubs();
 
-    const svc = new SigningFlowService(
+    const svc = new SigningContextService(
       db as never,
       makeTokenService(makeRecipient()) as never,
       stubs.sessionService as never,
-      stubs.otpService as never,
-      stubs.acceptanceService as never,
       stubs.eventService as never,
-      stubs.certificateService as never,
-      stubs.notificationsService as never,
-      stubs.webhookService as never,
-      stubs.dealEventService as never,
-      stubs.jobService as never,
-      stubs.traceContext as never,
     );
 
     await expect(svc.getOfferContext(RAW_TOKEN)).rejects.toThrow(OfferExpiredError);
@@ -243,19 +183,11 @@ describe('TEST 8 — Token Replay After Acceptance', () => {
     const db = makeDb(sentOffer, jest.fn());
     const stubs = makeStubs();
 
-    const svc = new SigningFlowService(
+    const svc = new SigningContextService(
       db as never,
       makeTokenService(makeRecipient()) as never,
       stubs.sessionService as never,
-      stubs.otpService as never,
-      stubs.acceptanceService as never,
       stubs.eventService as never,
-      stubs.certificateService as never,
-      stubs.notificationsService as never,
-      stubs.webhookService as never,
-      stubs.dealEventService as never,
-      stubs.jobService as never,
-      stubs.traceContext as never,
     );
 
     const ctx = await svc.getOfferContext(RAW_TOKEN);

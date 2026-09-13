@@ -45,7 +45,6 @@ model Organization {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  users            User[]
   offers           Offer[]
   subscription     Subscription?
   memberships      Membership[]
@@ -102,20 +101,12 @@ model Invite {
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
-  // NOTE: no @@unique([organizationId, email]) constraint.
-  // Application code (InviteService.invite) revokes prior pending invites before
-  // creating a new one, but this is not race-condition-safe under concurrent requests.
-  // Two simultaneous invites to the same address can both pass the revocation check
-  // and both insert — leaving two active rows for the same org+email pair.
-  //
-  // Recommended future constraint (add in a dedicated migration):
-  //   @@unique([organizationId, email])
-  //
-  // This requires either filtering out accepted/revoked rows at the application layer,
-  // or using a partial unique index instead:
-  //   CREATE UNIQUE INDEX invites_org_email_active_idx
-  //     ON invites("organizationId", email)
+  // NOTE: Partial unique index enforced at DB level via migration 20260913_invite_active_unique_idx:
+  //   CREATE UNIQUE INDEX "invites_org_email_active_idx"
+  //     ON "invites"("organizationId", "email")
   //     WHERE "acceptedAt" IS NULL AND "revokedAt" IS NULL;
+  // This guarantees at most one active (non-accepted, non-revoked) invite per org+email,
+  // preventing race conditions under concurrent invite requests.
   @@index([organizationId])
   @@index([email])
   // Supports "invitations sent by user" queries (e.g. dashboard, revocation on user deletion)
@@ -173,10 +164,6 @@ enum UserRole {
 
 model User {
   id             String    @id @default(cuid())
-  // Legacy single-org FK — nullable since multi-org uses Membership as canonical source.
-  // New code reads org context from Membership; this field is kept as a fallback
-  // for backward compatibility until a full data migration removes it.
-  organizationId String?
   email          String    @unique
   name           String
   role           UserRole  @default(MEMBER)
@@ -186,7 +173,6 @@ model User {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization            Organization?            @relation(fields: [organizationId], references: [id])
   offersCreated           Offer[]                  @relation("CreatedByUser")
   sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
@@ -197,7 +183,6 @@ model User {
   userPackages            UserPackage[]
   legalAcceptances        LegalAcceptance[]
 
-  @@index([organizationId])
   @@map("users")
 }
 

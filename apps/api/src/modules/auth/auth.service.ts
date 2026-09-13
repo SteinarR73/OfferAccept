@@ -83,7 +83,7 @@ export class AuthService {
     const hashedPassword = await this.passwordService.hash(params.password);
     const slug = slugify(params.orgName);
 
-    const user = await this.repo.createOrgAndOwner({
+    const { user, orgId } = await this.repo.createOrgAndOwner({
       orgName: params.orgName,
       orgSlug: slug,
       userName: params.userName,
@@ -113,13 +113,7 @@ export class AuthService {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    // user.organizationId is always set by createOrgAndOwner (set in the same transaction).
-    // Guard defensively in case a future refactor changes that invariant.
-    if (!user.organizationId) {
-      throw new Error(`Signup produced a user (${user.id}) with no organizationId — data integrity violation.`);
-    }
-
-    return { userId: user.id, orgId: user.organizationId };
+    return { userId: user.id, orgId };
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────

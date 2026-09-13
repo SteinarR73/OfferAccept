@@ -132,8 +132,8 @@ function buildMocks() {
 
   const dbMock = {
     organization: {
-      findUnique: jest.fn<() => Promise<{ name: string; users: { email: string }[] } | null>>()
-        .mockResolvedValue({ name: 'Test Org', users: [{ email: 'owner@example.com' }] }),
+      findUnique: jest.fn<() => Promise<{ name: string; memberships: { role: string; user: { email: string } }[] } | null>>()
+        .mockResolvedValue({ name: 'Test Org', memberships: [{ role: 'OWNER', user: { email: 'owner@example.com' } }] }),
     },
   };
 

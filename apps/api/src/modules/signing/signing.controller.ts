@@ -9,7 +9,9 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { SigningFlowService } from './services/signing-flow.service';
+import { SigningContextService } from './services/signing-context.service';
+import { SigningOtpOrchestrator } from './services/signing-otp.orchestrator';
+import { SigningDecisionOrchestrator } from './services/signing-decision.orchestrator';
 import { RateLimitService } from '../../common/rate-limit/rate-limit.service';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AcceptOfferDto } from './dto/accept-offer.dto';
@@ -21,13 +23,13 @@ import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
 // All routes use the recipient token as the credential — it is in the URL path.
 //
 // Rate limiting is applied per-endpoint here using RateLimitService.
-// Domain logic and state machine enforcement live entirely in SigningFlowService.
-// Controllers stay thin: parse → rate-limit → delegate → return.
 
 @Controller('signing')
 export class SigningController {
   constructor(
-    private readonly flow: SigningFlowService,
+    private readonly contextService: SigningContextService,
+    private readonly otpOrchestrator: SigningOtpOrchestrator,
+    private readonly decisionOrchestrator: SigningDecisionOrchestrator,
     private readonly rateLimiter: RateLimitService,
   ) {}
 
@@ -37,7 +39,7 @@ export class SigningController {
   @Get(':token')
   async getContext(@Param('token') token: string, @Req() req: Request) {
     await this.rateLimiter.check('token_verification', extractClientIp(req));
-    return this.flow.getOfferContext(token);
+    return this.contextService.getOfferContext(token);
   }
 
   // POST /api/v1/signing/:token/otp
@@ -50,7 +52,7 @@ export class SigningController {
     // Also rate-limit by IP as a secondary defence
     await this.rateLimiter.check('signing_global', extractClientIp(req));
 
-    const result = await this.flow.requestOtp(token, context(req));
+    const result = await this.otpOrchestrator.requestOtp(token, context(req));
     // Never expose challengeId's expiry timing in error paths — only in success response
     return {
       challengeId: result.challengeId,
@@ -71,7 +73,7 @@ export class SigningController {
     await this.rateLimiter.check('otp_verification', extractClientIp(req));
     await this.rateLimiter.check('otp_verification_burst', extractClientIp(req));
 
-    const result = await this.flow.verifyOtp(token, body.challengeId, body.code, context(req));
+    const result = await this.otpOrchestrator.verifyOtp(token, body.challengeId, body.code, context(req));
     return {
       verified: result.verified,
       verifiedAt: result.verifiedAt.toISOString(),
@@ -89,7 +91,7 @@ export class SigningController {
   ) {
     await this.rateLimiter.check('signing_global', extractClientIp(req));
 
-    const result = await this.flow.accept(token, body.challengeId, {
+    const result = await this.decisionOrchestrator.accept(token, body.challengeId, {
       ...context(req),
       locale: body.locale,
       timezone: body.timezone,
@@ -115,7 +117,7 @@ export class SigningController {
     @Req() req: Request,
   ) {
     await this.rateLimiter.check('signing_global', extractClientIp(req));
-    await this.flow.decline(token, body.challengeId, context(req));
+    await this.decisionOrchestrator.decline(token, body.challengeId, context(req));
     return { declined: true };
   }
 
@@ -130,7 +132,7 @@ export class SigningController {
   ) {
     // Not rate-limited tightly — document views are a low-risk operation
     await this.rateLimiter.check('signing_global', extractClientIp(req));
-    await this.flow.recordDocumentView(token, documentId, context(req));
+    await this.contextService.recordDocumentView(token, documentId, context(req));
     return { recorded: true };
   }
 }

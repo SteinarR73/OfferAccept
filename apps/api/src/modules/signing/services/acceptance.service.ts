@@ -26,7 +26,7 @@ export interface AcceptanceResult {
   acceptanceRecord: AcceptanceRecord;
   certificateId: string | null;
   // Snapshot + recipient data — already loaded during accept(); passed through so
-  // callers (SigningFlowService) can send notification emails without re-querying.
+  // callers (SigningDecisionOrchestrator) can send notification emails without re-querying.
   offerTitle: string;
   senderName: string;
   senderEmail: string;

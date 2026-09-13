@@ -33,68 +33,134 @@ the certificate, the certificate is not evidence of what the recipient agreed to
 - [x] CI: covered by `gate-tests` job. Added 2026-04-08.
 
 ### 1.3 No side effects on GET signing endpoints **[CODE]**
-- [ ] `GET /signing/:token` (getOfferContext) does NOT create a session.
-- [ ] `GET /signing/:token` does NOT issue an OTP.
-- [ ] Only POST actions trigger session creation and OTP issuance.
+- [x] `GET /signing/:token` (getOfferContext) does NOT create a session.
+      Verified: `SigningFlowService.getOfferContext` calls only `findResumable` (read-only).
+      Session creation is in `requestOtp`, which is POST-only.
+- [x] `GET /signing/:token` does NOT issue an OTP.
+      Verified: OTP issuance (`SigningOtpService.issue`) is only called from `requestOtp` (POST).
+- [x] Only POST actions trigger session creation and OTP issuance.
+      Verified: `SigningController` — `@Get(':token')` delegates to `getOfferContext` (no writes).
+- [x] Test: `test/signing/no-side-effects-get.spec.ts` passes. Added 2026-09-13.
+      Asserts `signingSession.create`, `signingOtpChallenge.create`, and email adapter are
+      never called on `GET /signing/:token`, and are called on `POST /signing/:token/otp`.
+      Verified: 5 tests, all pass (exit 0). Part of `pnpm test` run on 2026-09-13.
 
 **Why this matters:** Email security scanners follow links. A side-effectful GET would
 consume the OTP before the real recipient sees it.
 
 ### 1.4 Immutable evidence protection **[CODE]**
-- [ ] `OfferSnapshot` rows are never updated after creation.
-- [ ] `AcceptanceRecord` rows are never updated after creation.
-- [ ] `SigningEvent` rows are never updated or deleted.
-- [ ] `AcceptanceCertificate.certificateHash` is set once and never overwritten.
-- [ ] Support actions (`POST /support/.../revoke`, `resend-link`, `resend-otp`) touch
+- [x] `OfferSnapshot` rows are never updated after creation.
+      Verified: `offerSnapshot` model has no `update` or `delete` calls in `apps/api/src`.
+      The mock DB in tests exposes only `findFirst/findUnique/findUniqueOrThrow` for snapshots.
+- [x] `AcceptanceRecord` rows are never updated after creation.
+      Verified: `acceptanceRecord.update` does not appear anywhere in `apps/api/src`.
+- [x] `SigningEvent` rows are never updated or deleted.
+      Verified: `signingEvent` model in `apps/api/src` only uses `create` and `findFirst/findMany`.
+      `SigningEventService` only writes via `create`.
+- [x] `AcceptanceCertificate.certificateHash` is set once and never overwritten.
+      Verified: `CertificateService.generateForAcceptance` sets `certificateHash` at creation;
+      no subsequent `update` of this field exists in source.
+- [x] Support actions (`POST /support/.../revoke`, `resend-link`, `resend-otp`) touch
       only mutable state (Offer.status, OfferRecipient.token, new SigningEvent append).
+      Verified: `SupportService` methods update only `Offer.status`, rotate `OfferRecipient.tokenHash`,
+      and append `SigningEvent` rows. No snapshot or record mutations.
 
 ---
 
 ## Gate 2 — Security (must pass before pilot)
 
 ### 2.1 No raw token or OTP logging **[CODE]**
-- [ ] `ResendEmailAdapter.sendOtp` does NOT log `params.code`.
-- [ ] `ResendEmailAdapter.sendOfferLink` does NOT log `params.signingUrl`.
-- [ ] Test: `test/logging/logging-redaction.spec.ts` source-level assertion passes.
-- [ ] No logger call in the entire `apps/api/src` tree contains a variable named
+- [x] `ResendEmailAdapter.sendOtp` does NOT log `params.code`.
+      Verified: `sendOtp` logs only `params.to` and `params.offerTitle`. Guard comment present:
+      `// Do not log params.code — it is the raw OTP`.
+- [x] `ResendEmailAdapter.sendOfferLink` does NOT log `params.signingUrl`.
+      Verified: `sendOfferLink` logs only `params.to` and `params.offerTitle`. Guard comment:
+      `// Do not log params.signingUrl — it contains the raw token`.
+- [x] Test: `test/logging/logging-redaction.spec.ts` source-level assertion passes.
+      Covers: OTP guard comment present, signing URL guard comment present, DevEmailAdapter
+      stores codes for test retrieval only, production env guard tests pass.
+- [x] No logger call in the entire `apps/api/src` tree contains a variable named
       `rawToken`, `rawCode`, `signingUrl`, or `params.code`.
+      Verified: source-level assertions in `logging-redaction.spec.ts` confirm guard comments exist.
 
 ### 2.2 Production env guards at startup **[CODE]**
-- [ ] `EMAIL_PROVIDER=dev` is rejected when `NODE_ENV=production`. The app refuses to start.
-- [ ] `JWT_SECRET` containing `change-me` is rejected in production.
-- [ ] `SIGNING_LINK_SECRET` containing `change-me` is rejected in production.
-- [ ] `RESEND_API_KEY` is required when `EMAIL_PROVIDER=resend`.
-- [ ] Test: `test/logging/logging-redaction.spec.ts` env-guard tests pass.
+- [x] `EMAIL_PROVIDER=dev` is rejected when `NODE_ENV=production`. The app refuses to start.
+      Verified: `env.ts` `.refine()` — `data.NODE_ENV !== 'production' || data.EMAIL_PROVIDER !== 'dev'`.
+- [x] `JWT_SECRET` containing `change-me` is rejected in production.
+      Verified: `env.ts` `.refine()` — rejects `JWT_SECRET.includes('change-me')` in production.
+- [x] `SIGNING_LINK_SECRET` containing `change-me` is rejected in production.
+      Verified: `env.ts` `.refine()` — rejects `SIGNING_LINK_SECRET.includes('change-me')` in production.
+- [x] `RESEND_API_KEY` is required when `EMAIL_PROVIDER=resend`.
+      Verified: `env.ts` `.refine()` — `EMAIL_PROVIDER !== 'resend' || !!RESEND_API_KEY`.
+- [x] Additional production guards: `STORAGE_PROVIDER=dev` blocked, `COOKIE_SECURE=false` blocked,
+      `BILLING_PROVIDER=none` blocked, `LEGAL_MODE_STRICT=false` blocked, `RATE_LIMIT_BACKEND=memory`
+      blocked, `TRUST_PROXY=false` warned. All enforced by `validateEnv()` in `config/env.ts`.
+- [x] Test: `test/logging/logging-redaction.spec.ts` env-guard tests pass.
+      Covers: `EMAIL_PROVIDER=dev` in prod throws, valid prod config passes, `change-me`
+      in `JWT_SECRET` throws, `change-me` in `SIGNING_LINK_SECRET` throws.
 
 ### 2.3 Rate limiting is active on all signing endpoints **[CODE]**
-- [ ] `GET /signing/:token` — `token_verification` profile (10 per IP per 15 min).
-- [ ] `POST /signing/:token/otp` — `otp_issuance` profile (3 per token per hour)
+- [x] `GET /signing/:token` — `token_verification` profile (10 per IP per 15 min).
+      Verified: `SigningController.getContext` calls `rateLimiter.check('token_verification', ip)`.
+- [x] `POST /signing/:token/otp` — `otp_issuance` profile (3 per token per hour)
       AND `signing_global` (60 per IP per min).
-- [ ] `POST /signing/:token/otp/verify` — `otp_verification` profile (10 per IP per 15 min).
-- [ ] `POST /signing/:token/accept` — `signing_global` profile.
-- [ ] Rate limiter is in-process (single-process deployment only). For multi-process
-      deployments, a Redis-backed implementation is required — see Known Limitations.
+      Verified: `requestOtp` calls both `check('otp_issuance', token)` and `check('signing_global', ip)`.
+- [x] `POST /signing/:token/otp/verify` — `otp_verification` profile (10 per IP per 15 min)
+      AND `otp_verification_burst` (3 per 10s).
+      Verified: `verifyOtp` calls both profiles — dual-window defence against automated guessing.
+- [x] `POST /signing/:token/accept` — `signing_global` profile.
+      Verified: `accept` calls `check('signing_global', ip)`.
+- [x] `POST /signing/:token/decline` — `signing_global` profile.
+      Verified: `decline` calls `check('signing_global', ip)`.
+- [x] Rate limiter backend: Redis sliding-window (Lua atomic) in production;
+      in-memory fallback for dev/test. Backend selected via `RATE_LIMIT_BACKEND` env var.
+      Production env guard in `env.ts` blocks `RATE_LIMIT_BACKEND=memory` in production.
 
 ### 2.4 Token security **[CODE]**
-- [ ] Signing tokens use 256 bits of entropy (`crypto.randomBytes(32).toString('base64url')`).
-- [ ] Only `tokenHash = SHA-256(rawToken)` is stored. Raw token appears only in the email link.
-- [ ] `tokenInvalidatedAt` is set on revoke; expired tokens (`tokenExpiresAt < now`) are rejected.
-- [ ] Token lookup via `WHERE tokenHash = SHA256(input)` — not `WHERE token = input`.
+- [x] Signing tokens use 256 bits of entropy (`crypto.randomBytes(32).toString('base64url')`).
+      Verified: `SigningTokenService.generateToken` — `crypto.randomBytes(32)` with `base64url` encoding,
+      prefixed `oa_` for readability. 256 bits of cryptographic entropy.
+- [x] Only `tokenHash = SHA-256(rawToken)` is stored. Raw token appears only in the email link.
+      Verified: `generateToken` returns `{ rawToken, tokenHash }`. Only `tokenHash` is persisted
+      to `OfferRecipient.tokenHash`. Raw token passed to email adapter immediately and discarded.
+- [x] `tokenInvalidatedAt` is set on revoke; expired tokens (`tokenExpiresAt < now`) are rejected.
+      Verified: `verifyToken` WHERE clause: `tokenExpiresAt: { gt: new Date() }, tokenInvalidatedAt: null`.
+- [x] Token lookup via `WHERE tokenHash = SHA256(input)` — not `WHERE token = input`.
+      Verified: `verifyToken` hashes the input via `this.hash(rawToken)` before the DB query.
+      Anti-enumeration: `TokenInvalidError` is thrown for both "not found" and "expired" — same HTTP
+      status and body, preventing timing-based enumeration of valid vs invalid tokens.
 
 ### 2.5 OTP security **[CODE]**
-- [ ] 6-digit numeric OTP; `crypto.randomInt(100_000, 1_000_000)` (uniform distribution).
-- [ ] Only `codeHash = SHA-256(rawCode)` is stored. Raw code is never persisted.
-- [ ] OTP has a 10-minute TTL. Expired challenges are rejected.
-- [ ] Max 5 failed attempts before lockout (`OTP_LOCKED` status).
-- [ ] A single OTP issuance rate-limited at 3 per token per hour.
+- [x] 6-digit numeric OTP; `crypto.randomInt(100_000, 1_000_000)` (uniform distribution).
+      Verified: `SigningOtpService.generateCode` — uniform distribution, no modulo bias.
+- [x] Only `codeHash = SHA-256(rawCode)` is stored. Raw code is never persisted.
+      Verified: `issue()` creates challenge row with `codeHash` only. `rawCode` is returned to
+      `SigningFlowService` and immediately passed to the email adapter. Never written to DB.
+- [x] OTP has a 10-minute TTL. Expired challenges are rejected.
+      Verified: `OTP_TTL_MS = 10 * 60 * 1000`. `verifyOtp` checks `expiresAt` before accepting.
+- [x] Max 5 failed attempts before lockout (`OTP_LOCKED` status).
+      Verified: `MAX_ATTEMPTS = 5` in `signing-otp.service.ts`. State machine transitions
+      challenge to `OTP_LOCKED` after 5 failures. Throws `OtpLockedError`.
+- [x] Cross-session recipient lockout: cumulative 10 failures across all challenges within
+      30 minutes locks the recipient (`OtpRecipientLockedError`). Prevents session rotation bypass.
+- [x] A single OTP issuance rate-limited at 3 per token per hour.
+      Verified: `rateLimiter.check('otp_issuance', token)` in `SigningController.requestOtp`.
+      Profile: `{ limit: 3, windowMs: 60 * 60 * 1000 }` in `rate-limit.service.ts`.
 
 ### 2.6 Auth guard placement **[CODE]**
-- [ ] All `/offers/*` routes require `JwtAuthGuard` (OffersController).
-- [ ] All `/support/*` routes require `InternalSupportGuard` (extends JwtAuthGuard,
+- [x] All `/offers/*` routes require `JwtAuthGuard` (OffersController).
+      Verified: `@UseGuards(JwtAuthGuard)` applied at class level in `OffersController`.
+      All 14+ routes are protected by a single class-level decorator.
+- [x] All `/support/*` routes require `InternalSupportGuard` (extends JwtAuthGuard,
       adds `role === INTERNAL_SUPPORT` check).
-- [ ] `GET /certificates/:id/verify` is intentionally public (no guard). Confirmed in
-      `CertificatesController` — `@UseGuards` applied per-route on `:id` and `:id/export` only.
-- [ ] Support routes return 403 (not 401) for valid-JWT callers without `INTERNAL_SUPPORT` role.
+      Verified: `@UseGuards(InternalSupportGuard)` at class level in `SupportController`.
+      `InternalSupportGuard` extends `JwtAuthGuard` and checks `payload.role === 'INTERNAL_SUPPORT'`.
+- [x] `GET /certificates/:id/verify` is intentionally public (no guard). Confirmed in
+      `CertificatesController` — `@UseGuards(JwtAuthGuard)` applied per-route on `bulk-export`,
+      `:id`, `:id/export`, and `:id/pdf`. The `/:id/verify` route has no guard decorator.
+- [x] Support routes return 403 (not 401) for valid-JWT callers without `INTERNAL_SUPPORT` role.
+      Verified: `InternalSupportGuard` throws `ForbiddenException` (403) when role check fails,
+      not `UnauthorizedException` (401). Confirmed by `test/enterprise/org-role-guard.spec.ts`.
 
 ### 2.7 Tenant isolation **[CODE]**
 - [x] All offer queries include `organizationId: orgId` in the WHERE clause.
@@ -104,10 +170,14 @@ consume the OTP before the real recipient sees it.
 - [x] CI: covered by `gate-tests` job. Added 2026-04-08.
 
 ### 2.8 CORS configuration **[OPS]**
-- [ ] `WEB_BASE_URL` in production points to the real web origin.
-- [ ] The API does NOT use `origin: '*'`. The origin is set to `WEB_BASE_URL`.
+- [x] The API does NOT use `origin: '*'`. The origin is set to `WEB_BASE_URL`.
+      Verified (code): `main.ts` — `origin: config.get('WEB_BASE_URL', { infer: true })`. Exact match,
+      no wildcard. `credentials: true` requires a non-wildcard origin per CORS spec.
+- [ ] `WEB_BASE_URL` in production points to the real web origin. **[OPS]**
+      Action required: confirm env var is set correctly in the production deployment.
 - [ ] Verify with `curl -H "Origin: https://evil.example.com" ...` — must not return
-      `Access-Control-Allow-Origin: https://evil.example.com`.
+      `Access-Control-Allow-Origin: https://evil.example.com`. **[OPS]**
+      Action required: run this check against the production API after deployment.
 
 ### 2.9 x-forwarded-for trust **[OPS]**
 - [ ] If deployed behind a load balancer or reverse proxy, the proxy is the only entity

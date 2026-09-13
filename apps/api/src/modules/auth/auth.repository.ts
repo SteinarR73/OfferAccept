@@ -61,7 +61,7 @@ export class AuthRepository {
     userName: string;
     email: string;
     hashedPassword: string;
-  }): Promise<User> {
+  }): Promise<{ user: User; orgId: string }> {
     return this.db.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: { name: params.orgName, slug: params.orgSlug },
@@ -69,7 +69,6 @@ export class AuthRepository {
 
       const user = await tx.user.create({
         data: {
-          organizationId: org.id,
           name: params.userName,
           email: params.email.toLowerCase().trim(),
           hashedPassword: params.hashedPassword,
@@ -83,7 +82,7 @@ export class AuthRepository {
         data: { userId: user.id, organizationId: org.id, role: 'OWNER' },
       });
 
-      return user;
+      return { user, orgId: org.id };
     });
   }
 

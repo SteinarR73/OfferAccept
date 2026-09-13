@@ -130,7 +130,7 @@ describe('Public Signing Flow (e2e)', () => {
       .useValue({ generateForAcceptance: jest.fn<() => Promise<{ certificateId: string }>>().mockResolvedValue({ certificateId: 'cert-mock-1' }) })
       // WebhookService (from EnterpriseCoreModule, via SigningModule) depends on
       // JobService which is not available in this isolated test module. Mock it so
-      // SigningFlowService.accept() can dispatch events without pg-boss present.
+      // SigningDecisionOrchestrator.accept() can dispatch events without pg-boss present.
       .overrideProvider(WebhookService)
       .useValue({ dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) })
       // Override REDIS_CLIENT to prevent the RateLimitModule factory from crashing

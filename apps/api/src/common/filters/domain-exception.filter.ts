@@ -44,6 +44,7 @@ import {
   AlreadyOrgMemberError,
   InviteNotFoundError,
   InviteExpiredError,
+  DuplicateInviteError,
   CannotRemoveLastOwnerError,
   CannotTransferToNonMemberError,
   FileTooLargeError,
@@ -125,6 +126,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
     if (err instanceof AlreadyOrgMemberError) {
       return this.make(HttpStatus.CONFLICT, err.message, 'ALREADY_ORG_MEMBER');
+    }
+    if (err instanceof DuplicateInviteError) {
+      return this.make(HttpStatus.CONFLICT, err.message, 'DUPLICATE_INVITE');
     }
     if (err instanceof InviteNotFoundError) {
       return this.make(HttpStatus.NOT_FOUND, err.message, 'INVITE_NOT_FOUND');

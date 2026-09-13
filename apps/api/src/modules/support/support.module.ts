@@ -10,7 +10,7 @@ import { CertificatesModule } from '../certificates/certificates.module';
 @Module({
   imports: [
     OffersModule,       // provides SendOfferService (revoke + resend-link)
-    SigningModule,      // provides SigningFlowService (issueOtpForSession)
+    SigningModule,      // provides SigningOtpOrchestrator (issueOtpForSession)
     CertificatesModule, // provides CertificateService (verify)
   ],
   controllers: [SupportController],

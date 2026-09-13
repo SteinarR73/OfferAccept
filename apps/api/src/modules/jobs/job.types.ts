@@ -85,7 +85,7 @@ export interface GenerateCertificatePdfPayload {
 
 // ── notify-deal-accepted ───────────────────────────────────────────────────────
 //
-// Enqueued by SigningFlowService immediately after the acceptance transaction
+// Enqueued by SigningDecisionOrchestrator immediately after the acceptance transaction
 // commits and the certificate ID is known. The handler sends two emails:
 //   1. Sender   — "Your deal was accepted" + certificate ID
 //   2. Recipient — "Your acceptance is confirmed" + certificate ID

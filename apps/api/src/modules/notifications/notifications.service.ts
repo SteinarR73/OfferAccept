@@ -10,7 +10,7 @@ import { DealExpiredEvent } from './events/deal-expired.event';
 // caller, so a broken email configuration cannot reverse a business operation.
 //
 // Callers:
-//   SigningFlowService  → onDealAccepted, onDealDeclined
+//   SigningDecisionOrchestrator    onDealAccepted, onDealDeclined
 //   ExpireOffersHandler → onDealExpired
 
 @Injectable()

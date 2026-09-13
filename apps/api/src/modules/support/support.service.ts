@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { SendOfferService } from '../offers/services/send-offer.service';
-import { SigningFlowService } from '../signing/services/signing-flow.service';
+import { SigningOtpOrchestrator } from '../signing/services/signing-otp.orchestrator';
 import { CertificateService } from '../certificates/certificate.service';
 import { SessionContext } from '../signing/services/signing-session.service';
 import { IssuedOtpResult } from '../signing/services/signing-otp.service';
@@ -130,7 +130,7 @@ export interface SupportCaseView {
 // Safe actions:
 //   - revokeOffer: delegates to SendOfferService.revoke() — only SENT offers
 //   - resendOfferLink: delegates to SendOfferService.resend() — only SENT offers
-//   - resendSessionOtp: delegates to SigningFlowService.issueOtpForSession()
+//   - resendSessionOtp: delegates to SigningOtpOrchestrator.issueOtpForSession()
 //                       — only AWAITING_OTP sessions, session-gated OTP issuance
 
 @Injectable()
@@ -138,7 +138,7 @@ export class SupportService {
   constructor(
     @Inject('PRISMA') private readonly db: PrismaClient,
     private readonly sendOfferService: SendOfferService,
-    private readonly signingFlowService: SigningFlowService,
+    private readonly signingOtpOrchestrator: SigningOtpOrchestrator,
     private readonly certificateService: CertificateService,
   ) {}
 
@@ -511,7 +511,7 @@ export class SupportService {
     sessionId: string,
     ctx: SessionContext,
   ): Promise<{ deliveryAddressMasked: string; expiresAt: string }> {
-    const result: IssuedOtpResult = await this.signingFlowService.issueOtpForSession(
+    const result: IssuedOtpResult = await this.signingOtpOrchestrator.issueOtpForSession(
       sessionId,
       ctx,
     );

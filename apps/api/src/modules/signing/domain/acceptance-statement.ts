@@ -2,7 +2,7 @@
 //
 // SINGLE SOURCE OF TRUTH for the acceptance statement text.
 //
-// Both the display path (SigningFlowService.getOfferContext) and the storage path
+// Both the display path (SigningContextService.getOfferContext) and the storage path
 // (AcceptanceService.accept → AcceptanceRecord.acceptanceStatement) MUST use this
 // function so the text shown to the recipient is byte-for-byte identical to the
 // text stored as evidence.

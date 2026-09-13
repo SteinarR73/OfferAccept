@@ -88,15 +88,17 @@ export class BillingService {
       where: { id: organizationId },
       select: {
         name: true,
-        users: {
+        memberships: {
           where: { role: 'OWNER' },
-          select: { email: true },
+          select: {
+            user: { select: { email: true } },
+          },
           take: 1,
         },
       },
     });
 
-    const email = org?.users[0]?.email ?? '';
+    const email = org?.memberships[0]?.user?.email ?? '';
     const name = org?.name ?? '';
 
     const customer = await this.requireStripe().customers.create({

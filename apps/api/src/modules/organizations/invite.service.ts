@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import { Injectable, Inject } from '@nestjs/common';
-import { OrgRole } from '@prisma/client';
+import { OrgRole, Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { OrgRepository } from './org.repository';
 import { EmailPort, EMAIL_PORT } from '../../common/email/email.port';
@@ -8,6 +8,7 @@ import {
   AlreadyOrgMemberError,
   InviteNotFoundError,
   InviteExpiredError,
+  DuplicateInviteError,
   InsufficientOrgRoleError,
   OrgNotFoundError,
   NotOrgMemberError,
@@ -80,14 +81,22 @@ export class InviteService {
     const tokenHash = sha256(rawToken);
     const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-    const invite = await this.repo.createInvite({
-      organizationId: params.orgId,
-      email: params.email,
-      role: params.role,
-      tokenHash,
-      expiresAt,
-      invitedById: params.invitedById,
-    });
+    let invite;
+    try {
+      invite = await this.repo.createInvite({
+        organizationId: params.orgId,
+        email: params.email,
+        role: params.role,
+        tokenHash,
+        expiresAt,
+        invitedById: params.invitedById,
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new DuplicateInviteError();
+      }
+      throw err;
+    }
 
     const inviteUrl = `${this.webBaseUrl}/invites/accept?token=${rawToken}`;
 

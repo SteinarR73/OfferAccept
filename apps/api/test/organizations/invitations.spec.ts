@@ -1,7 +1,9 @@
 import { jest } from '@jest/globals';
+import { Prisma } from '@prisma/client';
 import { InviteService } from '../../src/modules/organizations/invite.service';
 import {
   AlreadyOrgMemberError,
+  DuplicateInviteError,
   InviteExpiredError,
   InviteNotFoundError,
   InsufficientOrgRoleError,
@@ -144,6 +146,19 @@ describe('InviteService.invite()', () => {
     await service.invite({ ...BASE_INVITE_PARAMS, role: 'ADMIN' as const });
 
     expect(repo.createInvite).toHaveBeenCalled();
+  });
+
+  it('throws DuplicateInviteError on concurrent invite conflict (Prisma P2002)', async () => {
+    const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: '5.x',
+      meta: { target: ['invites_org_email_active_idx'] },
+    });
+    const { service } = buildService({
+      createInvite: jest.fn<() => Promise<any>>().mockRejectedValue(p2002),
+    });
+
+    await expect(service.invite(BASE_INVITE_PARAMS)).rejects.toThrow(DuplicateInviteError);
   });
 });
 

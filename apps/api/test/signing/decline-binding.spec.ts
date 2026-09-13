@@ -4,12 +4,10 @@ import {
   OtpChallengeMismatchError,
   SessionExpiredError,
 } from '../../src/common/errors/domain.errors';
-import { SigningFlowService } from '../../src/modules/signing/services/signing-flow.service';
+import { SigningDecisionOrchestrator } from '../../src/modules/signing/services/signing-decision.orchestrator';
 import { SigningTokenService } from '../../src/modules/signing/services/signing-token.service';
 import { SigningSessionService } from '../../src/modules/signing/services/signing-session.service';
-import { SigningOtpService } from '../../src/modules/signing/services/signing-otp.service';
 import { AcceptanceService } from '../../src/modules/signing/services/acceptance.service';
-import { SigningEventService } from '../../src/modules/signing/services/signing-event.service';
 import { CertificateService } from '../../src/modules/certificates/certificate.service';
 import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import { WebhookService } from '../../src/modules/enterprise/webhook.service';
@@ -18,12 +16,6 @@ import { JobService } from '../../src/modules/jobs/job.service';
 import { TraceContext } from '../../src/common/trace/trace.context';
 
 // ─── Session-bound decline tests ───────────────────────────────────────────────
-//
-// Verifies that decline() resolves the session from the challenge's bound
-// sessionId instead of a "latest resumable" lookup.
-//
-// The challenge does NOT need to be VERIFIED — it only needs to exist and belong
-// to the correct recipient. This lets the recipient decline before completing OTP.
 
 const RECIPIENT_ID = 'recipient-decline-1';
 const SESSION_ID = 'session-decline-1';
@@ -76,13 +68,11 @@ async function buildService(
 ) {
   const module = await Test.createTestingModule({
     providers: [
-      SigningFlowService,
+      SigningDecisionOrchestrator,
       { provide: 'PRISMA', useValue: db },
       { provide: SigningTokenService, useValue: tokenSvc },
       { provide: SigningSessionService, useValue: sessionSvc },
-      { provide: SigningOtpService, useValue: { verifyAndAdvanceSession: jest.fn(), issue: jest.fn() } },
       { provide: AcceptanceService, useValue: acceptanceSvc },
-      { provide: SigningEventService, useValue: { append: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
       { provide: CertificateService, useValue: { generateForAcceptance: jest.fn() } },
       { provide: NotificationsService, useValue: { onDealAccepted: jest.fn<() => Promise<void>>().mockResolvedValue(undefined), onDealDeclined: jest.fn<() => Promise<void>>().mockResolvedValue(undefined), onDealExpired: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
       { provide: WebhookService, useValue: { dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
@@ -92,10 +82,10 @@ async function buildService(
     ],
   }).compile();
 
-  return module.get(SigningFlowService);
+  return module.get(SigningDecisionOrchestrator);
 }
 
-describe('SigningFlowService.decline() — challenge-bound session', () => {
+describe('SigningDecisionOrchestrator.decline() — challenge-bound session', () => {
   it('resolves session from challenge.sessionId for a PENDING challenge', async () => {
     const db = createMockDb();
     const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
@@ -106,7 +96,6 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
     };
     const acceptanceSvc = { decline: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) };
 
-    // PENDING challenge — not yet verified
     db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge({ status: 'PENDING' }) as never);
     db.offerSnapshot.findUniqueOrThrow.mockRejectedValue(new Error('should not be called') as never);
 
@@ -114,7 +103,6 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
 
     await service.decline('raw-token', CHALLENGE_ID, {});
 
-    // Must use challenge.sessionId via getAndValidate — NOT findResumable
     expect(sessionSvc.getAndValidate).toHaveBeenCalledWith(SESSION_ID);
     expect(sessionSvc.findResumable).not.toHaveBeenCalled();
     expect(acceptanceSvc.decline).toHaveBeenCalledTimes(1);
@@ -130,7 +118,6 @@ describe('SigningFlowService.decline() — challenge-bound session', () => {
     };
     const acceptanceSvc = { decline: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) };
 
-    // VERIFIED challenge — OTP already verified
     db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge({ status: 'VERIFIED' }) as never);
 
     const service = await buildService(db, tokenSvc, sessionSvc, acceptanceSvc);

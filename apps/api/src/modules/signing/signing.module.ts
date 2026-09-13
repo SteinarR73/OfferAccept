@@ -3,7 +3,9 @@ import { SigningTokenService } from './services/signing-token.service';
 import { SigningSessionService } from './services/signing-session.service';
 import { SigningOtpService } from './services/signing-otp.service';
 import { AcceptanceService } from './services/acceptance.service';
-import { SigningFlowService } from './services/signing-flow.service';
+import { SigningContextService } from './services/signing-context.service';
+import { SigningOtpOrchestrator } from './services/signing-otp.orchestrator';
+import { SigningDecisionOrchestrator } from './services/signing-decision.orchestrator';
 import { SigningController } from './signing.controller';
 import { SigningEventsModule } from './signing-events.module';
 import { CertificatesModule } from '../certificates/certificates.module';
@@ -19,9 +21,15 @@ import { DealEventsModule } from '../deal-events/deal-events.module';
     SigningSessionService,
     SigningOtpService,
     AcceptanceService,
-    SigningFlowService,
+    SigningContextService,
+    SigningOtpOrchestrator,
+    SigningDecisionOrchestrator,
   ],
   // SigningEventService is exported via SigningEventsModule
-  exports: [SigningFlowService],
+  exports: [
+    SigningContextService,
+    SigningOtpOrchestrator,
+    SigningDecisionOrchestrator,
+  ],
 })
 export class SigningModule {}

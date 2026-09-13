@@ -4,7 +4,8 @@ import {
   OtpChallengeMismatchError,
   SessionExpiredError,
 } from '../../src/common/errors/domain.errors';
-import { SigningFlowService } from '../../src/modules/signing/services/signing-flow.service';
+import { SigningDecisionOrchestrator } from '../../src/modules/signing/services/signing-decision.orchestrator';
+import { SigningOtpOrchestrator } from '../../src/modules/signing/services/signing-otp.orchestrator';
 import { SigningTokenService } from '../../src/modules/signing/services/signing-token.service';
 import { SigningSessionService } from '../../src/modules/signing/services/signing-session.service';
 import { SigningOtpService } from '../../src/modules/signing/services/signing-otp.service';
@@ -18,18 +19,6 @@ import { JobService } from '../../src/modules/jobs/job.service';
 import { TraceContext } from '../../src/common/trace/trace.context';
 
 // ─── Session binding tests ────────────────────────────────────────────────────
-//
-// Verifies that accept() and verifyOtp() derive the authoritative session from
-// the challenge's bound sessionId — never from "latest resumable".
-//
-// Key invariants:
-//   - accept() requires challenge.status === VERIFIED
-//   - accept() requires challenge.recipientId === token recipient's id
-//   - accept() uses challenge.sessionId as the session source (not findResumable)
-//   - A VERIFIED challenge from session A cannot advance session B
-//   - Multi-tab: two concurrent challenges — each is bound to its own session
-
-// ─── Fixture IDs ─────────────────────────────────────────────────────────────
 
 const RECIPIENT_ID = 'recipient-binding-1';
 const SESSION_A_ID = 'session-binding-A';
@@ -38,8 +27,6 @@ const CHALLENGE_A_ID = 'challenge-binding-A';
 const CHALLENGE_B_ID = 'challenge-binding-B';
 const OFFER_ID = 'offer-binding-1';
 const SNAPSHOT_ID = 'snap-binding-1';
-
-// ─── Factories ───────────────────────────────────────────────────────────────
 
 function makeRecipient(overrides: Record<string, unknown> = {}) {
   return {
@@ -77,8 +64,6 @@ function makeSession(id: string, overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
-
-// ─── Test module setup ────────────────────────────────────────────────────────
 
 function createMockDb() {
   return {
@@ -137,7 +122,8 @@ async function buildService(
 ) {
   const module = await Test.createTestingModule({
     providers: [
-      SigningFlowService,
+      SigningDecisionOrchestrator,
+      SigningOtpOrchestrator,
       { provide: 'PRISMA', useValue: db },
       { provide: SigningTokenService, useValue: tokenService },
       { provide: SigningSessionService, useValue: sessionService },
@@ -173,12 +159,13 @@ async function buildService(
     ],
   }).compile();
 
-  return module.get(SigningFlowService);
+  return {
+    decisionOrchestrator: module.get(SigningDecisionOrchestrator),
+    otpOrchestrator: module.get(SigningOtpOrchestrator),
+  };
 }
 
-// ─── accept() — session derived from VERIFIED challenge ───────────────────────
-
-describe('SigningFlowService.accept() — challenge-bound session derivation', () => {
+describe('SigningDecisionOrchestrator.accept() — challenge-bound session derivation', () => {
   it('accepts using the session bound to the verified challenge', async () => {
     const recipient = makeRecipient();
     const db = createMockDb();
@@ -193,13 +180,12 @@ describe('SigningFlowService.accept() — challenge-bound session derivation', (
     db.signingOtpChallenge.findUnique.mockResolvedValue(verifiedChallenge as never);
     sessionSvc.getAndValidate.mockResolvedValue(sessionA as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, otpSvc, acceptSvc);
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, otpSvc, acceptSvc);
 
     await expect(
-      service.accept('raw-token', CHALLENGE_A_ID, { ipAddress: '1.2.3.4' }),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, { ipAddress: '1.2.3.4' }),
     ).resolves.toBeDefined();
 
-    // getAndValidate must be called with the challenge's bound sessionId
     expect(sessionSvc.getAndValidate).toHaveBeenCalledWith(SESSION_A_ID);
   });
 
@@ -211,13 +197,12 @@ describe('SigningFlowService.accept() — challenge-bound session derivation', (
 
     db.signingOtpChallenge.findUnique.mockResolvedValue(null as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
 
     await expect(
-      service.accept('raw-token', CHALLENGE_A_ID, {}),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, {}),
     ).rejects.toThrow(OtpChallengeMismatchError);
 
-    // Session is never consulted — mismatch is detected before DB query for session
     expect(sessionSvc.getAndValidate).not.toHaveBeenCalled();
   });
 
@@ -227,14 +212,13 @@ describe('SigningFlowService.accept() — challenge-bound session derivation', (
     const tokenSvc = makeMockTokenService(recipient);
     const sessionSvc = makeMockSessionService();
 
-    // Challenge belongs to a different recipient
     const foreignChallenge = makeChallenge({ recipientId: 'other-recipient-id' });
     db.signingOtpChallenge.findUnique.mockResolvedValue(foreignChallenge as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
 
     await expect(
-      service.accept('raw-token', CHALLENGE_A_ID, {}),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, {}),
     ).rejects.toThrow(OtpChallengeMismatchError);
 
     expect(sessionSvc.getAndValidate).not.toHaveBeenCalled();
@@ -246,14 +230,13 @@ describe('SigningFlowService.accept() — challenge-bound session derivation', (
     const tokenSvc = makeMockTokenService(recipient);
     const sessionSvc = makeMockSessionService();
 
-    // Challenge exists but was not verified yet — status still PENDING
     const pendingChallenge = makeChallenge({ status: 'PENDING', verifiedAt: null });
     db.signingOtpChallenge.findUnique.mockResolvedValue(pendingChallenge as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
 
     await expect(
-      service.accept('raw-token', CHALLENGE_A_ID, {}),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, {}),
     ).rejects.toThrow(OtpChallengeMismatchError);
 
     expect(sessionSvc.getAndValidate).not.toHaveBeenCalled();
@@ -268,10 +251,10 @@ describe('SigningFlowService.accept() — challenge-bound session derivation', (
     const expiredChallenge = makeChallenge({ status: 'EXPIRED' });
     db.signingOtpChallenge.findUnique.mockResolvedValue(expiredChallenge as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
 
     await expect(
-      service.accept('raw-token', CHALLENGE_A_ID, {}),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, {}),
     ).rejects.toThrow(OtpChallengeMismatchError);
 
     expect(sessionSvc.getAndValidate).not.toHaveBeenCalled();
@@ -285,25 +268,18 @@ describe('SigningFlowService.accept() — challenge-bound session derivation', (
 
     const verifiedChallenge = makeChallenge({ sessionId: SESSION_A_ID });
     db.signingOtpChallenge.findUnique.mockResolvedValue(verifiedChallenge as never);
-    // getAndValidate throws SessionExpiredError for expired/terminal sessions
     sessionSvc.getAndValidate.mockRejectedValue(new SessionExpiredError() as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
 
     await expect(
-      service.accept('raw-token', CHALLENGE_A_ID, {}),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, {}),
     ).rejects.toThrow(SessionExpiredError);
   });
 });
 
-// ─── Multi-session / multi-tab binding ────────────────────────────────────────
-
-describe('SigningFlowService.accept() — multi-session binding isolation', () => {
+describe('SigningDecisionOrchestrator.accept() — multi-session binding isolation', () => {
   it('uses session A when challenge A is verified, even if session B is newer', async () => {
-    // Scenario: recipient has two sessions (e.g. multi-tab).
-    // Challenge A is VERIFIED and bound to session A.
-    // Session B is the more recent session (would be returned by findResumable).
-    // accept() must use session A — not session B.
     const recipient = makeRecipient();
     const db = createMockDb();
     const tokenSvc = makeMockTokenService(recipient);
@@ -316,30 +292,24 @@ describe('SigningFlowService.accept() — multi-session binding isolation', () =
     db.signingOtpChallenge.findUnique.mockResolvedValue(challengeA as never);
     sessionSvc.getAndValidate.mockResolvedValue(sessionA as never);
 
-    // findResumable would return session B if called — confirm it is NOT called
     const sessionB = makeSession(SESSION_B_ID, { status: 'AWAITING_OTP' });
     sessionSvc.findResumable.mockResolvedValue(sessionB as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), acceptSvc);
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), acceptSvc);
 
-    await service.accept('raw-token', CHALLENGE_A_ID, {});
+    await decisionOrchestrator.accept('raw-token', CHALLENGE_A_ID, {});
 
-    // Must use session A (from challenge binding), not B (from findResumable)
     expect(sessionSvc.getAndValidate).toHaveBeenCalledWith(SESSION_A_ID);
     expect(sessionSvc.getAndValidate).not.toHaveBeenCalledWith(SESSION_B_ID);
     expect(sessionSvc.findResumable).not.toHaveBeenCalled();
   });
 
   it('rejects challenge B when presented for accept() with challenge A verified', async () => {
-    // Scenario: recipient verified OTP in tab A (challenge A → VERIFIED, session A).
-    // Tab B still has challenge B (PENDING, session B). Presenting challenge B to accept()
-    // must fail because challenge B is not VERIFIED.
     const recipient = makeRecipient();
     const db = createMockDb();
     const tokenSvc = makeMockTokenService(recipient);
     const sessionSvc = makeMockSessionService();
 
-    // Challenge B is PENDING — not yet verified
     const challengeB = makeChallenge({
       id: CHALLENGE_B_ID,
       sessionId: SESSION_B_ID,
@@ -348,19 +318,17 @@ describe('SigningFlowService.accept() — multi-session binding isolation', () =
     });
     db.signingOtpChallenge.findUnique.mockResolvedValue(challengeB as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
+    const { decisionOrchestrator } = await buildService(db, tokenSvc, sessionSvc, makeMockOtpService(), makeMockAcceptanceService());
 
     await expect(
-      service.accept('raw-token', CHALLENGE_B_ID, {}),
+      decisionOrchestrator.accept('raw-token', CHALLENGE_B_ID, {}),
     ).rejects.toThrow(OtpChallengeMismatchError);
 
     expect(sessionSvc.getAndValidate).not.toHaveBeenCalled();
   });
 });
 
-// ─── verifyOtp() — challenge-recipient binding ─────────────────────────────────
-
-describe('SigningFlowService.verifyOtp() — challenge-recipient binding', () => {
+describe('SigningOtpOrchestrator.verifyOtp() — challenge-recipient binding', () => {
   it('passes challenge binding down to SigningOtpService.verifyAndAdvanceSession', async () => {
     const recipient = makeRecipient();
     const db = createMockDb();
@@ -371,12 +339,11 @@ describe('SigningFlowService.verifyOtp() — challenge-recipient binding', () =>
     const expectedResult = { verified: true, verifiedAt: new Date() };
     otpSvc.verifyAndAdvanceSession.mockResolvedValue(expectedResult as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, otpSvc, makeMockAcceptanceService());
+    const { otpOrchestrator } = await buildService(db, tokenSvc, sessionSvc, otpSvc, makeMockAcceptanceService());
 
-    const result = await service.verifyOtp('raw-token', CHALLENGE_A_ID, '654321', {});
+    const result = await otpOrchestrator.verifyOtp('raw-token', CHALLENGE_A_ID, '654321', {});
 
     expect(result).toEqual(expectedResult);
-    // verifyAndAdvanceSession receives the recipient id from the token — not from caller input
     expect(otpSvc.verifyAndAdvanceSession).toHaveBeenCalledWith(
       CHALLENGE_A_ID,
       RECIPIENT_ID,
@@ -392,13 +359,12 @@ describe('SigningFlowService.verifyOtp() — challenge-recipient binding', () =>
     const sessionSvc = makeMockSessionService();
     const otpSvc = makeMockOtpService();
 
-    // OTP service enforces binding: challenge.recipientId !== recipient.id → mismatch
     otpSvc.verifyAndAdvanceSession.mockRejectedValue(new OtpChallengeMismatchError() as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, otpSvc, makeMockAcceptanceService());
+    const { otpOrchestrator } = await buildService(db, tokenSvc, sessionSvc, otpSvc, makeMockAcceptanceService());
 
     await expect(
-      service.verifyOtp('raw-token', 'challenge-from-different-recipient', '654321', {}),
+      otpOrchestrator.verifyOtp('raw-token', 'challenge-from-different-recipient', '654321', {}),
     ).rejects.toThrow(OtpChallengeMismatchError);
   });
 
@@ -410,10 +376,10 @@ describe('SigningFlowService.verifyOtp() — challenge-recipient binding', () =>
 
     otpSvc.verifyAndAdvanceSession.mockRejectedValue(new SessionExpiredError() as never);
 
-    const service = await buildService(db, tokenSvc, makeMockSessionService(), otpSvc, makeMockAcceptanceService());
+    const { otpOrchestrator } = await buildService(db, tokenSvc, makeMockSessionService(), otpSvc, makeMockAcceptanceService());
 
     await expect(
-      service.verifyOtp('raw-token', CHALLENGE_A_ID, '654321', {}),
+      otpOrchestrator.verifyOtp('raw-token', CHALLENGE_A_ID, '654321', {}),
     ).rejects.toThrow(SessionExpiredError);
   });
 });
