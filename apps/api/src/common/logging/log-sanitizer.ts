@@ -44,6 +44,8 @@ const RULES: SanitizeRule[] = [
   { name: 'bearer-token',            pattern: /Bearer\s+\S{40,}/g },
   // Private key PEM headers — should never appear in logs
   { name: 'private-key-pem',         pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
+  // OfferAccept tokens (API keys, invite tokens, signing tokens)
+  { name: 'oa-token',                pattern: /oa_[A-Za-z0-9_\-]{43}/g },
 ];
 
 // ── Core sanitizer ────────────────────────────────────────────────────────────

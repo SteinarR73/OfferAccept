@@ -17,6 +17,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AcceptOfferDto } from './dto/accept-offer.dto';
 import { DeclineOfferDto } from './dto/decline-offer.dto';
 import { extractClientIp } from '../../common/proxy/trusted-proxy.util';
+import { createHash } from 'crypto';
 
 // ─── SigningController ─────────────────────────────────────────────────────────
 // Public (unauthenticated) signing flow endpoints.
@@ -48,7 +49,8 @@ export class SigningController {
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Param('token') token: string, @Req() req: Request) {
     // Rate-limit by token hash (per-recipient) to prevent OTP spam
-    await this.rateLimiter.check('otp_issuance', token);
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    await this.rateLimiter.check('otp_issuance', tokenHash);
     // Also rate-limit by IP as a secondary defence
     await this.rateLimiter.check('signing_global', extractClientIp(req));
 

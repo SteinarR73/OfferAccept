@@ -13,7 +13,6 @@ describe('computeStats', () => {
 
   const createMockOffer = (status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED', date: string): OfferItem => ({
     id: '1',
-    organizationId: 'org1',
     title: 'Test',
     status,
     createdAt: date,

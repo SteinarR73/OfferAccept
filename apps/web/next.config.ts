@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
+          // HTTP Strict Transport Security (HSTS)
+          { key: 'Strict-Transport-Security',  value: 'max-age=63072000; includeSubDomains; preload' },
           // Prevent MIME-type sniffing
           { key: 'X-Content-Type-Options',    value: 'nosniff' },
           // Referrer leakage prevention
@@ -59,7 +61,7 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     return [
       {
         source: '/api/:path*',

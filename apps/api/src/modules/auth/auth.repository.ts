@@ -40,6 +40,12 @@ export class AuthRepository {
     return this.db.user.findUnique({ where: { id: userId, deletedAt: null } });
   }
 
+  async findMembership(userId: string, orgId: string): Promise<Membership | null> {
+    return this.db.membership.findUnique({
+      where: { userId_organizationId: { userId, organizationId: orgId } },
+    });
+  }
+
   // Returns the user's primary membership (OWNER role preferred, then earliest created).
   // Falls back to null if the user has no memberships (should not happen for normal users).
   async findPrimaryMembership(userId: string): Promise<Membership | null> {

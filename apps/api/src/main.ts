@@ -4,6 +4,7 @@ import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import express from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -36,10 +37,17 @@ async function bootstrap() {
   const logger     = app.get(Logger);
 
   if (trustProxy) {
-    // Trust exactly one proxy hop. Increase to 2+ if the stack is
-    // API-gateway → LB → app (each hop forwards X-Forwarded-For).
-    app.getHttpAdapter().getInstance().set('trust proxy', 1);
-    logger.log('Reverse-proxy trust: enabled (1 hop). X-Forwarded-For will be used for client IP.');
+    const trustedProxyCidr = config.get('TRUSTED_PROXY_CIDR', { infer: true });
+    if (trustedProxyCidr) {
+      const cidrs = trustedProxyCidr.split(',').map((s) => s.trim()).filter(Boolean);
+      app.getHttpAdapter().getInstance().set('trust proxy', cidrs);
+      logger.log(`Reverse-proxy trust: enabled for CIDRs: ${cidrs.join(', ')}.`);
+    } else {
+      // Fallback for dev/test when TRUST_PROXY=true but no CIDR is set.
+      // In production, env validation enforces TRUSTED_PROXY_CIDR.
+      app.getHttpAdapter().getInstance().set('trust proxy', 1);
+      logger.log('Reverse-proxy trust: enabled (1 hop). X-Forwarded-For will be used for client IP.');
+    }
   } else {
     if (nodeEnv === 'production') {
       logger.warn(
@@ -99,6 +107,14 @@ async function bootstrap() {
     // Expose X-Request-ID so clients can log/trace individual requests.
     exposedHeaders: ['X-Request-ID'],
   });
+
+  // Explicit body limits (1MB default for JSON and URL-encoded data).
+  // NestJS uses body-parser internally, but configuring via Express directly
+  // ensures the limits are applied correctly even with rawBody: true.
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+  app.enableShutdownHooks();
 
   const port = config.get('API_PORT', { infer: true });
   await app.listen(port);

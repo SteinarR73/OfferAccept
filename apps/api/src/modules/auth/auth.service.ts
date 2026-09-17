@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { PasswordService } from './password.service';
@@ -73,23 +74,46 @@ export class AuthService {
   }): Promise<SignupResult> {
     const existing = await this.repo.findUserByEmail(params.email);
     if (existing) {
-      // Do NOT reveal that the email is taken — same error as "invalid credentials"
-      // at the HTTP layer. Here we throw a domain error so the caller can decide
-      // how to handle it (the controller uses EmailAlreadyExistsError specifically
-      // to return a 409 only in non-enumerable contexts).
-      throw new EmailAlreadyExistsError();
+      // Do NOT reveal that the email is taken to prevent enumeration.
+      // We trigger a password reset email so a legitimate user can regain access,
+      // and return a fake success response.
+      await this.requestPasswordReset(params.email);
+      return { userId: '', orgId: '' };
     }
 
     const hashedPassword = await this.passwordService.hash(params.password);
-    const slug = slugify(params.orgName);
+    const baseSlug = slugify(params.orgName);
+    let slug = baseSlug;
+    let user: any;
+    let orgId: string = '';
+    let created = false;
 
-    const { user, orgId } = await this.repo.createOrgAndOwner({
-      orgName: params.orgName,
-      orgSlug: slug,
-      userName: params.userName,
-      email: params.email,
-      hashedPassword,
-    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const result = await this.repo.createOrgAndOwner({
+          orgName: params.orgName,
+          orgSlug: slug,
+          userName: params.userName,
+          email: params.email,
+          hashedPassword,
+        });
+        user = result.user;
+        orgId = result.orgId;
+        created = true;
+        break;
+      } catch (err: any) {
+        // Prisma unique constraint violation on slug
+        if (err?.code === 'P2002' && Array.isArray(err?.meta?.target) && err.meta.target.includes('slug')) {
+          slug = `${baseSlug}-${crypto.randomBytes(2).toString('hex')}`;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!created || !user) {
+      throw new Error('Failed to generate a unique organization slug after multiple attempts.');
+    }
 
     // Record Terms of Service acceptance — immutable audit trail.
     // Created immediately after user row is committed so userId is available.
@@ -106,11 +130,15 @@ export class AuthService {
     const rawToken = await this.repo.createEmailVerificationToken(user.id);
     const verificationUrl = `${this.webBaseUrl}/verify-email?token=${rawToken}`;
 
-    await this.emailPort.sendEmailVerification({
+    this.emailPort.sendEmailVerification({
       to: params.email,
       name: params.userName,
       verificationUrl,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    }).catch((err) => {
+      // Log the error but don't fail the signup response.
+      // The user is already in the database and can request a new verification email.
+      console.error(`Failed to send verification email to ${params.email}:`, err);
     });
 
     return { userId: user.id, orgId };
@@ -160,6 +188,42 @@ export class AuthService {
       sub: user.id,
       orgId,
       orgRole,
+      role: user.role,
+      sessionId: session.id,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      refreshToken: rawToken,
+      sessionId: session.id,
+    };
+  }
+
+  // ── Switch Org ─────────────────────────────────────────────────────────────
+
+  async switchOrg(
+    userId: string,
+    targetOrgId: string,
+    sessionId: string | undefined,
+    context: { ipAddress?: string; userAgent?: string },
+  ): Promise<AuthTokens> {
+    const user = await this.loadUserById(userId);
+    if (!user) throw new InvalidCredentialsError();
+
+    const membership = await this.repo.findMembership(userId, targetOrgId);
+    if (!membership) {
+      throw new Error(`User is not a member of organization.`);
+    }
+
+    if (sessionId) {
+      await this.sessionService.revoke(sessionId);
+    }
+    const { rawToken, session } = await this.sessionService.create(userId, context);
+
+    const payload: AccessTokenPayload = {
+      sub: user.id,
+      orgId: membership.organizationId,
+      orgRole: membership.role,
       role: user.role,
       sessionId: session.id,
     };

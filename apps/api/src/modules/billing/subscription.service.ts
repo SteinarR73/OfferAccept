@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { PrismaClient, SubscriptionPlan, SubscriptionStatus, Subscription } from '@prisma/client';
 import { PlanLimitExceededError } from '../../common/errors/domain.errors';
+import { AdminSettingsService } from '../admin/admin-settings.service';
 
 // ─── SubscriptionService ───────────────────────────────────────────────────────
 // Source-of-truth for subscription state and plan enforcement.
@@ -8,28 +9,21 @@ import { PlanLimitExceededError } from '../../common/errors/domain.errors';
 // Exported from BillingModule and injected wherever plan gates are needed
 // (e.g., OffersModule before sending an offer).
 //
-// Plan limits (offers per calendar month):
-//   FREE         → 3
-//   STARTER      → 25
-//   PROFESSIONAL → 100
-//   ENTERPRISE   → unlimited (null)
+// Plan limits are dynamic and read from AdminSettingsService.
+// ENTERPRISE is unlimited.
 //
 // monthlyOfferCount is reset to 0 on the first of each month by the
 // reset-monthly-billing cron job. Plan enforcement is therefore eventually
 // consistent with a 1-month window.
 
-const PLAN_MONTHLY_LIMITS: Record<SubscriptionPlan, number | null> = {
-  FREE: 3,
-  STARTER: 25,
-  PROFESSIONAL: 100,
-  ENTERPRISE: null,
-};
-
 @Injectable()
 export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
 
-  constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
+  constructor(
+    @Inject('PRISMA') private readonly db: PrismaClient,
+    private readonly adminSettings: AdminSettingsService,
+  ) {}
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -68,14 +62,29 @@ export class SubscriptionService {
       select: { plan: true, monthlyOfferCount: true, status: true },
     });
 
+    const isActuallyActive = sub ? (
+      sub.status === SubscriptionStatus.ACTIVE ||
+      sub.status === SubscriptionStatus.TRIALING ||
+      sub.status === SubscriptionStatus.PAST_DUE
+    ) : true; // No sub = default FREE tier
+
     // No subscription row means FREE tier (created at signup).
-    const plan = sub?.plan ?? SubscriptionPlan.FREE;
+    // If subscription exists but is not active (CANCELED, UNPAID, INCOMPLETE), fallback to FREE limits.
+    const plan = (!sub || !isActuallyActive) ? SubscriptionPlan.FREE : sub.plan;
     const count = sub?.monthlyOfferCount ?? 0;
-    const limit = PLAN_MONTHLY_LIMITS[plan];
+    
+    const settings = await this.adminSettings.getAll();
+    const planLimits: Record<SubscriptionPlan, number | null> = {
+      FREE: settings.max_offers_free_monthly,
+      STARTER: settings.max_offers_starter_monthly,
+      PROFESSIONAL: settings.max_offers_professional_monthly,
+      ENTERPRISE: null,
+    };
+    const limit = planLimits[plan];
 
     if (limit !== null && count >= limit) {
       this.logger.warn(
-        `Plan limit reached: orgId=${organizationId} plan=${plan} count=${count} limit=${limit}`,
+        `Plan limit reached: orgId=${organizationId} plan=${plan} count=${count} limit=${limit} (active=${isActuallyActive})`,
       );
       throw new PlanLimitExceededError(plan, limit);
     }
@@ -180,7 +189,11 @@ export class SubscriptionService {
   async markCanceled(stripeCustomerId: string): Promise<void> {
     await this.db.subscription.updateMany({
       where: { stripeCustomerId },
-      data: { status: SubscriptionStatus.CANCELED, cancelAtPeriodEnd: false },
+      data: { 
+        status: SubscriptionStatus.CANCELED, 
+        cancelAtPeriodEnd: false,
+        plan: SubscriptionPlan.FREE 
+      },
     });
   }
 

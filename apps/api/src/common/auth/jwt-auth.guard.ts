@@ -22,6 +22,16 @@ import { Request } from 'express';
 // sessionId is included in the JWT payload so that logout/change-password can
 // revoke the specific session that issued this token.
 //
+// ── Revocation Policy ────────────────────────────────────────────────────────
+// To maintain the performance benefits of stateless JWTs, this guard does NOT
+// query the database (SessionService) on every request to check if the session
+// has been revoked (e.g. after a logout).
+//
+// Instead, we rely on a short access token TTL (default: 15m). When a user
+// logs out, the refresh token is revoked in the DB and the client drops the
+// cookies. The access token may technically remain valid for up to 15m, but
+// cannot be renewed. For immediate revocation, a Redis denylist could be added.
+//
 // ── Key rotation support ───────────────────────────────────────────────────────
 // JWT_SECRETS (env) is an optional comma-separated list of previous signing
 // secrets. Verification is attempted with JWT_SECRET first (the current

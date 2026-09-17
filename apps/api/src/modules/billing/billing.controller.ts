@@ -15,6 +15,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { OrgRoleGuard, RequireOrgRole } from '../organizations/guards/org-role.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { BillingService } from './billing.service';
 import { SubscriptionService } from './subscription.service';
@@ -48,7 +49,8 @@ export class BillingController {
   // The client should redirect to this URL immediately.
 
   @Post('checkout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrgRoleGuard)
+  @RequireOrgRole('ADMIN')
   @HttpCode(HttpStatus.OK)
   async createCheckout(
     @Body() dto: CreateCheckoutDto,
@@ -99,7 +101,8 @@ export class BillingController {
   // The client redirects to this URL for self-service plan management.
 
   @Get('portal')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrgRoleGuard)
+  @RequireOrgRole('ADMIN')
   async getPortalUrl(@CurrentUser() user: JwtPayload): Promise<{ url: string }> {
     const webBase = this.config.get('WEB_BASE_URL', { infer: true });
     const returnUrl = `${webBase}/dashboard/settings/billing`;
@@ -113,7 +116,8 @@ export class BillingController {
   // Returns the organisation's current subscription state for the dashboard.
 
   @Get('subscription')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrgRoleGuard)
+  @RequireOrgRole('MEMBER')
   async getSubscription(@CurrentUser() user: JwtPayload): Promise<SubscriptionResponse> {
     const sub = await this.subscriptionService.getSubscription(user.orgId);
 
@@ -145,7 +149,8 @@ export class BillingController {
   // Returns 204 No Content on success.
 
   @Post('sync')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrgRoleGuard)
+  @RequireOrgRole('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   async syncFromStripe(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.billingService.resyncFromStripe(user.orgId);
@@ -182,14 +187,7 @@ export class BillingController {
       throw new BadRequestException('Request body unavailable.');
     }
 
-    try {
-      await this.billingService.handleWebhookEvent(rawBody, signature);
-    } catch (err) {
-      // constructEvent() throws on bad signature; surface it as 400.
-      throw new BadRequestException(
-        `Webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
+    await this.billingService.handleWebhookEvent(rawBody, signature);
   }
 }
 

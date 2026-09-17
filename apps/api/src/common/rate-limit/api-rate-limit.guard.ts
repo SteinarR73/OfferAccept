@@ -16,7 +16,7 @@ import type { JwtPayload } from '../auth/jwt-auth.guard';
 //          Redis downtime never takes down the API.
 //
 // Admin exemption:
-//   Authenticated users whose JWT role is in ADMIN_ROLES (OWNER, INTERNAL_SUPPORT)
+//   Authenticated users whose JWT role is in ADMIN_ROLES (INTERNAL_SUPPORT)
 //   are exempt. The token is decoded (signature still verified by JwtService) to
 //   read the role claim. An invalid/expired token is treated as unauthenticated
 //   and falls through to the IP-based check.

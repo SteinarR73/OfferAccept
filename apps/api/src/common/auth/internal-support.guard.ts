@@ -15,9 +15,8 @@ import type { Request } from 'express';
 // ─── InternalSupportGuard ──────────────────────────────────────────────────────
 // Requires all of the following:
 //   1. A valid JWT with role === 'INTERNAL_SUPPORT'
-//   2. IP allowlist check    (if SUPPORT_IP_ALLOWLIST is configured)
-//   3. Session TTL check     (if SUPPORT_SESSION_TTL_MINUTES is configured)
-//   4. MFA claim check       (if REQUIRE_SUPPORT_MFA=true)
+//   2. IP allowlist check (mandatory in production)
+//   3. Session TTL check (mandatory in production)
 //
 // Usage: @UseGuards(InternalSupportGuard) on a controller or handler.
 // InternalSupportGuard must be registered as a provider in SupportModule so
@@ -58,8 +57,13 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
       throw new ForbiddenException('This endpoint requires internal support access.');
     }
 
-    // Step 3: IP allowlist (optional)
+    const isProd = this.supportConfig.get('NODE_ENV', { infer: true }) === 'production';
+
+    // Step 3: IP allowlist (mandatory in prod)
     const allowlistRaw = this.supportConfig.get('SUPPORT_IP_ALLOWLIST', { infer: true });
+    if (!allowlistRaw && isProd) {
+      throw new ForbiddenException('Support access is disabled (IP allowlist not configured in production).');
+    }
     if (allowlistRaw) {
       const ip = extractClientIp(request);
       const allowedIps = allowlistRaw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -74,8 +78,11 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
       }
     }
 
-    // Step 4: Session TTL (optional)
+    // Step 4: Session TTL (mandatory in prod)
     const sessionTtlMinutes = this.supportConfig.get('SUPPORT_SESSION_TTL_MINUTES', { infer: true });
+    if (sessionTtlMinutes === undefined && isProd) {
+      throw new ForbiddenException('Support access is disabled (Session TTL not configured in production).');
+    }
     if (sessionTtlMinutes !== undefined && user.iat !== undefined) {
       const issuedAtMs = user.iat * 1000; // JWT iat is in seconds
       const maxAgeMs = sessionTtlMinutes * 60 * 1000;
@@ -88,22 +95,6 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
         }));
         throw new ForbiddenException(
           `Support session has expired (max age: ${sessionTtlMinutes} min). Please re-authenticate.`,
-        );
-      }
-    }
-
-    // Step 5: MFA claim (optional, controlled by REQUIRE_SUPPORT_MFA)
-    const requireMfa = this.supportConfig.get('REQUIRE_SUPPORT_MFA', { infer: true });
-    if (requireMfa) {
-      const mfaPayload = user as JwtPayload & { mfaVerifiedAt?: number };
-      if (!mfaPayload.mfaVerifiedAt) {
-        this.logger.warn(JSON.stringify({
-          event: 'support_mfa_required',
-          userId: user.sub,
-        }));
-        throw new ForbiddenException(
-          'MFA verification is required to access support endpoints. ' +
-          'Re-authenticate with a second factor.',
         );
       }
     }

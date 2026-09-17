@@ -27,12 +27,7 @@ export interface IssueCertificatePayload {
   acceptanceRecordId: string;
 }
 
-export interface SendEmailPayload {
-  // Deferred until the email module grows a queue-based sending path.
-  // Current flow: synchronous fire-and-forget via Resend adapter.
-  type: string;
-  params: Record<string, unknown>;
-}
+// SendEmailPayload was removed because email sending is currently synchronous.
 
 export interface SendWebhookPayload {
   endpointId: string;
@@ -166,7 +161,6 @@ export interface JobPayloadMap {
   'expire-sessions': ExpireSessionsPayload;
   'expire-offers': ExpireOffersPayload;
   'issue-certificate': IssueCertificatePayload;
-  'send-email': SendEmailPayload;
   'send-webhook': SendWebhookPayload;
   'reset-monthly-billing': ResetMonthlyBillingPayload;
   'send-reminders': SendRemindersPayload;
@@ -226,12 +220,6 @@ export const QUEUE_OPTIONS: Record<JobName, QueueOptions> = {
     retryDelay: 60,        // 1 min, 2 min, 4 min, 8 min, 16 min
     retryBackoff: true,
     expireInSeconds: 3600, // kill after 1 h
-  },
-  'send-email': {
-    retryLimit: 3,
-    retryDelay: 60,
-    retryBackoff: true,
-    expireInSeconds: 1800,
   },
   'notify-deal-accepted': {
     // Acceptance confirmation emails — high value, generous retry window.

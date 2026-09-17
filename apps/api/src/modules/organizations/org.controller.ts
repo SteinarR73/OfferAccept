@@ -94,11 +94,11 @@ export class OrgController {
 
   // ── Get org detail ───────────────────────────────────────────────────────────
 
-  @Get(':id')
+  @Get(':orgId')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('MEMBER')
   async getOrgDetail(
-    @Param('id') orgId: string,
+    @Param('orgId') orgId: string,
     @Req() req: Request & { user: JwtPayload },
   ) {
     return this.orgService.getDetail(req.user.sub, orgId);
@@ -106,21 +106,21 @@ export class OrgController {
 
   // ── List members ─────────────────────────────────────────────────────────────
 
-  @Get(':id/members')
+  @Get(':orgId/members')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('MEMBER')
-  async listMembers(@Param('id') orgId: string) {
+  async listMembers(@Param('orgId') orgId: string) {
     return this.membershipService.listMembers(orgId);
   }
 
   // ── Invite member ────────────────────────────────────────────────────────────
 
-  @Post(':id/invite')
+  @Post(':orgId/invite')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   async inviteMember(
-    @Param('id') orgId: string,
+    @Param('orgId') orgId: string,
     @Body() dto: InviteMemberDto,
     @Req() req: Request & { user: JwtPayload },
   ) {
@@ -152,12 +152,12 @@ export class OrgController {
 
   // ── Remove member ─────────────────────────────────────────────────────────────
 
-  @Delete(':id/member/:userId')
+  @Delete(':orgId/member/:userId')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeMember(
-    @Param('id') orgId: string,
+    @Param('orgId') orgId: string,
     @Param('userId') targetUserId: string,
     @Req() req: Request & { user: JwtPayload },
   ) {
@@ -166,12 +166,12 @@ export class OrgController {
 
   // ── Transfer ownership ────────────────────────────────────────────────────────
 
-  @Patch(':id/transfer')
+  @Patch(':orgId/transfer')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('OWNER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async transferOwnership(
-    @Param('id') orgId: string,
+    @Param('orgId') orgId: string,
     @Body() dto: TransferOwnershipDto,
     @Req() req: Request & { user: JwtPayload },
   ) {
@@ -181,10 +181,10 @@ export class OrgController {
   // ── DPA status ───────────────────────────────────────────────────────────────
   // Returns whether the current DPA version has been accepted by the organisation.
 
-  @Get(':id/dpa')
+  @Get(':orgId/dpa')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('MEMBER')
-  async getDpaStatus(@Param('id') orgId: string) {
+  async getDpaStatus(@Param('orgId') orgId: string) {
     return this.dpaService.getStatus(orgId);
   }
 
@@ -194,12 +194,12 @@ export class OrgController {
   // behalf of the organisation.
   // Rate-limited to prevent replay-accept spam.
 
-  @Post(':id/dpa')
+  @Post(':orgId/dpa')
   @UseGuards(JwtAuthGuard, OrgRoleGuard)
   @RequireOrgRole('ADMIN')
   @HttpCode(HttpStatus.CREATED)
   async acceptDpa(
-    @Param('id') orgId: string,
+    @Param('orgId') orgId: string,
     @Req() req: Request & { user: JwtPayload },
   ) {
     await this.rateLimiter.check('dpa_accept', req.user.sub);

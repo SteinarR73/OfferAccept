@@ -289,6 +289,13 @@ const envSchema = z
         'Without it, IP-based rate limiting applies to the load balancer IP, not individual clients.',
       path: ['TRUST_PROXY'],
     },
+  )
+  .refine(
+    (data) => data.NODE_ENV !== 'production' || !data.TRUST_PROXY || !!data.TRUSTED_PROXY_CIDR,
+    {
+      message: 'TRUSTED_PROXY_CIDR is required in production when TRUST_PROXY is true to securely identify proxy origins.',
+      path: ['TRUSTED_PROXY_CIDR'],
+    },
   );
 
 export type Env = z.infer<typeof envSchema>;

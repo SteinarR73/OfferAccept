@@ -17,10 +17,6 @@ import { getAppTracer } from '../../instrument';
 import { ExpireSessionsHandler } from './handlers/expire-sessions.handler';
 import { ExpireOffersHandler } from './handlers/expire-offers.handler';
 import { IssueCertificateHandler } from './handlers/issue-certificate.handler';
-// SendEmailHandler is intentionally NOT registered here — the handler is a stub.
-// Current email flow: synchronous via EmailPort (fire-and-forget, sufficient for current volume).
-// To activate async email: implement SendEmailHandler, then re-add it here.
-// See: handlers/send-email.handler.ts for the activation checklist.
 import { SendWebhookHandler } from './handlers/send-webhook.handler';
 import { ResetMonthlyBillingHandler } from './handlers/reset-monthly-billing.handler';
 import { SendRemindersHandler } from './handlers/send-reminders.handler';
@@ -85,12 +81,10 @@ import { PurgeExpiredSigningDataHandler } from './handlers/purge-expired-signing
 //   WHERE createdon > now() - interval '1 hour'
 //   GROUP BY name, state ORDER BY name, state;
 
-const WORKER_OPTIONS: Record<Exclude<JobName, 'send-email'>, WorkOptions> = {
+const WORKER_OPTIONS: Record<JobName, WorkOptions> = {
   'expire-sessions':              { batchSize: 1, localConcurrency: 1 },
   'expire-offers':                { batchSize: 1, localConcurrency: 1 },
   'issue-certificate':            { batchSize: 5, localConcurrency: 3 },
-  // 'send-email' deliberately omitted — handler is a stub, not registered as a worker.
-  // Restore this entry when the handler is implemented.
   'send-webhook':                 { batchSize: 5, localConcurrency: 5 },
   'reset-monthly-billing':        { batchSize: 1, localConcurrency: 1 },
   'send-reminders':               { batchSize: 1, localConcurrency: 1 },
@@ -118,8 +112,6 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     private readonly expireSessions: ExpireSessionsHandler,
     private readonly expireOffers: ExpireOffersHandler,
     private readonly issueCertificate: IssueCertificateHandler,
-    // SendEmailHandler deliberately not injected — it is a stub.
-    // See comment above WORKER_OPTIONS for re-activation steps.
     private readonly sendWebhook: SendWebhookHandler,
     private readonly resetMonthlyBilling: ResetMonthlyBillingHandler,
     private readonly sendReminders: SendRemindersHandler,
@@ -217,11 +209,6 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
       WORKER_OPTIONS['issue-certificate'],
       (jobs) => this.trackAndHandle('issue-certificate', jobs, (j) => this.issueCertificate.handle(j)),
     );
-
-    // NOTE: 'send-email' worker is intentionally NOT registered here.
-    // The send-email queue exists in pg-boss (queue config is retained in job.types.ts
-    // for forward-compatibility), but no worker polls it until the handler is implemented.
-    // Current email delivery: synchronous via EmailPort — sufficient for current volume.
 
     await this.boss.work<JobPayloadMap['send-webhook']>(
       'send-webhook',

@@ -14,11 +14,10 @@ import type { Request } from 'express';
 // Update this set when adding or removing privileged roles — the guard logic
 // itself does not need to change.
 //
-// OWNER            — org owner; may configure platform settings for their org.
 // INTERNAL_SUPPORT — OfferAccept staff; operational read/write access.
 //
-// Roles NOT in this set (ADMIN, MEMBER, VIEWER) receive 403.
-export const ADMIN_ROLES = new Set<string>(['OWNER', 'INTERNAL_SUPPORT']);
+// Roles NOT in this set (OWNER, ADMIN, MEMBER, VIEWER) receive 403.
+export const ADMIN_ROLES = new Set<string>(['INTERNAL_SUPPORT']);
 
 // ─── AdminGuard ────────────────────────────────────────────────────────────────
 // Requires a valid JWT whose `role` claim is in ADMIN_ROLES.

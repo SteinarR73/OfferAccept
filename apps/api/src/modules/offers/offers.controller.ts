@@ -19,6 +19,7 @@ import { PrismaClient } from '@prisma/client';
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { OrgRoleGuard, RequireOrgRole } from '../organizations/guards/org-role.guard';
 import { OffersService } from './services/offers.service';
 import { SendOfferService } from './services/send-offer.service';
 import { DealStatusService } from './services/deal-status.service';
@@ -34,7 +35,8 @@ import { AddDocumentDto } from './dto/add-document.dto';
 // Controllers stay thin — no business logic here.
 
 @Controller('offers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgRoleGuard)
+@RequireOrgRole('MEMBER')
 export class OffersController {
   constructor(
     private readonly offersService: OffersService,

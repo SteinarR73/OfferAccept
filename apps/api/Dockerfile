@@ -29,6 +29,7 @@ RUN pnpm --filter @offeraccept/api run build
 
 # ─── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
+RUN apk add --no-cache tini
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -46,7 +47,13 @@ COPY --from=builder /app/packages/database ./packages/database
 
 EXPOSE 3001
 
+USER node
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/v1/health/live || exit 1
+
 # Compiled entry lives under this nested path because apps/api/tsconfig.json's
 # "paths" pull in cross-package source files, which makes tsc infer a repo-root
 # rootDir instead of "src" — see nest-cli.json's "entryFile" for the matching fix.
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "apps/api/dist/apps/api/src/main.js"]

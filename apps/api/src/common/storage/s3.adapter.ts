@@ -56,13 +56,14 @@ export class S3Adapter implements StoragePort {
   async getPresignedUploadUrl(
     key: string,
     mimeType: string,
-    _maxBytes: number,
+    maxBytes: number,
     ttlSeconds: number,
   ): Promise<PresignedUploadResult> {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ContentType: mimeType,
+      ContentLength: maxBytes,
       ServerSideEncryption: 'AES256',
     });
 

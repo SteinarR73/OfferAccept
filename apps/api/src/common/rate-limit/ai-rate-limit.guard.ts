@@ -13,7 +13,7 @@ import type { JwtPayload } from '../auth/jwt-auth.guard';
 //          RATE_LIMIT_BACKEND env var. Falls open when the backend throws.
 //
 // Admin exemption:
-//   Users whose JWT role is in ADMIN_ROLES (OWNER, INTERNAL_SUPPORT) are exempt.
+//   Users whose JWT role is in ADMIN_ROLES (INTERNAL_SUPPORT) are exempt.
 //   Role is read from req.user which JwtAuthGuard already verified.
 //
 // Usage:

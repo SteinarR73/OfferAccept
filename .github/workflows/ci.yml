@@ -102,9 +102,7 @@ jobs:
       - name: Lint Markdown files
         run: |
           markdownlint-cli2 "README.md" "docs/**/*.md" \
-            --config .markdownlint.jsonc || true
-          # ^^^ 'true' so lint warnings don't block CI on first run.
-          # Remove '|| true' once all warnings are resolved.
+            --config .markdownlint.jsonc
 
       - name: Check no dead internal links
         run: |
@@ -326,6 +324,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Typecheck API
+        run: pnpm --filter @offeraccept/api exec tsc --noEmit
+
+      - name: Typecheck Web
+        run: pnpm --filter @offeraccept/web exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm run lint
 
       - name: Build
         run: pnpm run build

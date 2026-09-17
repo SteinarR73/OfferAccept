@@ -48,9 +48,9 @@ export class OrgRoleGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredRole = this.reflector.get<OrgRoleValue>(
+    const requiredRole = this.reflector.getAllAndOverride<OrgRoleValue>(
       REQUIRE_ORG_ROLE_KEY,
-      context.getHandler(),
+      [context.getHandler(), context.getClass()],
     );
 
     // If no role is required, allow through
@@ -59,11 +59,11 @@ export class OrgRoleGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request & { user: JwtPayload }>();
     const userId = request.user?.sub;
 
-    // Prefer the explicit :id route param (OrgController pattern).
+    // Prefer the explicit :orgId route param.
     // Fall back to the orgId embedded in the JWT for resource controllers that are
     // implicitly scoped to the caller's org (ApiKeysController, WebhooksController, etc.)
-    // and therefore carry no :id in their route path.
-    const rawId = request.params?.id;
+    // and therefore carry no :orgId in their route path.
+    const rawId = request.params?.orgId;
     const paramOrgId = Array.isArray(rawId) ? rawId[0] : rawId;
     const orgId: string | undefined = paramOrgId ?? request.user?.orgId;
 

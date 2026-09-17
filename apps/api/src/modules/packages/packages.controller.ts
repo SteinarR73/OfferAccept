@@ -9,6 +9,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { OrgRoleGuard, RequireOrgRole } from '../organizations/guards/org-role.guard';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import {
   PackagesService,
@@ -27,7 +28,8 @@ import {
 // The authenticated user can only read and write their own package records.
 
 @Controller('packages')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgRoleGuard)
+@RequireOrgRole('MEMBER')
 export class PackagesController {
   constructor(private readonly packagesService: PackagesService) {}
 

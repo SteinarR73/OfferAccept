@@ -183,6 +183,20 @@ export class SessionService {
     });
   }
 
+  // ── RevokeAllExcept ─────────────────────────────────────────────────────────
+  // Revokes all active sessions for a user EXCEPT the given session ID.
+  // Useful for "log out of all other devices" functionality.
+  async revokeAllExcept(userId: string, currentSessionId: string): Promise<void> {
+    await this.db.session.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+        id: { not: currentSessionId },
+      },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   // ── RevokeFamily ────────────────────────────────────────────────────────────
   // Revokes all active sessions belonging to the given token family.
   // Called on replay detection; also available for security incident response.

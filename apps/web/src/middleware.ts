@@ -55,6 +55,8 @@ const CSP_PARTS = {
   frame:   "frame-ancestors 'none'",
   base:    "base-uri 'self'",
   form:    "form-action 'self'",
+  object:  "object-src 'none'",
+  upgrade: "upgrade-insecure-requests",
 };
 
 function buildCsp(nonce: string): string {
@@ -68,6 +70,8 @@ function buildCsp(nonce: string): string {
     CSP_PARTS.frame,
     CSP_PARTS.base,
     CSP_PARTS.form,
+    CSP_PARTS.object,
+    ...(isDev ? [] : [CSP_PARTS.upgrade]),
   ].join('; ');
 }
 

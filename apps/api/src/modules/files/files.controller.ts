@@ -13,6 +13,7 @@ import { IsString, IsNotEmpty, IsInt, IsPositive, MaxLength, IsHexadecimal, Leng
 import { Request } from 'express';
 import { FileService } from './file.service';
 import { JwtAuthGuard, JwtPayload } from '../../common/auth/jwt-auth.guard';
+import { OrgRoleGuard, RequireOrgRole } from '../organizations/guards/org-role.guard';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,8 @@ class CompleteUploadDto {
 // It contains time-limited AWS S3 credentials and expires in 5 minutes.
 
 @Controller('files')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgRoleGuard)
+@RequireOrgRole('MEMBER')
 export class FilesController {
   constructor(private readonly fileService: FileService) {}
 

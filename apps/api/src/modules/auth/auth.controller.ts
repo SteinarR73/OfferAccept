@@ -100,6 +100,12 @@ class ResendVerificationDto {
   email!: string;
 }
 
+class SwitchOrgDto {
+  @IsString()
+  @IsNotEmpty()
+  orgId!: string;
+}
+
 // ─── AuthController ───────────────────────────────────────────────────────────
 // All routes under /api/v1/auth.
 //
@@ -157,6 +163,24 @@ export class AuthController {
     return { message: 'Account created. Please check your email to verify your address.' };
   }
 
+  // POST /auth/switch-org
+  @Post('switch-org')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async switchOrg(
+    @Body() body: SwitchOrgDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
+    const user = (req as Request & { user: JwtPayload }).user;
+    const context = { ipAddress: extractClientIp(req), userAgent: req.headers['user-agent'] };
+
+    const tokens = await this.authService.switchOrg(user.sub, body.orgId, user.sessionId, context);
+    setCookies(req, res, tokens.accessToken, tokens.refreshToken, this.config);
+
+    return { message: 'Switched organization.' };
+  }
+
   // POST /auth/login
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -212,7 +236,7 @@ export class AuthController {
       await this.authService.logout(user.sessionId);
     }
 
-    clearCookies(res);
+    clearCookies(res, this.config);
 
     return { message: 'Logged out.' };
   }
@@ -303,7 +327,7 @@ export class AuthController {
     });
 
     // Clear any active session cookies — all sessions were revoked
-    clearCookies(res);
+    clearCookies(res, this.config);
 
     return { message: 'Password reset successful. Please log in with your new password.' };
   }
@@ -336,7 +360,7 @@ export class AuthController {
     );
 
     // Clear cookies — all sessions (including current) were revoked; user must re-login
-    clearCookies(res);
+    clearCookies(res, this.config);
 
     return { message: 'Password changed. Please log in again.' };
   }
@@ -418,8 +442,16 @@ function parseTtlToMs(ttl: string): number {
   }
 }
 
-function clearCookies(res: Response): void {
-  // path must match what was set; sameSite/httpOnly are not needed for clearing
-  res.clearCookie('accessToken', { path: '/' });
-  res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh' });
+function clearCookies(res: Response, config: ConfigService<Env, true>): void {
+  const domain = config.get('COOKIE_DOMAIN', { infer: true });
+
+  // path and domain must exactly match what was set
+  res.clearCookie('accessToken', {
+    path: '/',
+    ...(domain ? { domain } : {}),
+  });
+  res.clearCookie('refreshToken', {
+    path: '/api/v1/auth/refresh',
+    ...(domain ? { domain } : {}),
+  });
 }

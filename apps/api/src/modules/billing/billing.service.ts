@@ -4,6 +4,8 @@ import Stripe from 'stripe';
 import { PrismaClient, SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
 import { SubscriptionService } from './subscription.service';
 import type { Env } from '../../config/env';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../common/rate-limit/rate-limit.service';
 
 // ─── BillingService ────────────────────────────────────────────────────────────
 // Owns all Stripe API communication.
@@ -44,6 +46,7 @@ export class BillingService {
     private readonly config: ConfigService<Env, true>,
     private readonly subscriptionService: SubscriptionService,
     @Inject('PRISMA') private readonly db: PrismaClient,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {
     const billingEnabled = this.config.get('BILLING_PROVIDER', { infer: true }) === 'stripe';
 
@@ -81,36 +84,58 @@ export class BillingService {
   // Resolves org name and owner email from the DB when creating a new customer.
   // The customer ID is persisted via SubscriptionService so this is idempotent.
   async getOrCreateCustomer(organizationId: string): Promise<string> {
-    const existing = await this.subscriptionService.getStripeCustomerId(organizationId);
+    let existing = await this.subscriptionService.getStripeCustomerId(organizationId);
     if (existing) return existing;
 
-    const org = await this.db.organization.findUnique({
-      where: { id: organizationId },
-      select: {
-        name: true,
-        memberships: {
-          where: { role: 'OWNER' },
-          select: {
-            user: { select: { email: true } },
+    const lockKey = `stripe:lock:customer_create:${organizationId}`;
+    // Attempt to acquire lock for 10 seconds
+    const acquired = await this.redis.set(lockKey, '1', 'PX', 10000, 'NX');
+
+    if (!acquired) {
+      // Another request is creating the customer. Poll for completion.
+      for (let i = 0; i < 20; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        existing = await this.subscriptionService.getStripeCustomerId(organizationId);
+        if (existing) return existing;
+      }
+      throw new Error('Timeout waiting for Stripe customer creation');
+    }
+
+    try {
+      // Check once more inside the lock
+      existing = await this.subscriptionService.getStripeCustomerId(organizationId);
+      if (existing) return existing;
+
+      const org = await this.db.organization.findUnique({
+        where: { id: organizationId },
+        select: {
+          name: true,
+          memberships: {
+            where: { role: 'OWNER' },
+            select: {
+              user: { select: { email: true } },
+            },
+            take: 1,
           },
-          take: 1,
         },
-      },
-    });
+      });
 
-    const email = org?.memberships[0]?.user?.email ?? '';
-    const name = org?.name ?? '';
+      const email = org?.memberships[0]?.user?.email ?? '';
+      const name = org?.name ?? '';
 
-    const customer = await this.requireStripe().customers.create({
-      email,
-      name,
-      metadata: { organizationId },
-    });
+      const customer = await this.requireStripe().customers.create({
+        email,
+        name,
+        metadata: { organizationId },
+      });
 
-    await this.subscriptionService.setStripeCustomerId(organizationId, customer.id);
-    this.logger.log(`Stripe customer created: customerId=${customer.id} orgId=${organizationId}`);
+      await this.subscriptionService.setStripeCustomerId(organizationId, customer.id);
+      this.logger.log(`Stripe customer created: customerId=${customer.id} orgId=${organizationId}`);
 
-    return customer.id;
+      return customer.id;
+    } finally {
+      await this.redis.del(lockKey);
+    }
   }
 
   // ── Checkout ──────────────────────────────────────────────────────────────
@@ -194,9 +219,19 @@ export class BillingService {
       this.logger.warn(
         `Stripe webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`,
       );
-      // Re-throw so the controller can return 400.
-      throw err;
+      // Throw 400 for bad signature
+      throw new BadRequestException(`Webhook signature verification failed`);
     }
+
+    // Idempotency check via Redis. Stripe retries webhooks for up to 3 days.
+    // We store the event ID with a 72-hour TTL.
+    const redisKey = `stripe:webhook:event:${event.id}`;
+    const alreadyProcessed = await this.redis.setnx(redisKey, '1');
+    if (alreadyProcessed === 0) {
+      this.logger.log(`Stripe webhook ignored (already processed): id=${event.id}`);
+      return;
+    }
+    await this.redis.expire(redisKey, 3 * 24 * 60 * 60); // 72 hours
 
     this.logger.log(`Stripe webhook received: type=${event.type} id=${event.id}`);
 
@@ -320,16 +355,15 @@ export class BillingService {
   // ── Plan / status resolution ──────────────────────────────────────────────
 
   // Resolves the SubscriptionPlan from the Stripe subscription's price IDs.
-  // Falls back to STARTER if the price is not in our map (e.g., legacy price).
+  // Throws an error if the price is not in our map to avoid silently downgrading customers.
   private resolvePlan(sub: Stripe.Subscription): SubscriptionPlan {
     const priceId = sub.items.data[0]?.price?.id;
     if (priceId && this.priceToplan.has(priceId)) {
       return this.priceToplan.get(priceId)!;
     }
-    this.logger.warn(
-      `Unknown price ID '${priceId ?? 'none'}' in subscription ${sub.id}. Defaulting to STARTER.`,
-    );
-    return SubscriptionPlan.STARTER;
+    const msg = `Unknown price ID '${priceId ?? 'none'}' in subscription ${sub.id}. Cannot resolve plan.`;
+    this.logger.error(msg);
+    throw new Error(msg);
   }
 
   // Maps Stripe's subscription status strings to our SubscriptionStatus enum.

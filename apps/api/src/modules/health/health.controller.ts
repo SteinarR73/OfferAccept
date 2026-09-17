@@ -41,13 +41,24 @@ export class HealthController {
   }
 
   /**
-   * Simple liveness + dependency check for load balancers and uptime monitors.
-   * No auth required. Returns 200 { status: "ok" } or 503 { status: "degraded" }.
-   * Does not expose internal error details.
+   * Liveness probe. Verifies that the Node.js process is running and the HTTP
+   * server is accepting connections. Does NOT check external dependencies to
+   * prevent orchestration loops (e.g. Kubernetes restarting pods because Redis is slow).
    */
-  @Get('z')
+  @Get('live')
   @HttpCode(HttpStatus.OK)
-  async healthz(): Promise<{ status: string }> {
+  live(): { status: string } {
+    return { status: 'ok' };
+  }
+
+  /**
+   * Readiness probe. Verifies that the app can process requests (dependencies
+   * like Postgres and Redis are reachable). Load balancers should use this
+   * to decide if a pod should receive traffic.
+   */
+  @Get('ready')
+  @HttpCode(HttpStatus.OK)
+  async ready(): Promise<{ status: string }> {
     const results = await Promise.allSettled([
       this.prisma.$queryRaw`SELECT 1`,
       this.redis.ping(),
@@ -60,6 +71,16 @@ export class HealthController {
     }
 
     return { status: 'ok' };
+  }
+
+  /**
+   * Legacy combined probe for backward compatibility.
+   * Use /health/ready for readiness and /health/live for liveness.
+   */
+  @Get('z')
+  @HttpCode(HttpStatus.OK)
+  async healthz(): Promise<{ status: string }> {
+    return this.ready();
   }
 
   /**

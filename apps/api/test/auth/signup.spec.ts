@@ -12,7 +12,6 @@ import { EmailAlreadyExistsError } from '../../src/common/errors/domain.errors';
 //
 // Verifies:
 //   - Successful signup returns 201 + message
-//   - EmailAlreadyExistsError propagates (mapped to 409 by the exception filter)
 //   - Rate limiter is called with 'signup_attempt' profile
 
 function buildMockReq(ip = '1.2.3.4') {
@@ -87,12 +86,11 @@ describe('AuthController.signup()', () => {
     expect(rateLimiter.check).toHaveBeenCalledWith('signup_attempt', expect.any(String));
   });
 
-  it('propagates EmailAlreadyExistsError (let exception filter handle it)', async () => {
+  it('returns success even if auth service returns empty values (anti-enumeration)', async () => {
     const { controller, authSvc } = await buildController();
-    (authSvc.signup as jest.Mock<(...args: any[]) => any>).mockRejectedValue(new EmailAlreadyExistsError());
+    (authSvc.signup as jest.Mock<(...args: any[]) => any>).mockResolvedValue({ userId: '', orgId: '' });
 
-    await expect(
-      controller.signup(validBody as never, buildMockReq() as never),
-    ).rejects.toThrow(EmailAlreadyExistsError);
+    const result = await controller.signup(validBody as never, buildMockReq() as never);
+    expect(result).toHaveProperty('message');
   });
 });
