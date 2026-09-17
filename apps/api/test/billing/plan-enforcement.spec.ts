@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
 import { SubscriptionService } from '../../src/modules/billing/subscription.service';
 import { PlanLimitExceededError } from '../../src/common/errors/domain.errors';
+import { AdminSettingsService } from '../../src/modules/admin/admin-settings.service';
 
 // ─── Plan enforcement tests ────────────────────────────────────────────────────
 //
@@ -48,6 +49,16 @@ async function buildService(
     providers: [
       SubscriptionService,
       { provide: 'PRISMA', useValue: db },
+      {
+        provide: AdminSettingsService,
+        useValue: {
+          getAll: jest.fn<() => Promise<any>>().mockResolvedValue({
+            max_offers_free_monthly: 3,
+            max_offers_starter_monthly: 25,
+            max_offers_professional_monthly: 100,
+          }),
+        },
+      },
     ],
   }).compile();
 
@@ -148,7 +159,20 @@ describe('assertCanSendOffer – no subscription row (defaults to FREE)', () => 
     const db = buildMockDb();
     db.subscription.findUnique.mockResolvedValue(null as never);
     const module = await Test.createTestingModule({
-      providers: [SubscriptionService, { provide: 'PRISMA', useValue: db }],
+      providers: [
+        SubscriptionService,
+        { provide: 'PRISMA', useValue: db },
+        {
+          provide: AdminSettingsService,
+          useValue: {
+            getAll: jest.fn<() => Promise<any>>().mockResolvedValue({
+              max_offers_free_monthly: 3,
+              max_offers_starter_monthly: 25,
+              max_offers_professional_monthly: 100,
+            }),
+          },
+        },
+      ],
     }).compile();
     const service = module.get(SubscriptionService);
 

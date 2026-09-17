@@ -4,9 +4,10 @@ import { OffersService } from './services/offers.service';
 import { SendOfferService } from './services/send-offer.service';
 import { DealStatusService } from './services/deal-status.service';
 import { DealEventsModule } from '../deal-events/deal-events.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 
 @Module({
-  imports: [DealEventsModule],
+  imports: [DealEventsModule, OrganizationsModule],
   controllers: [OffersController],
   providers: [OffersService, SendOfferService, DealStatusService],
   // SendOfferService exported for use by SupportModule (revoke / resend-link actions)

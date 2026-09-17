@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
@@ -46,6 +46,7 @@ export interface SignupResult {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly webBaseUrl: string;
 
   constructor(
@@ -138,7 +139,7 @@ export class AuthService {
     }).catch((err) => {
       // Log the error but don't fail the signup response.
       // The user is already in the database and can request a new verification email.
-      console.error(`Failed to send verification email to ${params.email}:`, err);
+      this.logger.error(`Failed to send verification email to ${params.email}:`, err);
     });
 
     return { userId: user.id, orgId };

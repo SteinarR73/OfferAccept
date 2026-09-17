@@ -147,6 +147,7 @@ async function buildService(mocks: ReturnType<typeof buildMocks>) {
       { provide: SubscriptionService, useValue: mocks.subscriptionSvcMock },
       { provide: ConfigService, useValue: mocks.configMock },
       { provide: 'PRISMA', useValue: mocks.dbMock },
+      { provide: 'REDIS_CLIENT', useValue: { set: jest.fn(), setnx: jest.fn(), del: jest.fn(), expire: jest.fn() } },
     ],
   }).compile();
 
@@ -325,7 +326,7 @@ describe('handleWebhookEvent – signature verification', () => {
 
     await expect(
       service.handleWebhookEvent(Buffer.from('tampered'), 'bad-sig'),
-    ).rejects.toThrow('No signatures found');
+    ).rejects.toThrow('Webhook signature verification failed');
 
     expect(mocks.subscriptionSvcMock.syncFromStripe).not.toHaveBeenCalled();
   });

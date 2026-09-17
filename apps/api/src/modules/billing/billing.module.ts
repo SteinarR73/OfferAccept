@@ -17,10 +17,11 @@ import { SubscriptionService } from './subscription.service';
 //   GET  /subscription   — current subscription state
 //   POST /webhook        — Stripe webhook receiver (no JWT, signature-verified)
 import { AdminModule } from '../admin/admin.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 
 @Global()
 @Module({
-  imports: [AdminModule],
+  imports: [AdminModule, OrganizationsModule],
   controllers: [BillingController],
   providers: [BillingService, SubscriptionService],
   exports: [SubscriptionService],

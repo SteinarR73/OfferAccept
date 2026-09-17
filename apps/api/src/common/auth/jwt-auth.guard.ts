@@ -46,6 +46,7 @@ export interface JwtPayload {
   orgRole?: string;    // OrgRole from Membership (present on tokens issued after multi-org migration)
   role: string;        // platform UserRole (OWNER/ADMIN/MEMBER/INTERNAL_SUPPORT)
   sessionId?: string;  // present on tokens issued by the new auth flow
+  mfaVerifiedAt?: string; // ISO date string when MFA was verified (present for INTERNAL_SUPPORT)
   iat?: number;
   exp?: number;
 }

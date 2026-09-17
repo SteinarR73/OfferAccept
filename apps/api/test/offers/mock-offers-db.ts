@@ -9,6 +9,9 @@ export function createMockOffersDb() {
       findFirst: jest.fn(),
       findUniqueOrThrow: jest.fn(),
     },
+    membership: {
+      findUnique: jest.fn<() => Promise<{ role: string } | null>>().mockResolvedValue({ role: 'OWNER' }),
+    },
     offer: {
       create: jest.fn(),
       findFirst: jest.fn(),

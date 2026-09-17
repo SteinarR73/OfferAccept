@@ -98,6 +98,15 @@ export class InternalSupportGuard extends JwtAuthGuard implements CanActivate {
         );
       }
     }
+    // Step 5: MFA check (if required by config)
+    const requireMfa = this.supportConfig.get('REQUIRE_SUPPORT_MFA', { infer: true });
+    if (requireMfa && !user.mfaVerifiedAt) {
+      this.logger.warn(JSON.stringify({
+        event: 'support_mfa_missing',
+        userId: user.sub,
+      }));
+      throw new ForbiddenException('MFA verification is required for support access.');
+    }
 
     return true;
   }

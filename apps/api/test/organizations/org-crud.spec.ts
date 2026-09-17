@@ -197,22 +197,18 @@ describe('OrgRoleGuard (unit)', () => {
     } as any;
 
     const reflectorMock = {
-      get: jest.fn().mockReturnValue(requiredRole),
+      getAllAndOverride: jest.fn().mockReturnValue(requiredRole),
     } as any;
 
     const { OrgRoleGuard } = require('../../src/modules/organizations/guards/org-role.guard');
     return new OrgRoleGuard(reflectorMock, repoMock);
   }
 
-  function buildContext() {
+  function buildContext(): any {
     return {
+      switchToHttp: () => ({ getRequest: () => ({ user: { sub: 'user-1' }, params: { orgId: 'org-1' } }) }),
       getHandler: () => ({}),
-      switchToHttp: () => ({
-        getRequest: () => ({
-          user: { sub: 'user-1' },
-          params: { id: 'org-1' },
-        }),
-      }),
+      getClass: () => ({}),
     };
   }
 
