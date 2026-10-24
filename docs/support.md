@@ -45,22 +45,21 @@ to inspect offers from any customer organization.
 
 ### How to create a support user
 
-```sql
-INSERT INTO users (id, organization_id, email, name, role, hashed_password, email_verified)
-VALUES (
-  gen_random_uuid(),
-  '<internal-org-id>',
-  'support@offeraccept.com',
-  'Support Staff Name',
-  'INTERNAL_SUPPORT',
-  '<bcrypt-hash>',
-  true
-);
+Use the operator script — see "Create support user" in `docs/operations.md`:
+
+```bash
+cd apps/api
+DATABASE_URL='postgresql://…' SUPPORT_USER_EMAIL='name@offeraccept.com' SUPPORT_USER_NAME='Name' \
+pnpm exec ts-node --transpile-only scripts/create-support-user.ts
 ```
 
-The `organization_id` should point to an internal OfferAccept organization (not a customer
-org). The `INTERNAL_SUPPORT` role gates access — the org membership is only for the FK
-constraint.
+It creates the user with role `INTERNAL_SUPPORT`, adds a membership in a dedicated internal
+organization (login requires a membership to build the JWT; that organization must never hold
+customer data) and refuses to modify any existing user. The `INTERNAL_SUPPORT` role — not the
+membership — is what grants cross-tenant access.
+
+Do not insert users with raw SQL: the `users.organization_id` column no longer exists
+(dropped in `20260913_drop_legacy_user_organization_id`).
 
 ---
 

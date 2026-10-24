@@ -75,8 +75,25 @@ the first inconsistent link.
 }
 ```
 
-`valid` is `true` only when all three checks pass. When any check fails, `valid` is
+`valid` is `true` only when all checks pass. When any check fails, `valid` is
 `false` and `anomaliesDetected` contains a human-readable description of each failure.
+
+Beyond the three headline checks, `CertificateService.verify()` also checks:
+
+- **Canonical acceptance hash** — the 5-field fingerprint (`acceptedAt`, `dealId`, `ipAddress`,
+  `recipientEmail`, `userAgent`) stored at issuance (absent on legacy certificates, which are
+  reported as an advisory `LEGACY_CERTIFICATE` anomaly).
+- **Acceptance-statement hash** — the stored statement text against the hash committed into the
+  `OFFER_ACCEPTED` event.
+- **Required events present and ordered** — `OTP_VERIFIED` and `OFFER_ACCEPTED` must exist and
+  `OTP_VERIFIED` must come first. The event-chain check (Check 3) only proves the events that
+  *remain* are consistent, so deleting the end of the chain would otherwise go unnoticed. An
+  empty chain, or one whose sequence numbers are not 1…n, is also reported as broken.
+  `eventChainIntegrity` is `false` in any of these cases.
+
+Known limit: events appended *after* `OFFER_ACCEPTED` are not individually anchored in the
+certificate, so removing only those would not be detected by verification (the database
+triggers on `signing_events` prevent it from happening).
 
 ---
 
@@ -157,6 +174,11 @@ No authentication required. Returns `reconstructedHash`, `storedHash`, and all c
 results. This is the quick path for confirming the certificate is intact.
 
 ### Step 2 — Retrieve the full payload (authenticated)
+
+(Walked through end-to-end on 2026-10-24 against a running stack: both the `Authorization:
+Bearer` header and the `accessToken` session cookie are accepted, and the SHA-256 of
+`canonicalJson` matched `certificateHash`. This was done by the authors, not by an
+independent reviewer — gate 6.4 still needs one.)
 
 ```
 GET /certificates/:id/export

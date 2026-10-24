@@ -54,32 +54,54 @@ same value for both.
 
 ```bash
 # Apply all pending migrations (safe for production — uses Prisma's migrate deploy)
-npx prisma migrate deploy
+# Requires DATABASE_URL in the environment. This repo is pnpm-only (see CLAUDE.md).
+pnpm --filter @offeraccept/database run db:migrate:deploy
 
 # Verify the schema is up to date
-npx prisma migrate status
+pnpm --filter @offeraccept/database exec prisma migrate status
 ```
+
+Migrations include database triggers that make the evidence tables
+(`acceptance_records`, `offer_snapshots`, `offer_snapshot_documents`, `signing_events`)
+append-only. Run the application as a database role that does **not own** those tables and
+has no `TRIGGER` privilege on them; otherwise an owner can still `DISABLE TRIGGER`.
 
 `migrate deploy` is idempotent. It applies only migrations that have not been applied yet.
 It does NOT drop or modify existing data.
 
 ### Create support user
 
-```sql
-INSERT INTO users (id, organization_id, email, name, role, hashed_password, email_verified)
-VALUES (
-  gen_random_uuid(),
-  '<internal-org-id>',
-  'support@offeraccept.com',
-  'Support Staff Name',
-  'INTERNAL_SUPPORT',
-  '<bcrypt-hash>',
-  true
-);
+```bash
+cd apps/api
+DATABASE_URL='postgresql://…' \
+SUPPORT_USER_EMAIL='name@offeraccept.com' SUPPORT_USER_NAME='Name' \
+pnpm exec ts-node --transpile-only scripts/create-support-user.ts
 ```
+
+A random password is generated and printed once (or set `SUPPORT_USER_PASSWORD`, min. 12
+characters). The script creates the internal organization and a membership — login requires
+one — and refuses to modify an existing user, so a customer account can never be promoted.
+
+(The previous raw-SQL recipe in this guide used a `users.organization_id` column that was
+dropped in migration `20260913_drop_legacy_user_organization_id`, and snake_case column names
+that do not exist; it would have failed.)
 
 `INTERNAL_SUPPORT` must only ever be assigned by a database operator. It must never
 be assignable through any customer-facing flow. See `docs/support.md` for full details.
+
+Before real use also set `SUPPORT_IP_ALLOWLIST`, `SUPPORT_SESSION_TTL_MINUTES` (e.g. 480) and
+`REQUIRE_SUPPORT_MFA=true` (see `apps/api/src/config/env.ts`).
+
+### Verify a deployment
+
+```bash
+node scripts/verify-deployment.mjs --api https://api.example.com --web https://app.example.com
+# add --probe-rate-limit to also test X-Forwarded-For spoofing (uses up 10/15min of this IP's bucket)
+```
+
+Checks https/redirect/TLS expiry, HSTS, CSP nonce, health, CORS (foreign origin rejected,
+`WEB_BASE_URL` allowed), that `/metrics`, `/offers`, `/support/*` are not public, and that the
+public certificate-verify route is. Exit code 1 on any failure.
 
 ### Email provider setup
 
@@ -94,13 +116,11 @@ be assignable through any customer-facing flow. See `docs/support.md` for full d
 
 ```bash
 # Build
-npm run build --workspace=apps/api
+pnpm --filter @offeraccept/api run build
 
-# Start (production)
-node apps/api/dist/main.js
-
-# Or via the workspace script
-npm run start --workspace=apps/api
+# Start (production). The compiled entry is nested because tsc infers a repo-root
+# rootDir — see apps/api/nest-cli.json "entryFile" and the Dockerfile CMD.
+node apps/api/dist/apps/api/src/main.js
 ```
 
 The API starts on `API_PORT` (default 3001). It logs startup errors to stderr. A
@@ -141,9 +161,9 @@ Dev-mode `log` level output is suppressed.
 ### Restore procedure
 
 1. Restore PostgreSQL to the target point in time.
-2. Run `npx prisma migrate status` to confirm migration state is consistent.
+2. Run `pnpm --filter @offeraccept/database exec prisma migrate status` to confirm migration state is consistent.
 3. If restoring to a non-current state, re-apply any migrations that were applied
-   after the restore point: `npx prisma migrate deploy`.
+   after the restore point: `pnpm --filter @offeraccept/database run db:migrate:deploy`.
 4. Verify the restore by calling `GET /health` and `GET /certificates/:id/verify`
    on a known certificate.
 
@@ -229,7 +249,7 @@ Key evidence points:
 1. Check application logs (`docker logs`, CloudWatch, etc.) for stack traces.
 2. Check database connectivity: `GET /health` returns 200 with `db: "ok"` when healthy.
 3. Check Resend API status at status.resend.com if email-related.
-4. If the error is a missing migration: `npx prisma migrate status` and apply.
+4. If the error is a missing migration: `pnpm --filter @offeraccept/database exec prisma migrate status` and apply.
 5. If the error is a crash loop on startup, check environment variable configuration —
    the app will print the missing/invalid variable to stderr before exiting.
 
@@ -609,7 +629,7 @@ NOT NULL migration until this is resolved.
 Only after both checks return zero:
 
 ```bash
-npx prisma migrate deploy
+pnpm --filter @offeraccept/database run db:migrate:deploy
 ```
 
 This applies `20260405_certificate_snapshot_not_null`, which runs:
@@ -630,4 +650,4 @@ to:
 snapshotId String  @unique
 ```
 
-and generate a companion migration (`npx prisma migrate dev --name certificate_snapshot_notnull_schema`).
+and generate a companion migration (`pnpm --filter @offeraccept/database exec prisma migrate dev --name certificate_snapshot_notnull_schema`).
