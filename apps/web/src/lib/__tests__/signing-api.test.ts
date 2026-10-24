@@ -1,4 +1,4 @@
-import { signingApi, ApiError } from '../signing-api';
+import { signingApi } from '../signing-api';
 
 describe('signingApi', () => {
   beforeEach(() => {

@@ -39,6 +39,11 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
+# next/image writes its optimized-image cache here at runtime. The container runs
+# as the unprivileged "node" user, which cannot create it under the root-owned
+# standalone output — without this, /_next/image throws EACCES (unhandled rejection).
+RUN mkdir -p /app/apps/web/.next/cache && chown -R node:node /app/apps/web/.next/cache
+
 EXPOSE 3000
 
 ENV PORT=3000

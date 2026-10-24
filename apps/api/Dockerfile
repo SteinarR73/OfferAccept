@@ -1,5 +1,9 @@
 # ─── Stage 1: build ────────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
+# Prisma picks its query-engine build by detecting OpenSSL at generate time.
+# node:22-alpine ships no openssl, so detection falls back to the 1.1 engine,
+# which cannot load on Alpine 3.2x (libssl.so.1.1 missing) at runtime.
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 # This repo is pnpm-only (see package.json "packageManager" + preinstall guard).
@@ -29,7 +33,7 @@ RUN pnpm --filter @offeraccept/api run build
 
 # ─── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
