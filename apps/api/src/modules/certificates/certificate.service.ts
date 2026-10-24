@@ -380,8 +380,41 @@ export class CertificateService {
     let statementHashMatch: boolean | undefined;
     const acceptedEvent = await this.db.signingEvent.findFirst({
       where: { sessionId: record.sessionId, eventType: 'OFFER_ACCEPTED' },
-      select: { payload: true },
+      select: { payload: true, sequenceNumber: true },
     });
+
+    // ── Step 3F / 4F: Required acceptance events present and ordered ──────────
+    // verifyChain() only proves the events that REMAIN are internally consistent.
+    // Deleting the tail of the chain (OFFER_ACCEPTED and/or OTP_VERIFIED) leaves a
+    // consistent prefix, so presence has to be asserted separately — otherwise the
+    // statement-hash check below would be silently skipped for a missing event.
+    const otpVerifiedEvent = await this.db.signingEvent.findFirst({
+      where: { sessionId: record.sessionId, eventType: 'OTP_VERIFIED' },
+      select: { sequenceNumber: true },
+    });
+    let acceptanceEventsOk = true;
+    if (!acceptedEvent) {
+      acceptanceEventsOk = false;
+      integrityAnomalies.push(
+        'Required OFFER_ACCEPTED signing event is missing. The acceptance event may have been deleted.',
+      );
+    }
+    if (!otpVerifiedEvent) {
+      acceptanceEventsOk = false;
+      integrityAnomalies.push(
+        'Required OTP_VERIFIED signing event is missing. Identity verification cannot be shown for this acceptance.',
+      );
+    }
+    if (
+      acceptedEvent && otpVerifiedEvent &&
+      typeof acceptedEvent.sequenceNumber === 'number' &&
+      typeof otpVerifiedEvent.sequenceNumber === 'number' &&
+      otpVerifiedEvent.sequenceNumber > acceptedEvent.sequenceNumber
+    ) {
+      acceptanceEventsOk = false;
+      integrityAnomalies.push('OFFER_ACCEPTED was recorded before OTP_VERIFIED.');
+    }
+
     if (acceptedEvent) {
       const eventPayload = acceptedEvent.payload as Record<string, unknown> | null;
       const storedStatementHash = eventPayload?.['acceptanceStatementHash'] as string | undefined;
@@ -425,6 +458,7 @@ export class CertificateService {
     const canonicalHashOk = canonicalHashMatch !== false; // undefined (legacy) or true
     const integrityChecksPass =
       certificateHashMatch && canonicalHashOk && snapshotIntegrity && chainResult.valid &&
+      acceptanceEventsOk &&
       statementHashMatch !== false; // undefined (legacy) or true
     const anomaliesDetected = [...integrityAnomalies, ...advisoryAnomalies];
 
@@ -438,7 +472,9 @@ export class CertificateService {
       canonicalHashMatch,
       statementHashMatch,
       snapshotIntegrity,
-      eventChainValid: chainResult.valid,
+      // Public "eventChainIntegrity": the chain is only trustworthy if it is intact
+      // AND still contains the events a valid acceptance requires.
+      eventChainValid: chainResult.valid && acceptanceEventsOk,
       brokenAtSequence: chainResult.brokenAtSequence,
       integrityAnomalies,
       advisoryAnomalies,

@@ -136,9 +136,20 @@ export class SigningEventService {
       orderBy: { sequenceNumber: 'asc' },
     });
 
+    // A session that has produced a certificate always has events. An empty chain
+    // means they were deleted — an empty loop below must not read as "valid".
+    if (events.length === 0) {
+      return { valid: false, brokenAtSequence: 0 };
+    }
+
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const previousEventHash = i === 0 ? null : events[i - 1].eventHash;
+
+      // Sequence numbers are 1-based and gapless (see appendWithLock).
+      if (event.sequenceNumber !== i + 1) {
+        return { valid: false, brokenAtSequence: event.sequenceNumber };
+      }
 
       // Verify previousEventHash linkage
       if (event.previousEventHash !== previousEventHash) {

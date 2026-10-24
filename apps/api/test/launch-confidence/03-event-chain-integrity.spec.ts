@@ -104,6 +104,28 @@ describe('TEST 3 — Signing Event Chain Integrity', () => {
     expect(result.brokenAtSequence).toBeUndefined();
   });
 
+  it('rejects an empty chain (all events deleted) instead of reporting it valid', async () => {
+    const db = makeEventDb([]);
+    const svc = new SigningEventService(db as never);
+
+    const result = await svc.verifyChain(SESSION_ID);
+
+    expect(result.valid).toBe(false);
+    expect(result.brokenAtSequence).toBe(0);
+  });
+
+  it('detects a chain whose first event was deleted (does not start at sequence 1)', async () => {
+    const chain = buildChain(SESSION_ID);
+    // Re-link so only the sequence numbering gives the deletion away.
+    const withoutFirst = chain.slice(1).map((e, i) => (i === 0 ? { ...e, previousEventHash: null } : e));
+
+    const svc = new SigningEventService(makeEventDb(withoutFirst) as never);
+    const result = await svc.verifyChain(SESSION_ID);
+
+    expect(result.valid).toBe(false);
+    expect(result.brokenAtSequence).toBe(2);
+  });
+
   it('detects a tampered eventHash at sequence 3', async () => {
     const chain = buildChain(SESSION_ID);
 

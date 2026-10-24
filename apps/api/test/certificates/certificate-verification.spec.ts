@@ -283,6 +283,75 @@ describe('CertificateService.verify()', () => {
     expect(result.anomaliesDetected.length).toBeGreaterThan(0);
   });
 
+  // ── Deleted tail of the event chain ──────────────────────────────────────────
+  // A consistent PREFIX of the chain still passes verifyChain(). Presence of the
+  // events a valid acceptance requires must therefore be asserted separately.
+
+  function stubEvents(events: { OFFER_ACCEPTED?: { sequenceNumber: number } | null; OTP_VERIFIED?: { sequenceNumber: number } | null }) {
+    db.signingEvent.findFirst.mockImplementation(async (args: any) => {
+      const type = args.where.eventType as 'OFFER_ACCEPTED' | 'OTP_VERIFIED';
+      const row = events[type];
+      return row ? { payload: {}, ...row } : null;
+    });
+  }
+
+  it('returns valid=false when the OFFER_ACCEPTED event has been deleted (remaining prefix is consistent)', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    stubEvents({ OFFER_ACCEPTED: null, OTP_VERIFIED: { sequenceNumber: 4 } });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.valid).toBe(false);
+    expect(result.integrityChecksPass).toBe(false);
+    expect(result.eventChainValid).toBe(false);
+    expect(result.integrityAnomalies.join(' ')).toContain('OFFER_ACCEPTED');
+  });
+
+  it('returns valid=false when the OTP_VERIFIED event is missing', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    stubEvents({ OFFER_ACCEPTED: { sequenceNumber: 5 }, OTP_VERIFIED: null });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.valid).toBe(false);
+    expect(result.integrityChecksPass).toBe(false);
+    expect(result.integrityAnomalies.join(' ')).toContain('OTP_VERIFIED');
+  });
+
+  it('returns valid=false when OFFER_ACCEPTED precedes OTP_VERIFIED', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    stubEvents({ OFFER_ACCEPTED: { sequenceNumber: 2 }, OTP_VERIFIED: { sequenceNumber: 4 } });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.valid).toBe(false);
+    expect(result.integrityChecksPass).toBe(false);
+    expect(result.integrityAnomalies.join(' ')).toContain('before OTP_VERIFIED');
+  });
+
+  it('stays valid=true when both required events are present in order', async () => {
+    const built = makeBuiltCert();
+    stubModernCert(built.certificateHash);
+    stubEvents({ OFFER_ACCEPTED: { sequenceNumber: 5 }, OTP_VERIFIED: { sequenceNumber: 4 } });
+    builder.build.mockResolvedValue(built);
+    eventService.verifyChain.mockResolvedValue({ valid: true });
+
+    const result = await service.verify(CERT_ID);
+
+    expect(result.valid).toBe(true);
+    expect(result.eventChainValid).toBe(true);
+    expect(result.integrityAnomalies).toHaveLength(0);
+  });
+
   it('throws NotFoundException when certificate does not exist', async () => {
     db.acceptanceCertificate.findUnique.mockResolvedValue(null);
 

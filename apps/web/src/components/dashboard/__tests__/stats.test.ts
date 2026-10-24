@@ -51,6 +51,16 @@ describe('computeStats', () => {
     });
   });
 
+  it('does not count drafts as sent', () => {
+    const offers: OfferItem[] = [
+      createMockOffer('DRAFT', '2023-10-12T10:00:00Z'),
+      createMockOffer('DRAFT', '2023-10-13T10:00:00Z'),
+      createMockOffer('SENT', '2023-10-14T10:00:00Z'),
+    ];
+
+    expect(computeStats(offers).sentThisMonth).toBe(1);
+  });
+
   it('handles rate perfectly when all accepted', () => {
     const offers: OfferItem[] = [
       createMockOffer('ACCEPTED', '2023-10-10T10:00:00Z'),
