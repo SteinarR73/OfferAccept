@@ -14,15 +14,13 @@ describe('computeStats', () => {
   const createMockOffer = (status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED', date: string): OfferItem => ({
     id: '1',
     title: 'Test',
+    message: null,
     status,
     createdAt: date,
     updatedAt: date,
-    senderId: 'user1',
-    locale: 'no',
-    timezone: 'Europe/Oslo',
-    themeColor: '#000000',
     expiresAt: null,
     recipient: null,
+    documents: [],
   });
 
   it('computes correct stats for an empty list', () => {

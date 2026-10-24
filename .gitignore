@@ -74,3 +74,9 @@ coverage/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local leftovers (nested clone, old archive) and Python bytecode
+/OfferAccept/
+/OfferAccept-fixed.zip
+__pycache__/
+*.pyc

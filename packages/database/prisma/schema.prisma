@@ -323,7 +323,7 @@ model Offer {
   // Used by the expiry background job: SELECT … WHERE status = 'SENT' AND expiresAt < NOW()
   @@index([status, expiresAt])
   // Used by cursor-based list pagination: ORDER BY createdAt DESC, id DESC scoped to an org.
-  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)], map: "offers_org_created_id_idx")
   @@map("offers")
 }
 
@@ -1033,7 +1033,7 @@ model DealEvent {
   dealId    String
   eventType DealEventType
   metadata  Json?
-  createdAt DateTime      @default(now())
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
 
   // ── Hash chain (Phase 4 / MEDIUM-4) ───────────────────────────────────────
   // Forms a verifiable linked-list within each deal.
@@ -1072,7 +1072,7 @@ model DealEventArchive {
   eventHash         String?
 
   @@index([dealId, createdAt])
-  @@index([archivedAt])
+  @@index([archivedAt(sort: Desc)])
   @@map("deal_events_archive")
 }
 
