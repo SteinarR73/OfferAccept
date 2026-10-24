@@ -64,6 +64,16 @@ consume the OTP before the real recipient sees it.
       only mutable state (Offer.status, OfferRecipient.token, new SigningEvent append).
       Verified: `SupportService` methods update only `Offer.status`, rotate `OfferRecipient.tokenHash`,
       and append `SigningEvent` rows. No snapshot or record mutations.
+- [x] The database itself rejects `UPDATE`, `DELETE` and `TRUNCATE` on `acceptance_records`,
+      `offer_snapshots`, `offer_snapshot_documents` and `signing_events`
+      (migration `20261024_evidence_tables_append_only`, `BEFORE` triggers).
+      Verified 2026-10-24 on a fresh Postgres 16 and on a populated database: the real signing
+      flow still inserts normally, 11 mutation attempts (incl. `TRUNCATE ... CASCADE` from a
+      parent table) all fail, and certificate verification stays `valid`.
+- [ ] **[OPS]** Run the application as a DB role that does not own these tables and has no
+      `TRIGGER` privilege on them. The triggers stop accidental and application-level changes,
+      but a DB owner/superuser can still `DISABLE TRIGGER` or set
+      `session_replication_role = replica`.
 
 ---
 
