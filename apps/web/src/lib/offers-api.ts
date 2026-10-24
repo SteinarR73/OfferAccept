@@ -493,7 +493,7 @@ export async function getDealTimeline(offerId: string): Promise<DealTimelineEven
 
 // Public endpoint — no auth required
 export async function verifyCertificate(id: string): Promise<CertificateVerification> {
-  const url = `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/certificates/${id}/verify`;
+  const url = `${API_BASE}/certificates/${id}/verify`;
   const res = await fetch(url, { cache: 'no-store' });
   if (res.status === 404) throw Object.assign(new Error('Not found'), { status: 404 });
   if (!res.ok) throw new Error(`Verification failed: HTTP ${res.status}`);

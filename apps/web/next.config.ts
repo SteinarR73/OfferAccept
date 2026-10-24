@@ -61,11 +61,21 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+    // NEXT_PUBLIC_API_URL is documented (README, compose, CI) as the full API base
+    // *including* "/api/v1". The rewrite adds "/api/:path*" itself, so use only the
+    // origin — otherwise the proxied path doubles to /api/v1/api/v1/... and every
+    // recipient signing call 404s.
+    const apiOrigin = (() => {
+      try {
+        return new URL(process.env.NEXT_PUBLIC_API_URL ?? '').origin;
+      } catch {
+        return 'http://localhost:3001';
+      }
+    })();
     return [
       {
         source: '/api/:path*',
-        destination: `${apiUrl}/api/:path*`,
+        destination: `${apiOrigin}/api/:path*`,
       },
     ];
   },

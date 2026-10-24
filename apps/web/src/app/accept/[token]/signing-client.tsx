@@ -348,7 +348,11 @@ export function reducer(state: Phase, action: Action): Phase {
       return { name: 'offer_view', ctx: state.ctx };
 
     case 'SUBMIT_CODE':
-      if (state.name !== 'otp_entry') return state;
+      // Also accepted from otp_error: the entry form stays visible after a wrong
+      // code, so a retry must re-enter otp_verifying. Without this the retry was
+      // dropped here and OTP_VERIFIED (which requires otp_verifying) was ignored
+      // too — the server verified the code but the recipient never advanced.
+      if (state.name !== 'otp_entry' && state.name !== 'otp_error') return state;
       return { name: 'otp_verifying', ctx: state.ctx, otp: state.otp };
 
     case 'OTP_VERIFIED':

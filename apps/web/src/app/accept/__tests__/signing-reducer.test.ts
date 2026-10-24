@@ -261,4 +261,22 @@ describe('Full OTP expiry + resend scenario', () => {
       expect(state.error).toBe('Too many requests. Try again shortly.');
     }
   });
+
+  it('wrong code then correct code on the same challenge reaches acceptance', () => {
+    let state: Phase = { name: 'otp_entry', ctx: CTX, otp: OTP_A };
+
+    state = act(state, { type: 'SUBMIT_CODE', code: '000000' });
+    state = act(state, { type: 'OTP_FAILED', message: 'Incorrect code.', locked: false, expired: false });
+    expect(state.name).toBe('otp_error');
+
+    // The entry form is still shown in otp_error, so the retry must be accepted.
+    state = act(state, { type: 'SUBMIT_CODE', code: '123456' });
+    expect(state.name).toBe('otp_verifying');
+    if (state.name === 'otp_verifying') expect(state.otp).toEqual(OTP_A);
+
+    state = act(state, { type: 'OTP_VERIFIED', challengeId: OTP_A.challengeId });
+    expect(state.name).toBe('otp_verified');
+    state = act(state, { type: 'ADVANCE_TO_STATEMENT' });
+    expect(state.name).toBe('acceptance');
+  });
 });
