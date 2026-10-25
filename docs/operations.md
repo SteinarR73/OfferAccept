@@ -89,8 +89,16 @@ that do not exist; it would have failed.)
 `INTERNAL_SUPPORT` must only ever be assigned by a database operator. It must never
 be assignable through any customer-facing flow. See `docs/support.md` for full details.
 
-Before real use also set `SUPPORT_IP_ALLOWLIST`, `SUPPORT_SESSION_TTL_MINUTES` (e.g. 480) and
-`REQUIRE_SUPPORT_MFA=true` (see `apps/api/src/config/env.ts`).
+In production, support access is **refused for everyone** unless both `SUPPORT_IP_ALLOWLIST`
+(comma-separated IPs) and `SUPPORT_SESSION_TTL_MINUTES` (e.g. 480) are set — see
+`apps/api/src/common/auth/internal-support.guard.ts`. Both were verified to work.
+
+**Do not set `REQUIRE_SUPPORT_MFA=true`.** MFA is not implemented: the flag demands an
+`mfaVerifiedAt` claim in the support user's JWT, but nothing in the codebase ever issues one
+(login has no second factor). Verified 2026-10-25: with the flag on, a valid support user gets
+`403 MFA verification is required` on every support route, i.e. support is locked out. Until a
+second factor exists, protect support with the IP allowlist, a short session TTL, a strong
+password and network-level access control (VPN).
 
 ### Verify a deployment
 

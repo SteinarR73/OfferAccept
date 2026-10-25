@@ -75,6 +75,24 @@ consume the OTP before the real recipient sees it.
       but a DB owner/superuser can still `DISABLE TRIGGER` or set
       `session_replication_role = replica`.
 
+### 1.5 Declining an offer **[CODE]**
+
+- [x] Declining after email verification works end-to-end (verified 2026-10-25 on a real
+      database): offer and recipient become `DECLINED`, the chain gets `OFFER_DECLINED`, no
+      acceptance record or certificate exists, and accept/decline afterwards are refused.
+- [ ] **Open decision — declining before email verification does not work.** The session
+      state machine only allows `OTP_VERIFIED → DECLINED`, but the web UI shows a "Decline"
+      button on the first screen and in the OTP-entry step, and `DeclineOfferDto` /
+      `handleDecline` are written as if declining before an OTP were supported. Result
+      (verified): the request fails (`422 session expired` on the first screen, because
+      `GET /signing/:token` creates no session by design; `409` transition error if a session
+      exists), the offer stays `SENT`, the sender is not told, and the recipient is shown the raw
+      API message. Either (a) require verification to decline — hide the button until then and
+      drop the pre-OTP fallback — or (b) allow it by adding `AWAITING_OTP → DECLINED` and
+      creating the session on decline; then anyone holding the link can decline, with no
+      `OTP_VERIFIED` in the chain. This is a product/legal choice; counsel should see it
+      (`docs/legal-review.md`).
+
 ---
 
 ## Gate 2 — Security (must pass before pilot)
@@ -319,6 +337,18 @@ explicitly acknowledge this scope.
       Verified 2026-10-24 against a real (non-production) database: a support user created
       with the script finds the offer and the full case file (200), a customer user is refused
       (403), and the audit log gained a row per access. Re-do against production.
+- [ ] **Known gap — no MFA for support.** The B-01…B-06 remediation added the
+      `REQUIRE_SUPPORT_MFA` check but no mechanism that issues the `mfaVerifiedAt` claim, so
+      support has no second factor, and enabling the flag locks support out entirely
+      (verified 2026-10-25). Either build a second factor (e.g. TOTP at login for
+      `INTERNAL_SUPPORT`) or accept the risk and rely on `SUPPORT_IP_ALLOWLIST` (mandatory in
+      production), `SUPPORT_SESSION_TTL_MINUTES` (mandatory in production) and network access
+      control. Cross-tenant read access makes this the highest-value account to protect.
+- [x] Role-based access (OrgRoleGuard) verified 2026-10-25 against a real database with five
+      users (owner, admin, member, viewer, outsider) over nine routes in every protection class
+      (offers, billing, API keys, webhooks, org members/invite/transfer): 0 deviations from the
+      declared minimum roles, and an outsider sees none of another organization's offers or
+      members. Note: `VIEWER` cannot read offers at all (the class-level minimum is `MEMBER`).
 
 ### 5.2 Monitoring **[OPS]** **[PILOT]**
 - [ ] Application errors (5xx responses) trigger alerts.
