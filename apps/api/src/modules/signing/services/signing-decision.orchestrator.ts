@@ -127,14 +127,16 @@ export class SigningDecisionOrchestrator {
     return { ...result, certificateId };
   }
 
-  async decline(rawToken: string, challengeId: string | undefined, ctx: SessionContext): Promise<void> {
+  // Declining requires a VERIFIED challenge, exactly like accepting: the session state
+  // machine only allows OTP_VERIFIED → DECLINED. (Previously an unverified challenge or no
+  // challenge at all was accepted here and then failed deep inside with a 409/422 while the
+  // offer stayed SENT.)
+  async decline(rawToken: string, challengeId: string, ctx: SessionContext): Promise<void> {
     const recipient = await this.tokenService.verifyToken(rawToken);
-    const session = challengeId
-      ? await this.getSessionFromChallenge(challengeId, recipient.id)
-      : await this.sessionService.findResumable(recipient.id);
-    
+    const session = await this.getSessionFromVerifiedChallenge(challengeId, recipient.id);
+
     if (!session) throw new SessionExpiredError();
-    
+
     await this.acceptanceService.decline(session, ctx);
     void this.dealEventService.emit(session.offerId, 'deal_declined');
 
@@ -169,21 +171,6 @@ export class SigningDecisionOrchestrator {
     });
 
     if (!challenge || challenge.recipientId !== recipientId || challenge.status !== 'VERIFIED') {
-      throw new OtpChallengeMismatchError();
-    }
-
-    return this.sessionService.getAndValidate(challenge.sessionId);
-  }
-
-  private async getSessionFromChallenge(
-    challengeId: string,
-    recipientId: string,
-  ): Promise<SigningSession> {
-    const challenge = await this.db.signingOtpChallenge.findUnique({
-      where: { id: challengeId },
-    });
-
-    if (!challenge || challenge.recipientId !== recipientId) {
       throw new OtpChallengeMismatchError();
     }
 

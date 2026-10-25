@@ -1,16 +1,16 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty } from 'class-validator';
 
 // ─── DeclineOfferDto ────────────────────────────────────────────────────────
-// challengeId is optional. When provided the session is resolved via the
-// challenge's bound sessionId (preferred — eliminates multi-tab ambiguity).
-// When absent the session is resolved via findResumable() (fallback — used when
-// the recipient declines before requesting an OTP and therefore has no challengeId).
+// challengeId is required and must belong to a VERIFIED OTP challenge: declining
+// carries the same email-verification assurance as accepting (the session state
+// machine only allows OTP_VERIFIED → DECLINED), so nobody who merely holds the
+// signing link can decline on the recipient's behalf.
 //
-// The challenge does NOT need to be VERIFIED to decline.
+// The session is resolved from the challenge's bound sessionId, which also removes
+// multi-tab ambiguity.
 
 export class DeclineOfferDto {
-  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  challengeId?: string;
+  challengeId!: string;
 }

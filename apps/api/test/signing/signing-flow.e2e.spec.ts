@@ -615,7 +615,8 @@ describe('Public Signing Flow (e2e)', () => {
       const recipient = makeRecipient({ status: 'OTP_VERIFIED' as 'PENDING' });
       // State machine only allows DECLINED from OTP_VERIFIED, not from AWAITING_OTP.
       const session = makeSession({ status: 'OTP_VERIFIED', otpVerifiedAt: new Date() });
-      const challenge = makeChallenge();
+      // Declining requires a VERIFIED challenge, exactly like accepting.
+      const challenge = makeChallenge({ status: 'VERIFIED' });
 
       db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
       db.offerRecipient.findUniqueOrThrow.mockResolvedValue(recipient as never);
@@ -640,6 +641,33 @@ describe('Public Signing Flow (e2e)', () => {
       expect(db.offer.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: 'DECLINED' } }),
       );
+    });
+
+    it('refuses to decline with an unverified challenge and changes nothing', async () => {
+      const recipient = makeRecipient();
+      db.offerRecipient.findFirst.mockResolvedValue(recipient as never);
+      db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge({ status: 'PENDING' }) as never);
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/signing/${VALID_RAW_TOKEN}/decline`)
+        .send({ challengeId: 'challenge-1' })
+        .expect((res) => {
+          if (res.status < 400 || res.status >= 500) throw new Error(`expected a 4xx, got ${res.status}`);
+        });
+
+      expect(db.offer.updateMany).not.toHaveBeenCalled();
+      expect(db.signingSession.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a decline request without a challengeId (400)', async () => {
+      db.offerRecipient.findFirst.mockResolvedValue(makeRecipient() as never);
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/signing/${VALID_RAW_TOKEN}/decline`)
+        .send({})
+        .expect(400);
+
+      expect(db.offer.updateMany).not.toHaveBeenCalled();
     });
 
     it('returns 404 when called with an invalid token', async () => {

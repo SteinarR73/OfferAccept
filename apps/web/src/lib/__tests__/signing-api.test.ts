@@ -94,13 +94,12 @@ describe('signingApi', () => {
       }));
     });
 
-    it('declines document without challengeId', async () => {
+    // Declining requires a verified challenge; the API rejects a body without one.
+    it('always sends the challengeId', async () => {
       mockFetchSuccess({ declined: true });
-      await signingApi.decline('token-123');
-      expect(global.fetch).toHaveBeenCalledWith('/api/v1/signing/token-123/decline', expect.objectContaining({
-        method: 'POST',
-        body: undefined,
-      }));
+      await signingApi.decline('token-123', 'challenge-9');
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).toEqual({ challengeId: 'challenge-9' });
     });
   });
 

@@ -262,6 +262,21 @@ describe('Full OTP expiry + resend scenario', () => {
     }
   });
 
+  // Declining needs a verified email (the session allows only OTP_VERIFIED → DECLINED), so
+  // the UI must not enter the declining state from anywhere but the acceptance step.
+  it.each<[string, Phase]>([
+    ['offer_view', { name: 'offer_view', ctx: CTX }],
+    ['otp_entry', { name: 'otp_entry', ctx: CTX, otp: OTP_A }],
+    ['otp_error', { name: 'otp_error', ctx: CTX, otp: OTP_A, message: 'x', locked: false, expired: false }],
+  ])('ignores DECLINE from %s (not yet verified)', (_name, state) => {
+    expect(act(state, { type: 'DECLINE' })).toBe(state);
+  });
+
+  it('enters the declining state only from the acceptance step', () => {
+    const state: Phase = { name: 'acceptance', ctx: CTX, challengeId: OTP_A.challengeId };
+    expect(act(state, { type: 'DECLINE' }).name).toBe('accepting');
+  });
+
   it('wrong code then correct code on the same challenge reaches acceptance', () => {
     let state: Phase = { name: 'otp_entry', ctx: CTX, otp: OTP_A };
 

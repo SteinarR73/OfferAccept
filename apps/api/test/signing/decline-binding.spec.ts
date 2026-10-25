@@ -86,27 +86,26 @@ async function buildService(
 }
 
 describe('SigningDecisionOrchestrator.decline() — challenge-bound session', () => {
-  it('resolves session from challenge.sessionId for a PENDING challenge', async () => {
-    const db = createMockDb();
-    const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
-    const sessionSvc = {
-      getAndValidate: jest.fn<() => Promise<ReturnType<typeof makeSession>>>().mockResolvedValue(makeSession()),
-      findResumable: jest.fn(),
-      create: jest.fn(),
-    };
-    const acceptanceSvc = { decline: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) };
+  // Declining carries the same email-verification assurance as accepting: only a VERIFIED
+  // challenge is accepted (the session state machine allows only OTP_VERIFIED → DECLINED).
+  it.each(['PENDING', 'LOCKED', 'EXPIRED', 'INVALIDATED'])(
+    'rejects a %s challenge without touching the session or the offer',
+    async (status) => {
+      const db = createMockDb();
+      const tokenSvc = { verifyToken: jest.fn<() => Promise<ReturnType<typeof makeRecipient>>>().mockResolvedValue(makeRecipient()) };
+      const sessionSvc = { getAndValidate: jest.fn(), findResumable: jest.fn(), create: jest.fn() };
+      const acceptanceSvc = { decline: jest.fn() };
 
-    db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge({ status: 'PENDING' }) as never);
-    db.offerSnapshot.findUniqueOrThrow.mockRejectedValue(new Error('should not be called') as never);
+      db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge({ status }) as never);
 
-    const service = await buildService(db, tokenSvc, sessionSvc, acceptanceSvc);
+      const service = await buildService(db, tokenSvc, sessionSvc, acceptanceSvc);
 
-    await service.decline('raw-token', CHALLENGE_ID, {});
-
-    expect(sessionSvc.getAndValidate).toHaveBeenCalledWith(SESSION_ID);
-    expect(sessionSvc.findResumable).not.toHaveBeenCalled();
-    expect(acceptanceSvc.decline).toHaveBeenCalledTimes(1);
-  });
+      await expect(service.decline('raw-token', CHALLENGE_ID, {})).rejects.toThrow(OtpChallengeMismatchError);
+      expect(sessionSvc.getAndValidate).not.toHaveBeenCalled();
+      expect(sessionSvc.create).not.toHaveBeenCalled();
+      expect(acceptanceSvc.decline).not.toHaveBeenCalled();
+    },
+  );
 
   it('resolves session from challenge.sessionId for a VERIFIED challenge', async () => {
     const db = createMockDb();
@@ -149,7 +148,7 @@ describe('SigningDecisionOrchestrator.decline() — challenge-bound session', ()
     const acceptanceSvc = { decline: jest.fn() };
 
     db.signingOtpChallenge.findUnique.mockResolvedValue(
-      makeChallenge({ recipientId: 'other-recipient' }) as never,
+      makeChallenge({ status: 'VERIFIED', recipientId: 'other-recipient' }) as never,
     );
 
     const service = await buildService(db, tokenSvc, sessionSvc, acceptanceSvc);
@@ -167,10 +166,28 @@ describe('SigningDecisionOrchestrator.decline() — challenge-bound session', ()
     };
     const acceptanceSvc = { decline: jest.fn() };
 
-    db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge() as never);
+    db.signingOtpChallenge.findUnique.mockResolvedValue(makeChallenge({ status: 'VERIFIED' }) as never);
 
     const service = await buildService(db, tokenSvc, sessionSvc, acceptanceSvc);
 
     await expect(service.decline('raw-token', CHALLENGE_ID, {})).rejects.toThrow(SessionExpiredError);
+  });
+});
+
+// ─── Request validation ────────────────────────────────────────────────────────
+
+describe('DeclineOfferDto', () => {
+  it('requires a challengeId (declining before email verification is not supported)', async () => {
+    const { validate } = await import('class-validator');
+    const { DeclineOfferDto } = await import('../../src/modules/signing/dto/decline-offer.dto');
+
+    const missing = await validate(Object.assign(new DeclineOfferDto(), {}));
+    expect(missing.map((e) => e.property)).toContain('challengeId');
+
+    const empty = await validate(Object.assign(new DeclineOfferDto(), { challengeId: '' }));
+    expect(empty.map((e) => e.property)).toContain('challengeId');
+
+    const ok = await validate(Object.assign(new DeclineOfferDto(), { challengeId: 'c-1' }));
+    expect(ok).toHaveLength(0);
   });
 });

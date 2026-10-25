@@ -77,12 +77,12 @@ before accepting. Verified against the code and a running system (2026-10-24):
 (An earlier version of this document stated 15-minute validity and a 15-minute session; the
 code values above are authoritative.)
 
-**Declining.** The session model only allows a recipient to *decline* after the email has been
-verified (`OTP_VERIFIED → DECLINED`), so a decline carries the same identity assurance as an
-acceptance. The web UI currently also shows a Decline button before verification, which does
-not work (see `docs/launch-gates.md` §1.5). Counsel's view is needed on which behaviour is
-wanted: if declining without verification were allowed, anyone holding the link could decline
-on the recipient's behalf.
+**Declining.** A recipient can *decline* only after the email has been verified
+(`OTP_VERIFIED → DECLINED`, enforced by both the API and the UI since 2026-10-25), so a decline
+carries the same identity assurance as an acceptance and nobody holding only the link can
+decline on the recipient's behalf. The trade-off: a recipient who simply wants to refuse must
+first verify their email. Counsel should confirm that is acceptable (see
+`docs/launch-gates.md` §1.5).
 
 **Evidence available:**
 - OTP generation / limits: `apps/api/src/modules/signing/services/signing-otp.service.ts`

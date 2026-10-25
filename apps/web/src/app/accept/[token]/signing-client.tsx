@@ -51,7 +51,6 @@ const EN = {
     platformBox: (senderName: string) =>
       `This document was shared by ${senderName} using OfferAccept, which records a verified acceptance certificate when you confirm. No account required.`,
     continueBtn: 'Continue to accept',
-    declineBtn: 'Decline',
   },
   otp: {
     heading: 'Verify your email',
@@ -162,7 +161,6 @@ const NO = {
     platformBox: (senderName: string) =>
       `Dette dokumentet ble delt av ${senderName} via OfferAccept, som registrerer et bekreftet akseptbevis når du godkjenner. Ingen konto nødvendig.`,
     continueBtn: 'Fortsett til godkjenning',
-    declineBtn: 'Avslå',
   },
   otp: {
     heading: 'Bekreft e-postadressen din',
@@ -379,9 +377,10 @@ export function reducer(state: Phase, action: Action): Phase {
       return { name: 'offer_view', ctx: state.ctx };
 
     case 'DECLINE':
-      if (state.name !== 'offer_view' && state.name !== 'otp_entry' && state.name !== 'acceptance')
-        return state;
-      return { name: 'accepting', ctx: (state as { ctx: OfferContext }).ctx };
+      // Only after email verification (the acceptance step): the session state machine
+      // allows OTP_VERIFIED → DECLINED only, so declining earlier can never succeed.
+      if (state.name !== 'acceptance') return state;
+      return { name: 'accepting', ctx: state.ctx };
 
     case 'DECLINED':
       return { name: 'declined', senderName: action.senderName };
@@ -493,14 +492,11 @@ export function SigningClient({ token, locale = 'en' }: { token: string; locale?
   }
 
   async function handleDecline() {
-    // Capture challengeId and senderName before dispatching DECLINE (which transitions phase to 'accepting').
-    // otp_entry: challengeId is in phase.otp; acceptance: challengeId is on the phase directly.
-    // offer_view: no OTP has been issued yet — decline proceeds without a challengeId (server fallback).
-    let challengeId: string | undefined;
-    if (phase.name === 'otp_entry') challengeId = phase.otp.challengeId;
-    else if (phase.name === 'acceptance') challengeId = phase.challengeId;
-    const decliningFromCtx = 'ctx' in phase ? (phase as { ctx: OfferContext }).ctx : null;
-    const senderNameForDecline = decliningFromCtx?.senderName ?? '';
+    // Declining requires a verified email, like accepting — only the acceptance step offers it.
+    if (phase.name !== 'acceptance') return;
+    // Capture before dispatching DECLINE (which transitions phase to 'accepting').
+    const challengeId = phase.challengeId;
+    const senderNameForDecline = phase.ctx.senderName;
 
     dispatch({ type: 'DECLINE' }); // show spinner immediately
     try {
@@ -512,12 +508,16 @@ export function SigningClient({ token, locale = 'en' }: { token: string; locale?
       // NEVER dispatch DECLINED here: that would show a false success screen
       // while the offer remains SENT in the database.
       // ApiError in signing-api.ts is a plain object (interface), not a class —
-      // check for the shape rather than using instanceof.
-      const message =
-        err != null && typeof err === 'object' && 'message' in err
-          ? String((err as { message: unknown }).message)
-          : 'Could not process your decline. Please try again.';
-      dispatch({ type: 'DECLINE_FAILED', message });
+      // check for the shape rather than using instanceof. Technical errors (state
+      // transitions, conflicts, 5xx) are not shown to the recipient verbatim.
+      const e = err as Partial<ApiError> | null;
+      const technical =
+        !e || typeof e.message !== 'string' || (e.statusCode ?? 500) >= 500 ||
+        e.code === 'INVALID_STATE_TRANSITION' || e.code === 'CONCURRENCY_CONFLICT';
+      dispatch({
+        type: 'DECLINE_FAILED',
+        message: technical ? 'Could not process your decline. Please try again.' : (e!.message as string),
+      });
     }
   }
 
@@ -610,7 +610,7 @@ export function SigningClient({ token, locale = 'en' }: { token: string; locale?
                 {phase.declineError}
               </Alert>
             )}
-            <OfferView ctx={phase.ctx} s={s} onContinue={handleContinue} onDecline={handleDecline} dateLocale={dateLocale} />
+            <OfferView ctx={phase.ctx} s={s} onContinue={handleContinue} dateLocale={dateLocale} />
           </>
         )}
 
@@ -690,13 +690,11 @@ function OfferView({
   ctx,
   s,
   onContinue,
-  onDecline,
   dateLocale,
 }: {
   ctx: OfferContext;
   s: Strings;
   onContinue: () => void;
-  onDecline: () => void;
   dateLocale: string;
 }) {
   return (
@@ -755,12 +753,12 @@ function OfferView({
         </p>
       </div>
 
+      {/* No Decline here: declining requires a verified email, exactly like accepting
+          (the session only allows OTP_VERIFIED → DECLINED). Decline is offered on the
+          acceptance step, after verification. */}
       <div className="mt-6 flex gap-3">
         <Button variant="primary" size="md" onClick={onContinue} leftIcon={<Shield className="w-4 h-4" aria-hidden="true" />}>
           {s.offerView.continueBtn}
-        </Button>
-        <Button variant="ghost" size="md" onClick={onDecline} className="text-(--color-text-secondary)">
-          {s.offerView.declineBtn}
         </Button>
       </div>
     </div>

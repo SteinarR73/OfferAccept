@@ -80,18 +80,19 @@ consume the OTP before the real recipient sees it.
 - [x] Declining after email verification works end-to-end (verified 2026-10-25 on a real
       database): offer and recipient become `DECLINED`, the chain gets `OFFER_DECLINED`, no
       acceptance record or certificate exists, and accept/decline afterwards are refused.
-- [ ] **Open decision — declining before email verification does not work.** The session
-      state machine only allows `OTP_VERIFIED → DECLINED`, but the web UI shows a "Decline"
-      button on the first screen and in the OTP-entry step, and `DeclineOfferDto` /
-      `handleDecline` are written as if declining before an OTP were supported. Result
-      (verified): the request fails (`422 session expired` on the first screen, because
-      `GET /signing/:token` creates no session by design; `409` transition error if a session
-      exists), the offer stays `SENT`, the sender is not told, and the recipient is shown the raw
-      API message. Either (a) require verification to decline — hide the button until then and
-      drop the pre-OTP fallback — or (b) allow it by adding `AWAITING_OTP → DECLINED` and
-      creating the session on decline; then anyone holding the link can decline, with no
-      `OTP_VERIFIED` in the chain. This is a product/legal choice; counsel should see it
-      (`docs/legal-review.md`).
+- [x] **Declining requires a verified email (decided 2026-10-25, implemented and verified).**
+      Found: the session state machine only allows `OTP_VERIFIED → DECLINED`, yet the web UI
+      offered "Decline" on the first screen and the API accepted a missing/unverified
+      challenge — so the request failed (`422 session expired` / `409` transition error), the
+      offer stayed `SENT`, the sender was not told, and the recipient saw the raw API message.
+      Now: `DeclineOfferDto.challengeId` is required and must belong to a `VERIFIED` challenge
+      (same as accept); the first screen has no Decline button; the UI only enters the
+      declining state from the acceptance step; technical errors are not shown verbatim.
+      Verified on a real stack: no challengeId → `400`, unverified challenge → `422` (offer
+      stays `SENT`, no session created), verified → `200` (`DECLINED / DECLINED`); in Chromium
+      the first and OTP screens show no Decline and the acceptance step's Decline records the
+      decline. Consequence for counsel: a recipient who wants to refuse must first verify their
+      email; nobody holding only the link can decline for them (`docs/legal-review.md`).
 
 ---
 
