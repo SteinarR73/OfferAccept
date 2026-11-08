@@ -3,6 +3,14 @@ import { PrismaClient, SubscriptionPlan, SubscriptionStatus, Subscription } from
 import { PlanLimitExceededError } from '../../common/errors/domain.errors';
 import { AdminSettingsService } from '../admin/admin-settings.service';
 
+// Statuses that keep plan features. PAST_DUE is a grace period; CANCELED,
+// UNPAID and INCOMPLETE fall back to FREE limits.
+const ACTIVE_SUBSCRIPTION_STATUSES: readonly SubscriptionStatus[] = [
+  SubscriptionStatus.ACTIVE,
+  SubscriptionStatus.TRIALING,
+  SubscriptionStatus.PAST_DUE,
+];
+
 // ─── SubscriptionService ───────────────────────────────────────────────────────
 // Source-of-truth for subscription state and plan enforcement.
 //
@@ -41,15 +49,9 @@ export class SubscriptionService {
       select: { plan: true, monthlyOfferCount: true, status: true },
     });
 
-    const isActuallyActive = sub ? (
-      sub.status === SubscriptionStatus.ACTIVE ||
-      sub.status === SubscriptionStatus.TRIALING ||
-      sub.status === SubscriptionStatus.PAST_DUE
-    ) : true; // No sub = default FREE tier
-
     // No subscription row means FREE tier (created at signup).
-    // If subscription exists but is not active (CANCELED, UNPAID, INCOMPLETE), fallback to FREE limits.
-    const plan = (!sub || !isActuallyActive) ? SubscriptionPlan.FREE : sub.plan;
+    const isActuallyActive = !sub || ACTIVE_SUBSCRIPTION_STATUSES.includes(sub.status);
+    const plan = sub && isActuallyActive ? sub.plan : SubscriptionPlan.FREE;
     const count = sub?.monthlyOfferCount ?? 0;
     
     const settings = await this.adminSettings.getAll();
@@ -97,7 +99,7 @@ export class SubscriptionService {
 
     const result = await this.db.subscription.updateMany({
       where: {
-        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING, SubscriptionStatus.PAST_DUE] },
+        status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] },
         // Only reset rows that haven't been reset yet this calendar month.
         OR: [
           { lastUsageReset: null },

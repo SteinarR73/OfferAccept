@@ -6,6 +6,7 @@ import { PasswordService } from './password.service';
 import { SessionService } from './session.service';
 import { JwtTokenService, AccessTokenPayload } from './jwt.service';
 import { EmailPort, EMAIL_PORT } from '../../common/email/email.port';
+import { slugify, isSlugUniqueViolation } from '../organizations/org-slug';
 import {
   EmailAlreadyExistsError,
   InvalidCredentialsError,
@@ -103,8 +104,7 @@ export class AuthService {
         created = true;
         break;
       } catch (err: any) {
-        // Prisma unique constraint violation on slug
-        if (err?.code === 'P2002' && Array.isArray(err?.meta?.target) && err.meta.target.includes('slug')) {
+        if (isSlugUniqueViolation(err)) {
           slug = `${baseSlug}-${crypto.randomBytes(2).toString('hex')}`;
           continue;
         }
@@ -407,13 +407,4 @@ export class AuthService {
   private loadUserById(userId: string) {
     return this.repo.findUserById(userId);
   }
-}
-
-// Slugify: lowercase, replace spaces/special chars with hyphens, collapse duplicates.
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 63) || 'org';
 }

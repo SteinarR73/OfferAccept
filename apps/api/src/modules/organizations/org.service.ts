@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { slugify, isSlugUniqueViolation } from './org-slug';
 import { OrgRepository, OrgWithMemberCount } from './org.repository';
 import { OrgNotFoundError, NotOrgMemberError } from '../../common/errors/domain.errors';
 
@@ -98,21 +98,3 @@ function toSummary(org: OrgWithMemberCount): OrgSummary {
   };
 }
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 55) || 'org';
-}
-
-// Returns true when the error is a Prisma unique-constraint violation on the
-// slug column — i.e., a concurrent insert won the TOCTOU race.
-function isSlugUniqueViolation(err: unknown): boolean {
-  return (
-    err instanceof Prisma.PrismaClientKnownRequestError &&
-    err.code === 'P2002' &&
-    Array.isArray((err.meta as { target?: unknown })?.target) &&
-    ((err.meta as { target: string[] }).target).includes('slug')
-  );
-}
