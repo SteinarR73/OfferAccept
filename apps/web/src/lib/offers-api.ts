@@ -381,6 +381,8 @@ export async function getCertificate(id: string): Promise<CertificateDetail> {
   return request<CertificateDetail>(`/certificates/${id}`);
 }
 
+// Legal and trust-layer versions attached to every verify/export response.
+// These are returned outside the hashed payload so they don't affect existing hashes.
 export interface CertificateMetadata {
   // Terms version captured when the deal was created. Null for pre-migration offers.
   termsVersionAtCreation: string | null;
