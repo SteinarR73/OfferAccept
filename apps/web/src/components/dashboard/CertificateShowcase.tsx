@@ -7,6 +7,7 @@ import { getCertificate, type CertificateDetail } from '@/lib/offers-api';
 import { generateCertificatePdf } from '@/lib/certificate-pdf';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
+import { readClientLocale } from '@/lib/locale';
 
 // ─── CertificateShowcase ───────────────────────────────────────────────────────
 // The "moment of completion" shown on deal detail when status = ACCEPTED.
@@ -16,18 +17,12 @@ interface Props {
   certificateId: string;
 }
 
-function getLocale(): 'no' | 'en' {
-  if (typeof document === 'undefined') return 'en';
-  const m = document.cookie.match(/oa_locale=([^;]+)/);
-  return m?.[1] === 'no' ? 'no' : 'en';
-}
-
 export function CertificateShowcase({ certificateId }: Props) {
   const [cert, setCert] = useState<CertificateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const locale = getLocale();
+  const locale = readClientLocale();
 
   useEffect(() => {
     getCertificate(certificateId)
