@@ -405,9 +405,11 @@ function ApiKeysTab() {
 
 // ─── Webhooks tab ─────────────────────────────────────────────────────────────
 
+// Must match ALL_WEBHOOK_EVENTS in apps/api/src/modules/enterprise/webhook.service.ts;
+// the API rejects any other value.
 const WEBHOOK_EVENTS = [
-  'deal.accepted',
-  'certificate.issued',
+  'deal_accepted',
+  'certificate_issued',
 ];
 
 function WebhooksTab() {
@@ -423,7 +425,7 @@ function WebhooksTab() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [formUrl, setFormUrl] = useState('');
-  const [formEvents, setFormEvents] = useState<string[]>(['deal.accepted']);
+  const [formEvents, setFormEvents] = useState<string[]>(['deal_accepted']);
 
   useEffect(() => {
     listWebhooks()
@@ -435,7 +437,7 @@ function WebhooksTab() {
   function startCreate() {
     setEditingId(null);
     setFormUrl('');
-    setFormEvents(['deal.accepted']);
+    setFormEvents(['deal_accepted']);
     setShowForm(true);
   }
 

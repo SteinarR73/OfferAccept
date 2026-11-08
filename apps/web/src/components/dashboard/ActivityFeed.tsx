@@ -23,30 +23,30 @@ function formatRelative(isoDate: string): string {
 
 // Verb label — short, action-first, present tense where natural
 const EVENT_LABEL: Record<DealEventType, string> = {
-  'deal.created':          'Document created',
-  'deal.sent':             'Acceptance link sent',
-  'deal.opened':           'Recipient viewed the document',
-  'otp.verified':          'Identity verified',
-  'deal.accepted':         'Accepted — certificate issued',
-  'certificate.issued':    'Certificate issued',
-  'deal.reminder_sent':    'Reminder sent',
-  'deal.revoked':          'Document revoked',
-  'deal.expired':          'Acceptance link expired',
-  'deal.declined':         'Recipient declined',
+  'deal_created':          'Document created',
+  'deal_sent':             'Acceptance link sent',
+  'deal_opened':           'Recipient viewed the document',
+  'otp_verified':          'Identity verified',
+  'deal_accepted':         'Accepted — certificate issued',
+  'certificate_issued':    'Certificate issued',
+  'deal_reminder_sent':    'Reminder sent',
+  'deal_revoked':          'Document revoked',
+  'deal_expired':          'Acceptance link expired',
+  'deal_declined':         'Recipient declined',
 };
 
 // Semantic accent dot per event type
 const EVENT_DOT: Record<DealEventType, string> = {
-  'deal.created':          'bg-(--color-neutral-text)',
-  'deal.sent':             'bg-(--color-info)',
-  'deal.opened':           'bg-(--color-info)',
-  'otp.verified':          'bg-(--color-accent)',
-  'deal.accepted':         'bg-(--color-success)',
-  'certificate.issued':    'bg-(--color-accent)',
-  'deal.reminder_sent':    'bg-(--color-warning)',
-  'deal.revoked':          'bg-(--color-purple)',
-  'deal.expired':          'bg-(--color-warning)',
-  'deal.declined':         'bg-(--color-error)',
+  'deal_created':          'bg-(--color-neutral-text)',
+  'deal_sent':             'bg-(--color-info)',
+  'deal_opened':           'bg-(--color-info)',
+  'otp_verified':          'bg-(--color-accent)',
+  'deal_accepted':         'bg-(--color-success)',
+  'certificate_issued':    'bg-(--color-accent)',
+  'deal_reminder_sent':    'bg-(--color-warning)',
+  'deal_revoked':          'bg-(--color-purple)',
+  'deal_expired':          'bg-(--color-warning)',
+  'deal_declined':         'bg-(--color-error)',
 };
 
 // ─── ActivityFeed ─────────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ export function ActivityFeed({ maxItems = 8 }: ActivityFeedProps) {
       ) : (
         <ul className="divide-y divide-(--color-border-subtle)" aria-label="Offer activity feed">
           {events.map((event) => {
-            const isAccepted = event.eventType === 'deal.accepted';
+            const isAccepted = event.eventType === 'deal_accepted';
             if (isAccepted) {
               // Accepted events: use a div wrapper to avoid nested anchors
               return (
