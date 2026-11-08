@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { Card, CardHeader } from '../ui/Card';
-import { Badge } from '../ui/Badge';
+import { OfferStatusBadge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { FileText } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -26,24 +26,6 @@ function formatRelative(isoDate: string): string {
   if (days < 7)   return `${days}d ago`;
   return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-
-const STATUS_VARIANT: Record<OfferStatusValue, 'gray' | 'blue' | 'green' | 'red' | 'amber' | 'purple'> = {
-  DRAFT:    'gray',
-  SENT:     'blue',
-  ACCEPTED: 'green',
-  DECLINED: 'red',
-  EXPIRED:  'amber',
-  REVOKED:  'purple',
-};
-
-const STATUS_LABEL: Record<OfferStatusValue, string> = {
-  DRAFT:    'Draft',
-  SENT:     'Sent',
-  ACCEPTED: 'Accepted',
-  DECLINED: 'Declined',
-  EXPIRED:  'Expired',
-  REVOKED:  'Revoked',
-};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -121,9 +103,7 @@ function DealRow({ offer }: { offer: OfferItem }) {
 
       {/* Status */}
       <td className="px-5 py-3.5">
-        <Badge variant={STATUS_VARIANT[status]} dot size="sm">
-          {STATUS_LABEL[status]}
-        </Badge>
+        <OfferStatusBadge status={status} />
       </td>
 
       {/* Last activity */}

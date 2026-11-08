@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import type { OfferStatusValue } from '@offeraccept/types';
 
 const VARIANT = {
   gray:   'bg-(--color-neutral-surface) text-(--color-neutral-text)',
@@ -42,9 +43,7 @@ export function Badge({ variant = 'gray', size = 'sm', dot = false, className, c
 
 // ── Pre-wired status badges ───────────────────────────────────────────────────
 
-type OfferStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'REVOKED';
-
-const OFFER_VARIANT: Record<OfferStatus, keyof typeof VARIANT> = {
+const OFFER_VARIANT: Record<OfferStatusValue, keyof typeof VARIANT> = {
   DRAFT:    'gray',
   SENT:     'blue',
   ACCEPTED: 'green',
@@ -53,7 +52,7 @@ const OFFER_VARIANT: Record<OfferStatus, keyof typeof VARIANT> = {
   REVOKED:  'purple',
 };
 
-const OFFER_LABEL: Record<OfferStatus, string> = {
+export const OFFER_STATUS_LABEL: Record<OfferStatusValue, string> = {
   DRAFT:    'Draft',
   SENT:     'Sent',
   ACCEPTED: 'Accepted',
@@ -62,10 +61,10 @@ const OFFER_LABEL: Record<OfferStatus, string> = {
   REVOKED:  'Revoked',
 };
 
-export function OfferStatusBadge({ status }: { status: OfferStatus }) {
+export function OfferStatusBadge({ status }: { status: OfferStatusValue }) {
   return (
     <Badge variant={OFFER_VARIANT[status]} dot>
-      {OFFER_LABEL[status]}
+      {OFFER_STATUS_LABEL[status]}
     </Badge>
   );
 }
