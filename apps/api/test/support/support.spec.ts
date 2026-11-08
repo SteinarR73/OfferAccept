@@ -28,7 +28,6 @@ import { MetricsService } from '../../src/common/metrics/metrics.service';
 @Module({
   providers: [{ provide: JobService, useValue: {
     send: jest.fn<() => Promise<string>>().mockResolvedValue('job-stub-1'),
-    sendOnce: jest.fn<() => Promise<string | null>>().mockResolvedValue('job-stub-1'),
   }}],
   exports: [JobService],
 })

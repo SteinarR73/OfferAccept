@@ -3,7 +3,8 @@
 // Plain TypeScript types — no runtime dependencies.
 //
 // Domain types (Prisma models) are exported from @offeraccept/database.
-// This package contains API request/response shapes.
+// This package contains API request/response shapes for the authenticated
+// sender API. The public signing contract lives in apps/web/src/lib/signing-api.ts.
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -92,86 +93,4 @@ export interface SendOfferResponse {
 
 export interface RevokeOfferResponse {
   revoked: true;
-}
-
-// ─── Signing (public / unauthenticated) ───────────────────────────────────────
-// All signing endpoints authenticate via the token in the URL.
-// No cookie, no session, no JWT.
-
-// GET /signing/:token — validate token, return snapshot context, create session
-export interface SigningContextResponse {
-  sessionId: string;
-  // Content from the frozen snapshot — never from mutable Offer fields
-  offerTitle: string;
-  offerMessage: string | null;
-  senderName: string;
-  recipientName: string;
-  expiresAt: string | null;
-  documents: Array<{
-    // Never expose storageKey or sha256Hash to the client
-    documentId: string;
-    filename: string;
-    mimeType: string;
-    sizeBytes: number;
-  }>;
-}
-
-// POST /signing/:token/otp/request — issue or re-issue an OTP challenge
-export interface RequestOtpResponse {
-  challengeId: string;
-  // Masked email shown to user: "j***@example.com"
-  deliveryAddressMasked: string;
-  expiresAt: string;
-}
-
-// POST /signing/:token/otp/verify — submit the OTP code
-export interface VerifyOtpRequest {
-  challengeId: string;
-  code: string; // 6 digits, sent as string to preserve leading zeros
-}
-
-export interface VerifyOtpResponse {
-  verified: boolean;
-  // Returned on success — used in the subsequent accept call
-  verifiedAt: string;
-}
-
-// POST /signing/:token/accept — final acceptance (requires prior OTP verification)
-export interface AcceptOfferRequest {
-  challengeId: string;         // must be the verified OTP challenge for this session
-  locale?: string;             // browser locale (Intl.DateTimeFormat locale)
-  timezone?: string;           // Intl.DateTimeFormat().resolvedOptions().timeZone
-  // acceptanceStatement is NOT sent by the client — it is generated server-side
-  // and stored verbatim, so the client cannot alter what was "agreed to"
-}
-
-export interface AcceptOfferResponse {
-  acceptanceRecordId: string;
-  acceptedAt: string;
-  // Certificate may not be ready immediately (generated async)
-  certificate: {
-    id: string;
-    issuedAt: string;
-  } | null;
-}
-
-// POST /signing/:token/decline
-export interface DeclineOfferResponse {
-  declinedAt: string;
-}
-
-// ─── Common ────────────────────────────────────────────────────────────────────
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-export interface ApiError {
-  statusCode: number;
-  message: string;
-  // Machine-readable error code for client-side handling
-  code?: string;
 }

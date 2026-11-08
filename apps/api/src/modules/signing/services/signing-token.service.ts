@@ -1,36 +1,12 @@
-import * as crypto from 'crypto';
 import { Injectable, Inject } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { OfferRecipient } from '@offeraccept/database';
 import { TokenInvalidError } from '../../../common/errors/domain.errors';
-
-// Raw token format: oa_<base64url(32 bytes)>
-// 256 bits of entropy from crypto.randomBytes.
-// The raw token is returned ONCE for embedding in the email link.
-// Only the SHA-256 hash is persisted.
-
-export interface GeneratedToken {
-  rawToken: string;
-  tokenHash: string;
-  tokenExpiresAt: Date;
-}
+import { RECIPIENT_TOKEN_PREFIX, hashRecipientToken } from '../domain/recipient-token';
 
 @Injectable()
 export class SigningTokenService {
   constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
-
-  // Generate a new token. rawToken must be used immediately (e.g. embedded in email)
-  // and must never be logged or persisted.
-  generateToken(expiresAt: Date): GeneratedToken {
-    const rawBytes = crypto.randomBytes(32);
-    const rawToken = 'oa_' + rawBytes.toString('base64url');
-    const tokenHash = this.hash(rawToken);
-    return { rawToken, tokenHash, tokenExpiresAt: expiresAt };
-  }
-
-  hash(rawToken: string): string {
-    return crypto.createHash('sha256').update(rawToken, 'utf8').digest('hex');
-  }
 
   // Looks up the recipient for a raw token.
   // Throws TokenInvalidError on any failure — not found, expired, or revoked —
@@ -38,14 +14,14 @@ export class SigningTokenService {
   // This prevents enumeration of valid vs invalid tokens.
   async verifyToken(rawToken: string): Promise<OfferRecipient> {
     // Basic format check — avoids a DB query for obviously invalid inputs
-    if (!rawToken.startsWith('oa_') || rawToken.length < 10) {
+    if (!rawToken.startsWith(RECIPIENT_TOKEN_PREFIX) || rawToken.length < 10) {
       // Introduce a small constant-time delay before throwing, so a too-short token
       // cannot be distinguished from a not-found token by response timing.
       await constantDelay();
       throw new TokenInvalidError();
     }
 
-    const tokenHash = this.hash(rawToken);
+    const tokenHash = hashRecipientToken(rawToken);
 
     const recipient = await this.db.offerRecipient.findFirst({
       where: {

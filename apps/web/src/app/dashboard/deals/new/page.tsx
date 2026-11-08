@@ -20,12 +20,7 @@ import { Input } from '../../../../components/ui/Input';
 import { Button } from '../../../../components/ui/Button';
 import { Alert } from '../../../../components/ui/Alert';
 import { cn } from '@/lib/cn';
-
-function getLocale(): 'no' | 'en' {
-  if (typeof document === 'undefined') return 'en';
-  const m = document.cookie.match(/oa_locale=([^;]+)/);
-  return m?.[1] === 'no' ? 'no' : 'en';
-}
+import { readClientLocale } from '@/lib/locale';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +178,7 @@ function NewDealWizardContent() {
   }
 
   const isLoading = creatingDraft || settingRecipient;
-  const locale = getLocale();
+  const locale = readClientLocale();
 
   return (
     <div className="max-w-xl mx-auto py-2">

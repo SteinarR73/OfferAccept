@@ -79,8 +79,6 @@ function makeDb(offer: Record<string, unknown>, sessionCreateSpy: jest.Mock) {
 function makeTokenService(recipient: Record<string, unknown>) {
   return {
     verifyToken: jest.fn<any>().mockResolvedValue(recipient),
-    hash: jest.fn<any>().mockReturnValue('hash123'),
-    generateToken: jest.fn(),
   };
 }
 

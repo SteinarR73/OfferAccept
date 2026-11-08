@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import type { OfferItem, OfferStatusValue } from '@offeraccept/types';
 import { cn } from '@/lib/cn';
+import { OFFER_STATUS_LABEL } from '@/components/ui/Badge';
 
 // ─── Health indicator ──────────────────────────────────────────────────────────
 
@@ -80,13 +81,13 @@ function HealthDot({ offer }: { offer: OfferItem }) {
 
 // ─── Status config ─────────────────────────────────────────────────────────────
 
-const STATUS_META: Record<OfferStatusValue, { label: string; classes: string }> = {
-  DRAFT:    { label: 'Draft',    classes: 'bg-(--color-surface) text-(--color-text-secondary)' },
-  SENT:     { label: 'Sent',     classes: 'bg-(--color-accent-light) text-(--color-accent-text)' },
-  ACCEPTED: { label: 'Accepted', classes: 'bg-(--color-success-light) text-(--color-success-text)' },
-  DECLINED: { label: 'Declined', classes: 'bg-(--color-error-light) text-(--color-error-text)' },
-  EXPIRED:  { label: 'Expired',  classes: 'bg-(--color-warning-light) text-(--color-warning-text)' },
-  REVOKED:  { label: 'Revoked',  classes: 'bg-(--color-surface) text-(--color-text-muted)' },
+const STATUS_CLASSES: Record<OfferStatusValue, string> = {
+  DRAFT:    'bg-(--color-surface) text-(--color-text-secondary)',
+  SENT:     'bg-(--color-accent-light) text-(--color-accent-text)',
+  ACCEPTED: 'bg-(--color-success-light) text-(--color-success-text)',
+  DECLINED: 'bg-(--color-error-light) text-(--color-error-text)',
+  EXPIRED:  'bg-(--color-warning-light) text-(--color-warning-text)',
+  REVOKED:  'bg-(--color-surface) text-(--color-text-muted)',
 };
 
 type FilterTab = 'ALL' | OfferStatusValue;
@@ -94,12 +95,11 @@ type SortKey = 'createdAt' | 'updatedAt' | 'status';
 type SortDir = 'asc' | 'desc';
 
 const TABS: Array<{ key: FilterTab; label: string }> = [
-  { key: 'ALL',      label: 'All' },
-  { key: 'DRAFT',    label: 'Draft' },
-  { key: 'SENT',     label: 'Sent' },
-  { key: 'ACCEPTED', label: 'Accepted' },
-  { key: 'DECLINED', label: 'Declined' },
-  { key: 'EXPIRED',  label: 'Expired' },
+  { key: 'ALL', label: 'All' },
+  ...(['DRAFT', 'SENT', 'ACCEPTED', 'DECLINED', 'EXPIRED'] as const).map((key) => ({
+    key,
+    label: OFFER_STATUS_LABEL[key],
+  })),
 ];
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -294,7 +294,7 @@ export function OfferTable({
       <div
         className="overflow-x-auto"
         role="tabpanel"
-        aria-label={`${activeTab === 'ALL' ? 'All offers' : STATUS_META[activeTab as OfferStatusValue]?.label ?? activeTab} offers`}
+        aria-label={`${activeTab === 'ALL' ? 'All offers' : OFFER_STATUS_LABEL[activeTab as OfferStatusValue] ?? activeTab} offers`}
       >
         {loading ? (
           <OfferTableSkeleton />
@@ -423,7 +423,10 @@ function Highlight({ text, query }: { text: string; query: string }) {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: OfferStatusValue }) {
-  const meta = STATUS_META[status] ?? { label: status, classes: 'bg-(--color-surface) text-(--color-text-secondary)' };
+  const meta = {
+    label: OFFER_STATUS_LABEL[status] ?? status,
+    classes: STATUS_CLASSES[status] ?? 'bg-(--color-surface) text-(--color-text-secondary)',
+  };
   return (
     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold transition-colors duration-200', meta.classes)}>
       {meta.label}

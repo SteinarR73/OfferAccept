@@ -104,28 +104,3 @@ export async function refreshAccessToken(): Promise<boolean> {
   }
   return true;
 }
-
-// ─── Deprecated shims ────────────────────────────────────────────────────────
-// Token management is now entirely server-side via HttpOnly cookies.
-// These stubs prevent compile errors during migration; remove once unused.
-
-/** @deprecated Call markAuthenticated() after a successful login instead. */
-export function setToken(_token: string): void {
-  markAuthenticated();
-}
-
-/** @deprecated Call logout() or markUnauthenticated() instead. */
-export function clearToken(): void {
-  markUnauthenticated();
-}
-
-/** @deprecated Always returns null — access token is HttpOnly, not readable by JS. */
-export function getToken(): string | null {
-  return null;
-}
-
-// Cookies are sent automatically; no Authorization header needed.
-// Kept as a zero-value export so existing imports compile without changes.
-export function authHeaders(): HeadersInit {
-  return {};
-}

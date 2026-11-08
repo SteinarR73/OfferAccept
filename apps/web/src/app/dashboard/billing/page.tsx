@@ -3,11 +3,6 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Zap, Check } from 'lucide-react';
 
-function getLocale(): 'no' | 'en' {
-  if (typeof document === 'undefined') return 'en';
-  const m = document.cookie.match(/oa_locale=([^;]+)/);
-  return m?.[1] === 'no' ? 'no' : 'en';
-}
 import {
   getBillingSubscription,
   getBillingCheckout,
@@ -22,6 +17,7 @@ import { Button } from '../../../components/ui/Button';
 import { Badge, PlanBadge } from '../../../components/ui/Badge';
 import { Alert } from '../../../components/ui/Alert';
 import { cn } from '../../../lib/cn';
+import { readClientLocale } from '@/lib/locale';
 
 // ─── Plan meta ─────────────────────────────────────────────────────────────────
 
@@ -46,7 +42,7 @@ const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTE
 // ─── BillingPage ──────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-  const locale = getLocale();
+  const locale = readClientLocale();
   const PLAN_META = locale === 'no' ? PLAN_META_NOK : PLAN_META_USD;
 
   const [sub, setSub] = useState<BillingSubscription | null>(null);

@@ -5,8 +5,10 @@
  *  P2  P0  Certificate Hash Integrity (tampering detection)
  */
 
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { generateRecipientToken } from '../../../src/modules/signing/domain/recipient-token';
 
 const SRC = path.resolve(__dirname, '../../../src');
 const TEST_DIR = path.resolve(__dirname, '../..');
@@ -37,21 +39,14 @@ describe('P1 · Signing Flow Integrity (P0)', () => {
     expect(flowFiles).toContain('accept');
   });
 
-  it('signing token uses 256 bits of cryptographic entropy (crypto.randomBytes(32))', () => {
-    const tokenSvc = readSrc(
-      'modules', 'signing', 'services', 'signing-token.service.ts',
-    );
-    expect(tokenSvc).toContain('randomBytes(32)');
+  it('signing token uses 256 bits of cryptographic entropy', () => {
+    const { rawToken } = generateRecipientToken(new Date());
+    expect(Buffer.from(rawToken.slice('oa_'.length), 'base64url')).toHaveLength(32);
   });
 
-  it('signing token is never stored raw — only SHA-256 hash persisted', () => {
-    const tokenSvc = readSrc(
-      'modules', 'signing', 'services', 'signing-token.service.ts',
-    );
-    expect(tokenSvc).toContain('sha256');
-    expect(tokenSvc).toContain('tokenHash');
-    // Raw token comment confirms intent
-    expect(tokenSvc).toMatch(/never.*stored|never.*log|never.*persist/i);
+  it('signing token is persisted as its SHA-256 hash, never raw', () => {
+    const { rawToken, tokenHash } = generateRecipientToken(new Date());
+    expect(tokenHash).toBe(crypto.createHash('sha256').update(rawToken, 'utf8').digest('hex'));
   });
 
   it('signing events form a hash chain (each event commits to previous)', () => {

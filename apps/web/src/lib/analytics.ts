@@ -17,6 +17,8 @@
  *   3. Document the event in docs/telemetry-events.md
  */
 
+import { readClientLocale } from './locale';
+
 // ─── Event taxonomy ───────────────────────────────────────────────────────────
 
 export type EventName =
@@ -65,7 +67,7 @@ export function track(event: EventName, properties?: TrackProperties): void {
   const payload = JSON.stringify({
     event,
     properties: {
-      locale: readLocaleCookie(),
+      locale: readClientLocale(),
       device: window.innerWidth < 768 ? 'mobile' : 'desktop',
       ...properties,
     },
@@ -85,16 +87,5 @@ export function track(event: EventName, properties?: TrackProperties): void {
     }
   } catch {
     // Telemetry must never break the product
-  }
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function readLocaleCookie(): 'en' | 'no' {
-  try {
-    const match = document.cookie.match(/oa_locale=([^;]+)/);
-    return match?.[1] === 'no' ? 'no' : 'en';
-  } catch {
-    return 'en';
   }
 }

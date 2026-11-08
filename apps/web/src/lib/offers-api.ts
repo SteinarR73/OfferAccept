@@ -206,17 +206,6 @@ export async function getDocumentUploadUrl(
   });
 }
 
-// Upload directly to S3 using the presigned URL.
-// Content-Type must match what was requested; do NOT include credentials here.
-export async function uploadFileToS3(uploadUrl: string, file: File): Promise<void> {
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
-  });
-  if (!res.ok) throw new Error(`S3 upload failed: HTTP ${res.status}`);
-}
-
 export async function addDocument(id: string, data: AddDocumentRequest): Promise<{ id: string }> {
   return request<{ id: string }>(`/offers/${id}/documents`, {
     method: 'POST',
@@ -392,10 +381,6 @@ export async function getCertificate(id: string): Promise<CertificateDetail> {
   return request<CertificateDetail>(`/certificates/${id}`);
 }
 
-export async function exportCertificate(id: string): Promise<{ certificateId: string; canonicalJson: string; certificateHash: string }> {
-  return request(`/certificates/${id}/export`);
-}
-
 // Legal and trust-layer versions attached to every verify/export response.
 // These are returned outside the hashed payload so they don't affect existing hashes.
 export interface CertificateMetadata {
@@ -435,36 +420,21 @@ export interface CertificateVerification {
   };
 }
 
-// ─── Analytics ────────────────────────────────────────────────────────────────
+// ─── Deal events ──────────────────────────────────────────────────────────────
 
-export interface AnalyticsOverview {
-  dealsSent: number;
-  dealsAccepted: number;
-  dealsPending: number;
-  dealsDeclined: number;
-  dealsExpired: number;
-  dealsRevoked: number;
-  avgAcceptanceHours: number | null;
-  medianAcceptanceHours: number | null;
-  acceptedAfterReminderCount: number;
-  acceptedWithReminderPct: number | null;
-}
-
-export async function getAnalytics(): Promise<AnalyticsOverview> {
-  return request<AnalyticsOverview>('/analytics/overview');
-}
-
+// Wire values are the Prisma enum member names (deal_sent), not the DB @map
+// values (deal.sent): Prisma returns member names to the API.
 export type DealEventType =
-  | 'deal.created'
-  | 'deal.sent'
-  | 'deal.opened'
-  | 'otp.verified'
-  | 'deal.accepted'
-  | 'certificate.issued'
-  | 'deal.reminder_sent'
-  | 'deal.revoked'
-  | 'deal.expired'
-  | 'deal.declined';
+  | 'deal_created'
+  | 'deal_sent'
+  | 'deal_opened'
+  | 'otp_verified'
+  | 'deal_accepted'
+  | 'certificate_issued'
+  | 'deal_reminder_sent'
+  | 'deal_revoked'
+  | 'deal_expired'
+  | 'deal_declined';
 
 export interface RecentDealEvent {
   id: string;
@@ -480,17 +450,6 @@ export async function getRecentEvents(limit = 20): Promise<RecentDealEvent[]> {
   return res.events;
 }
 
-export interface DealTimelineEvent {
-  event: string;
-  label: string;
-  timestamp: string | null;
-  pending: boolean;
-}
-
-export async function getDealTimeline(offerId: string): Promise<DealTimelineEvent[]> {
-  return request<DealTimelineEvent[]>(`/offers/${offerId}/timeline`);
-}
-
 // Public endpoint — no auth required
 export async function verifyCertificate(id: string): Promise<CertificateVerification> {
   const url = `${API_BASE}/certificates/${id}/verify`;
@@ -498,72 +457,6 @@ export async function verifyCertificate(id: string): Promise<CertificateVerifica
   if (res.status === 404) throw Object.assign(new Error('Not found'), { status: 404 });
   if (!res.ok) throw new Error(`Verification failed: HTTP ${res.status}`);
   return res.json() as Promise<CertificateVerification>;
-}
-
-// ─── Acceptance Insights ──────────────────────────────────────────────────────
-
-export interface AcceptanceInsightDeal {
-  dealId: string;
-  dealTitle: string;
-  hoursSinceLastEvent?: number;
-  hoursSinceSent?: number;
-}
-
-export interface AcceptanceInsights {
-  /** Median hours from deal_sent → deal_accepted. Null if < 10 data points. */
-  medianAcceptanceHours: number | null;
-  /** % of accepted deals where a reminder was sent before acceptance. */
-  reminderRate: number | null;
-  /** Deals opened but not accepted; idle > 24 h. */
-  openedNotAccepted: AcceptanceInsightDeal[];
-  /** Deals sent but never opened; age > 24 h. */
-  unopened: AcceptanceInsightDeal[];
-  /** Deals opened with no activity > 48 h; not in a terminal state. */
-  stalled: AcceptanceInsightDeal[];
-}
-
-export async function getAcceptanceInsights(): Promise<AcceptanceInsights> {
-  return request<AcceptanceInsights>('/analytics/insights');
-}
-
-// ─── Deal Status Intelligence ──────────────────────────────────────────────────
-
-export type DealComputedStatus =
-  | 'CREATED'
-  | 'SENT'
-  | 'OPENED'
-  | 'OTP_STARTED'
-  | 'OTP_VERIFIED'
-  | 'ACCEPTED'
-  | 'DECLINED'
-  | 'EXPIRED'
-  | 'REVOKED';
-
-export type RecipientActivity =
-  | 'never_opened'
-  | 'opened'
-  | 'viewed_document'
-  | 'otp_started'
-  | 'otp_verified'
-  | 'accepted';
-
-export type RecommendedAction =
-  | 'SEND_REMINDER'
-  | 'FOLLOW_UP'
-  | 'CHECK_WITH_RECIPIENT'
-  | 'NONE';
-
-export interface DealStatusResult {
-  status: DealComputedStatus;
-  lastEvent: DealEventType | null;
-  lastActivityAt: string | null;
-  recipientActivity: RecipientActivity;
-  recommendedAction: RecommendedAction;
-  insights: string[];
-}
-
-export async function getDealStatus(offerId: string): Promise<DealStatusResult> {
-  return request<DealStatusResult>(`/offers/${offerId}/status`);
 }
 
 // ─── Password reset (unauthenticated) ─────────────────────────────────────────

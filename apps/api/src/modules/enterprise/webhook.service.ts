@@ -15,10 +15,10 @@ import {
 // Manages customer-configured webhook endpoints and dispatches outgoing events.
 //
 // Event catalogue:
-//   deal.accepted       — fired after an offer is accepted and the acceptance
+//   deal_accepted       — fired after an offer is accepted and the acceptance
 //                          record committed. Data includes offerId, recipientEmail,
 //                          acceptedAt, certificateId.
-//   certificate.issued   — fired after the AcceptanceCertificate is generated.
+//   certificate_issued   — fired after the AcceptanceCertificate is generated.
 //                          Data includes offerId, certificateId, issuedAt.
 //
 // Delivery model:

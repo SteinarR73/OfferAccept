@@ -5,8 +5,10 @@
  *  B2  P1  Public Verify Rate Limit
  */
 
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { generateRecipientToken } from '../../../src/modules/signing/domain/recipient-token';
 
 const SRC = path.resolve(__dirname, '../../../src');
 
@@ -17,29 +19,23 @@ function readSrc(...parts: string[]) {
 // ─── B1 · Link Guessing Protection (P1) ──────────────────────────────────────
 
 describe('B1 · Link Guessing Protection (P1)', () => {
-  it('signing token uses crypto.randomBytes(32) — 256 bits of entropy (>= 128 bit requirement)', () => {
-    const tokenSvc = readSrc(
-      'modules', 'signing', 'services', 'signing-token.service.ts',
-    );
-    // 32 bytes = 256 bits >> 128 bit minimum
-    expect(tokenSvc).toContain('randomBytes(32)');
+  it('signing token carries 256 bits of entropy (>= 128 bit requirement)', () => {
+    const { rawToken } = generateRecipientToken(new Date());
+    const body = rawToken.slice('oa_'.length);
+    expect(Buffer.from(body, 'base64url')).toHaveLength(32);
   });
 
-  it('signing token is prefixed with "oa_" + base64url encoding for tamper evidence', () => {
-    const tokenSvc = readSrc(
-      'modules', 'signing', 'services', 'signing-token.service.ts',
-    );
-    expect(tokenSvc).toContain("'oa_'");
-    expect(tokenSvc).toContain('base64url');
+  it('signing token is "oa_" + base64url and unique per call', () => {
+    const a = generateRecipientToken(new Date()).rawToken;
+    const b = generateRecipientToken(new Date()).rawToken;
+    expect(a).toMatch(/^oa_[A-Za-z0-9_-]{43}$/);
+    expect(a).not.toBe(b);
   });
 
-  it('token lookup uses constant-time hash comparison (no raw token stored)', () => {
-    const tokenSvc = readSrc(
-      'modules', 'signing', 'services', 'signing-token.service.ts',
-    );
-    // SHA-256 hash stored and compared — DB never sees raw token
-    expect(tokenSvc).toContain('sha256');
-    expect(tokenSvc).toContain('tokenHash');
+  it('only the SHA-256 hash of the token is meant for storage', () => {
+    const { rawToken, tokenHash } = generateRecipientToken(new Date());
+    expect(tokenHash).toBe(crypto.createHash('sha256').update(rawToken, 'utf8').digest('hex'));
+    expect(tokenHash).not.toContain(rawToken);
   });
 
   it('constant-time delay is applied on token verification failure (timing attack prevention)', () => {

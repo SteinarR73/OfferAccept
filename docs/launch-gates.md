@@ -147,15 +147,15 @@ consume the OTP before the real recipient sees it.
 
 ### 2.4 Token security **[CODE]**
 - [x] Signing tokens use 256 bits of entropy (`crypto.randomBytes(32).toString('base64url')`).
-      Verified: `SigningTokenService.generateToken` — `crypto.randomBytes(32)` with `base64url` encoding,
+      Verified: `generateRecipientToken` (`signing/domain/recipient-token.ts`) — `crypto.randomBytes(32)` with `base64url` encoding,
       prefixed `oa_` for readability. 256 bits of cryptographic entropy.
 - [x] Only `tokenHash = SHA-256(rawToken)` is stored. Raw token appears only in the email link.
-      Verified: `generateToken` returns `{ rawToken, tokenHash }`. Only `tokenHash` is persisted
+      Verified: `generateRecipientToken` returns `{ rawToken, tokenHash }`. Only `tokenHash` is persisted
       to `OfferRecipient.tokenHash`. Raw token passed to email adapter immediately and discarded.
 - [x] `tokenInvalidatedAt` is set on revoke; expired tokens (`tokenExpiresAt < now`) are rejected.
       Verified: `verifyToken` WHERE clause: `tokenExpiresAt: { gt: new Date() }, tokenInvalidatedAt: null`.
 - [x] Token lookup via `WHERE tokenHash = SHA256(input)` — not `WHERE token = input`.
-      Verified: `verifyToken` hashes the input via `this.hash(rawToken)` before the DB query.
+      Verified: `verifyToken` hashes the input via `hashRecipientToken(rawToken)` before the DB query.
       Anti-enumeration: `TokenInvalidError` is thrown for both "not found" and "expired" — same HTTP
       status and body, preventing timing-based enumeration of valid vs invalid tokens.
 
