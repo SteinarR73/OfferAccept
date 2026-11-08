@@ -47,16 +47,4 @@ export class JobService {
     }
     return jobId;
   }
-
-  /**
-   * Enqueue a job only if no job with the same name is already pending/running.
-   * Equivalent to send() with singletonKey=name.
-   */
-  async sendOnce<N extends JobName>(
-    name: N,
-    data: JobPayloadMap[N],
-    options?: Omit<SendOptions, 'singletonKey'>,
-  ): Promise<string | null> {
-    return this.send(name, data, { ...options, singletonKey: name });
-  }
 }

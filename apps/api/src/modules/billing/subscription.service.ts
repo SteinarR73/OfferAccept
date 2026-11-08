@@ -31,27 +31,6 @@ export class SubscriptionService {
     return this.db.subscription.findUnique({ where: { organizationId } });
   }
 
-  async getPlan(organizationId: string): Promise<SubscriptionPlan> {
-    const sub = await this.db.subscription.findUnique({
-      where: { organizationId },
-      select: { plan: true },
-    });
-    return sub?.plan ?? SubscriptionPlan.FREE;
-  }
-
-  // Returns true when the subscription allows full feature access.
-  // PAST_DUE retains access (grace period); CANCELED does not.
-  async isActive(organizationId: string): Promise<boolean> {
-    const sub = await this.db.subscription.findUnique({
-      where: { organizationId },
-      select: { status: true },
-    });
-    if (!sub) return false;
-    return sub.status === SubscriptionStatus.ACTIVE ||
-           sub.status === SubscriptionStatus.TRIALING ||
-           sub.status === SubscriptionStatus.PAST_DUE;
-  }
-
   // ── Plan enforcement ──────────────────────────────────────────────────────
 
   // Throws PlanLimitExceededError if the organisation has sent too many offers

@@ -8,18 +8,7 @@ import { z } from 'zod';
 // Source of truth for Zod enforcement: derived from Object.values(PackageType)
 //   below, so adding a value to the Prisma enum and running `prisma generate`
 //   automatically widens the Zod schema — no manual sync required.
-//
-// PACKAGE_TYPES is kept as a named export so other modules can enumerate
-// available packages (e.g. billing, UI) without depending on the Prisma client
-// internals.
 export const PACKAGE_TYPES = Object.values(PackageType) as [PackageType, ...PackageType[]];
-
-// ─── Audit event types ─────────────────────────────────────────────────────────
-// AUDIT_EVENT_TYPES mirrors the AuditEventType Prisma enum.
-// The Zod enum below is derived from it for the same auto-sync reason.
-// Declaring as a const gives callers a stable reference without importing
-// the Prisma client directly.
-export const AUDIT_EVENT_TYPES = Object.values(AuditEventType) as [AuditEventType, ...AuditEventType[]];
 
 // ─── Zod schemas ───────────────────────────────────────────────────────────────
 

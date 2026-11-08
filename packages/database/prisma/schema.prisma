@@ -1304,7 +1304,6 @@ model Job {
 //   1. Add the member here.
 //   2. Add a migration that runs: ALTER TYPE "AuditEventType" ADD VALUE 'new.value';
 //   3. Add the matching payload interface to AuditEventPayloadMap in packages.service.ts.
-//   4. Add the string literal to AUDIT_EVENT_TYPES in packages.service.ts.
 
 enum AuditEventType {
   package_activated  @map("package.activated")
