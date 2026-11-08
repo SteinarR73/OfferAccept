@@ -485,12 +485,25 @@ describe('CertificateService.verify() — anomaly message safety', () => {
   });
 });
 
-// ─── Integration: computeSnapshotHash consistency with send-offer-service ──────
-// The snapshot content hash computed at send time (in SendOfferService) and the
-// hash recomputed at verification time (in CertificateService.verify via
-// computeSnapshotHash) must use the same algorithm.
+// ─── computeSnapshotHash: shared by SendOfferService and CertificateService ────
 
 describe('Snapshot hash consistency between send and verify', () => {
+  it('computeSnapshotHash output is pinned, so snapshots stored by earlier releases still verify', () => {
+    expect(
+      computeSnapshotHash({
+        title: 'Test',
+        message: 'Hei',
+        senderName: 'Alice',
+        senderEmail: 'alice@co.com',
+        expiresAt: '2026-12-01T12:00:00.000Z',
+        documents: [
+          { filename: 'b.pdf', sha256Hash: 'b'.repeat(64), storageKey: 'uploads/b.pdf' },
+          { filename: 'a.pdf', sha256Hash: 'a'.repeat(64), storageKey: 'uploads/a.pdf' },
+        ],
+      }),
+    ).toBe('6d26ce967bae3e86625c48429761b6f234869b7d511a749c5dc2416666224f55');
+  });
+
   it('computeSnapshotHash produces identical result regardless of document input order', () => {
     const base = {
       title: 'Test',

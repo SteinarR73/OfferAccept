@@ -68,8 +68,9 @@ function sortObjectKeys(obj: unknown): unknown {
 }
 
 // ─── Canonical snapshot hash ───────────────────────────────────────────────────
-// Used when creating OfferSnapshot.contentHash.
-// Must be reproduced exactly when verifying a certificate.
+// The single implementation of OfferSnapshot.contentHash: SendOfferService uses it
+// when freezing a snapshot, CertificateService when verifying one. Changing the
+// output invalidates every stored snapshot (pinned in certificate-tampering.spec.ts).
 //
 // Input shape:
 //   {
@@ -92,7 +93,6 @@ export interface SnapshotHashInput {
 }
 
 export function computeSnapshotHash(input: SnapshotHashInput): string {
-  // Sort documents by storageKey for determinism
   const sorted: SnapshotHashInput = {
     ...input,
     documents: [...input.documents].sort((a, b) =>
@@ -100,7 +100,6 @@ export function computeSnapshotHash(input: SnapshotHashInput): string {
     ),
   };
 
-  // sortObjectKeys ensures top-level key order is alphabetical too
   const canonical = JSON.stringify(sortObjectKeys(sorted));
   return crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
 }

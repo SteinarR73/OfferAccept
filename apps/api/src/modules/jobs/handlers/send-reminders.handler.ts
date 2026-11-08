@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient, Prisma } from '@prisma/client';
@@ -6,6 +5,7 @@ import type { Job } from 'pg-boss';
 import type { SendRemindersPayload } from '../job.types';
 import { EMAIL_PORT, EmailPort, ReminderVariant } from '../../../common/email/email.port';
 import { DealEventService } from '../../deal-events/deal-events.service';
+import { generateRecipientToken } from '../../signing/domain/recipient-token';
 
 // ─── SendRemindersHandler ──────────────────────────────────────────────────────
 //
@@ -58,18 +58,6 @@ const WARN_2H_MS = 2 * 60 * 60 * 1000;
  * due to job-scheduling jitter (job runs every 5 min, so ≤ 5.5 min buffer).
  */
 const JOB_BUFFER_MS = 5 * 60 * 1000 + 30_000;
-
-// ─── Token generation (mirrors send-offer.service.ts) ─────────────────────────
-
-function generateRecipientToken(expiresAt: Date): {
-  rawToken: string;
-  tokenHash: string;
-  tokenExpiresAt: Date;
-} {
-  const rawToken = 'oa_' + crypto.randomBytes(32).toString('base64url');
-  const tokenHash = crypto.createHash('sha256').update(rawToken, 'utf8').digest('hex');
-  return { rawToken, tokenHash, tokenExpiresAt: expiresAt };
-}
 
 // ─── Recipient-status → reminder variant mapping ──────────────────────────────
 

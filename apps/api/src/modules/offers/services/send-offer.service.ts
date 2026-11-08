@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
@@ -13,57 +12,8 @@ import { ResendDeliveryError } from '../../../common/email/resend-email.adapter'
 import { DealEventService } from '../../deal-events/deal-events.service';
 import { SubscriptionService } from '../../billing/subscription.service';
 import { MetricsService } from '../../../common/metrics/metrics.service';
-
-// ─── Token generation ─────────────────────────────────────────────────────────
-// Mirrors signing-token.service.ts — kept in the offers module to avoid
-// coupling the send logic to the signing module.
-
-function generateRecipientToken(expiresAt: Date): {
-  rawToken: string;
-  tokenHash: string;
-  tokenExpiresAt: Date;
-} {
-  const rawToken = 'oa_' + crypto.randomBytes(32).toString('base64url');
-  const tokenHash = crypto.createHash('sha256').update(rawToken, 'utf8').digest('hex');
-  return { rawToken, tokenHash, tokenExpiresAt: expiresAt };
-}
-
-// ─── Snapshot hash computation ────────────────────────────────────────────────
-// Matches the spec in docs/architecture.md (Frozen Offer Snapshot section).
-// canonical JSON: { title, message, senderName, senderEmail, expiresAt, documents: [...] }
-// keys sorted alphabetically, compact, UTF-8.
-
-function computeSnapshotContentHash(input: {
-  title: string;
-  message: string | null;
-  senderName: string;
-  senderEmail: string;
-  expiresAt: Date | null;
-  documents: Array<{ filename: string; storageKey: string; sha256Hash: string }>;
-}): string {
-  const canonical = JSON.stringify(
-    sortObjectKeys({
-      documents: input.documents
-        .slice()
-        .sort((a, b) => a.storageKey.localeCompare(b.storageKey))
-        .map((d) => sortObjectKeys({ filename: d.filename, sha256Hash: d.sha256Hash, storageKey: d.storageKey })),
-      expiresAt: input.expiresAt?.toISOString() ?? null,
-      message: input.message,
-      senderEmail: input.senderEmail,
-      senderName: input.senderName,
-      title: input.title,
-    }),
-  );
-  return crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
-}
-
-function sortObjectKeys(obj: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.keys(obj)
-      .sort()
-      .map((k) => [k, obj[k]]),
-  );
-}
+import { generateRecipientToken } from '../../signing/domain/recipient-token';
+import { computeSnapshotHash } from '../../signing/domain/signing-event.builder';
 
 // ─── Failure info extraction ───────────────────────────────────────────────────
 // Extracts structured failure details from a caught email error.
@@ -170,13 +120,17 @@ export class SendOfferService {
     const { rawToken, tokenHash, tokenExpiresAt } = generateRecipientToken(tokenExpiry);
 
     // ── Compute snapshot content hash ──────────────────────────────────────────
-    const contentHash = computeSnapshotContentHash({
+    const contentHash = computeSnapshotHash({
       title: offer.title,
       message: offer.message,
       senderName,
       senderEmail,
-      expiresAt: offer.expiresAt,
-      documents: offer.documents,
+      expiresAt: offer.expiresAt?.toISOString() ?? null,
+      documents: offer.documents.map((d) => ({
+        filename: d.filename,
+        sha256Hash: d.sha256Hash,
+        storageKey: d.storageKey,
+      })),
     });
 
     // ── Atomic transaction ────────────────────────────────────────────────────
