@@ -144,7 +144,6 @@ async function buildService(
       {
         provide: NotificationsService,
         useValue: {
-          onDealAccepted: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
           onDealDeclined: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
           onDealExpired: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
         },

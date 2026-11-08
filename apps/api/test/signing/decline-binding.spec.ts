@@ -74,7 +74,7 @@ async function buildService(
       { provide: SigningSessionService, useValue: sessionSvc },
       { provide: AcceptanceService, useValue: acceptanceSvc },
       { provide: CertificateService, useValue: { generateForAcceptance: jest.fn() } },
-      { provide: NotificationsService, useValue: { onDealAccepted: jest.fn<() => Promise<void>>().mockResolvedValue(undefined), onDealDeclined: jest.fn<() => Promise<void>>().mockResolvedValue(undefined), onDealExpired: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
+      { provide: NotificationsService, useValue: { onDealDeclined: jest.fn<() => Promise<void>>().mockResolvedValue(undefined), onDealExpired: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
       { provide: WebhookService, useValue: { dispatchEvent: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) } },
       { provide: DealEventService, useValue: { emit: () => Promise.resolve(), getForDeal: () => Promise.resolve([]), getRecentForOrg: () => Promise.resolve([]) } },
       { provide: JobService, useValue: { send: jest.fn<() => Promise<string>>().mockResolvedValue('job-1') } },

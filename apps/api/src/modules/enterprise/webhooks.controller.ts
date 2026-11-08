@@ -30,8 +30,8 @@ import { UpdateWebhookDto } from './dtos/update-webhook.dto';
 // POST   /webhooks/:id/rotate-secret  — invalidate old secret and issue a new one (returned ONCE)
 //
 // Events:
-//   offer.accepted     — emitted when a recipient accepts an offer
-//   certificate.issued — emitted when the AcceptanceCertificate is generated
+//   deal_accepted      — emitted when a recipient accepts an offer
+//   certificate_issued — emitted when the AcceptanceCertificate is generated
 //
 // Signature header: X-OfferAccept-Signature: sha256=<HMAC-SHA256(secret, body)>
 // Delivery ID header: X-OfferAccept-Delivery: <webhookEventId>

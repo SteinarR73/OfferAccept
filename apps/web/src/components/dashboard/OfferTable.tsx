@@ -95,12 +95,11 @@ type SortKey = 'createdAt' | 'updatedAt' | 'status';
 type SortDir = 'asc' | 'desc';
 
 const TABS: Array<{ key: FilterTab; label: string }> = [
-  { key: 'ALL',      label: 'All' },
-  { key: 'DRAFT',    label: 'Draft' },
-  { key: 'SENT',     label: 'Sent' },
-  { key: 'ACCEPTED', label: 'Accepted' },
-  { key: 'DECLINED', label: 'Declined' },
-  { key: 'EXPIRED',  label: 'Expired' },
+  { key: 'ALL', label: 'All' },
+  ...(['DRAFT', 'SENT', 'ACCEPTED', 'DECLINED', 'EXPIRED'] as const).map((key) => ({
+    key,
+    label: OFFER_STATUS_LABEL[key],
+  })),
 ];
 
 // ─── Props ─────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
-export type Locale = 'no' | 'en';
+export type { Locale } from './locale';
+import type { Locale } from './locale';
 export type Cycle = 'monthly' | 'yearly';
 
 export interface PlanPricing {
