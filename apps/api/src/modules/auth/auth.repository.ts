@@ -1,0 +1,254 @@
+import * as crypto from 'crypto';
+import { Injectable, Inject } from '@nestjs/common';
+import { PrismaClient, User, Membership, EmailVerificationToken, PasswordResetToken } from '@prisma/client';
+
+// ─── AuthRepository ────────────────────────────────────────────────────────────
+// All DB queries for the auth domain. Keeps auth.service.ts free of Prisma details.
+//
+// Token security model (applies to both EmailVerificationToken and PasswordResetToken):
+//   rawToken  = crypto.randomBytes(32).toString('base64url')   [256 bits of entropy]
+//   tokenHash = SHA-256(rawToken) — only the hash is stored
+//
+// Token TTLs:
+//   email verification: 24 hours
+//   password reset:      1 hour
+//
+// Single-use enforcement: usedAt is set atomically in the same DB write that
+// advances the dependent state (emailVerified=true / hashedPassword=newHash).
+// A second call with the same token returns null from findValidXxxToken() because
+// usedAt IS NOT NULL.
+
+const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;  // 24 hours
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;       // 1 hour
+
+@Injectable()
+export class AuthRepository {
+  constructor(@Inject('PRISMA') private readonly db: PrismaClient) {}
+
+  // ── User ──────────────────────────────────────────────────────────────────────
+  //
+  // Email normalization: User.email is a PostgreSQL `text` column with a case-sensitive
+  // unique constraint. All reads and writes normalize to lowercase + trim so that
+  // "User@example.com" and "user@example.com" resolve to the same account.
+  // Never bypass .toLowerCase().trim() on email before querying or inserting.
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    return this.db.user.findFirst({ where: { email: email.toLowerCase().trim(), deletedAt: null } });
+  }
+
+  async findUserById(userId: string): Promise<User | null> {
+    return this.db.user.findUnique({ where: { id: userId, deletedAt: null } });
+  }
+
+  async findMembership(userId: string, orgId: string): Promise<Membership | null> {
+    return this.db.membership.findUnique({
+      where: { userId_organizationId: { userId, organizationId: orgId } },
+    });
+  }
+
+  // Returns the user's primary membership (OWNER role preferred, then earliest created).
+  // Falls back to null if the user has no memberships (should not happen for normal users).
+  async findPrimaryMembership(userId: string): Promise<Membership | null> {
+    // Prefer the membership where the user is OWNER, then fallback to most-recently created.
+    const memberships = await this.db.membership.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+    if (memberships.length === 0) return null;
+    return memberships.find((m) => m.role === 'OWNER') ?? memberships[0];
+  }
+
+  // Creates an org + owner user + OWNER Membership atomically.
+  // Caller is responsible for checking for duplicate email before calling —
+  // the unique constraint is the final guard.
+  async createOrgAndOwner(params: {
+    orgName: string;
+    orgSlug: string;
+    userName: string;
+    email: string;
+    hashedPassword: string;
+  }): Promise<{ user: User; orgId: string }> {
+    return this.db.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: { name: params.orgName, slug: params.orgSlug },
+      });
+
+      const user = await tx.user.create({
+        data: {
+          name: params.userName,
+          email: params.email.toLowerCase().trim(),
+          hashedPassword: params.hashedPassword,
+          role: 'OWNER',
+          emailVerified: false,
+        },
+      });
+
+      // Seed the Membership table so the multi-org system is consistent from day 1.
+      await tx.membership.create({
+        data: { userId: user.id, organizationId: org.id, role: 'OWNER' },
+      });
+
+      return { user, orgId: org.id };
+    });
+  }
+
+  // ── LegalAcceptance ───────────────────────────────────────────────────────────
+  // Append-only — never updated or deleted.
+  // Called once per document acceptance event (currently: ToS at signup).
+
+  async createLegalAcceptance(params: {
+    userId: string;
+    documentType: string;
+    documentVersion: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    await this.db.legalAcceptance.create({
+      data: {
+        userId: params.userId,
+        documentType: params.documentType,
+        documentVersion: params.documentVersion,
+        ipAddress: params.ipAddress ?? null,
+        userAgent: params.userAgent ?? null,
+      },
+    });
+  }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    await this.db.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+  }
+
+  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+    await this.db.user.update({
+      where: { id: userId },
+      data: { hashedPassword },
+    });
+  }
+
+  // ── TOTP ─────────────────────────────────────────────────────────────────────
+
+  async findTotpFields(userId: string): Promise<{ totpSecret: string | null; totpEnabled: boolean } | null> {
+    return this.db.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: { totpSecret: true, totpEnabled: true },
+    });
+  }
+
+  async saveTotpSecret(userId: string, encryptedSecret: string): Promise<void> {
+    await this.db.user.update({
+      where: { id: userId },
+      data: { totpSecret: encryptedSecret, totpEnabled: false },
+    });
+  }
+
+  async enableTotp(userId: string): Promise<void> {
+    await this.db.user.update({
+      where: { id: userId },
+      data: { totpEnabled: true },
+    });
+  }
+
+  // ── Email verification tokens ─────────────────────────────────────────────────
+
+  // Generates a raw token, stores its hash, returns the raw token for delivery.
+  async createEmailVerificationToken(userId: string): Promise<string> {
+    const rawToken = crypto.randomBytes(32).toString('base64url');
+    const tokenHash = sha256(rawToken);
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFY_TTL_MS);
+
+    // Invalidate any prior unused tokens for this user before creating a new one.
+    await this.db.emailVerificationToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    await this.db.emailVerificationToken.create({
+      data: { userId, tokenHash, expiresAt },
+    });
+
+    return rawToken;
+  }
+
+  // Returns the token row if valid (not used, not expired), null otherwise.
+  async findValidEmailVerificationToken(rawToken: string): Promise<EmailVerificationToken | null> {
+    const tokenHash = sha256(rawToken);
+    const token = await this.db.emailVerificationToken.findUnique({ where: { tokenHash } });
+
+    if (!token) return null;
+    if (token.usedAt) return null;
+    if (token.expiresAt <= new Date()) return null;
+
+    return token;
+  }
+
+  // Atomically consume the token and mark the user's email as verified.
+  async consumeEmailVerificationToken(tokenId: string, userId: string): Promise<void> {
+    await this.db.$transaction([
+      this.db.emailVerificationToken.update({
+        where: { id: tokenId },
+        data: { usedAt: new Date() },
+      }),
+      this.db.user.update({
+        where: { id: userId },
+        data: { emailVerified: true },
+      }),
+    ]);
+  }
+
+  // ── Password reset tokens ──────────────────────────────────────────────────────
+
+  async createPasswordResetToken(userId: string): Promise<string> {
+    const rawToken = crypto.randomBytes(32).toString('base64url');
+    const tokenHash = sha256(rawToken);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
+    // Invalidate any prior unused tokens for this user.
+    await this.db.passwordResetToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    await this.db.passwordResetToken.create({
+      data: { userId, tokenHash, expiresAt },
+    });
+
+    return rawToken;
+  }
+
+  // Returns the token row if valid (not used, not expired), null otherwise.
+  async findValidPasswordResetToken(rawToken: string): Promise<PasswordResetToken | null> {
+    const tokenHash = sha256(rawToken);
+    const token = await this.db.passwordResetToken.findUnique({ where: { tokenHash } });
+
+    if (!token) return null;
+    if (token.usedAt) return null;
+    if (token.expiresAt <= new Date()) return null;
+
+    return token;
+  }
+
+  // Atomically consume the token and update the user's hashed password.
+  async consumePasswordResetToken(
+    tokenId: string,
+    userId: string,
+    newHashedPassword: string,
+  ): Promise<void> {
+    await this.db.$transaction([
+      this.db.passwordResetToken.update({
+        where: { id: tokenId },
+        data: { usedAt: new Date() },
+      }),
+      this.db.user.update({
+        where: { id: userId },
+        data: { hashedPassword: newHashedPassword },
+      }),
+    ]);
+  }
+}
+
+function sha256(input: string): string {
+  return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
+}

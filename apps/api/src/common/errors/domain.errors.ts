@@ -55,13 +55,13 @@ export class TokenInvalidError extends DomainError {
 
 export class SessionExpiredError extends DomainError {
   constructor() {
-    super('This signing session has expired. Please re-open the offer link.');
+    super('This signing session has expired. Please re-open the deal link.');
   }
 }
 
 export class SessionNotVerifiedError extends DomainError {
   constructor() {
-    super('Email verification is required before accepting this offer.');
+    super('Email verification is required before accepting this deal.');
   }
 }
 
@@ -103,14 +103,24 @@ export class OtpChallengeMismatchError extends DomainError {
   }
 }
 
+// Thrown when a recipient has accumulated too many failed OTP attempts across
+// sessions/challenges within the sliding lockout window. Unlike OtpLockedError
+// (which is scoped to a single challenge), this error cannot be bypassed by
+// requesting a new OTP — the lockout is enforced at the issuance layer.
+export class OtpRecipientLockedError extends DomainError {
+  constructor() {
+    super('Too many incorrect attempts. Please try again in 30 minutes.');
+  }
+}
+
 // ─── Offer (sender-side) ──────────────────────────────────────────────────────
 
 // Thrown when a mutation is attempted on an offer that is not in DRAFT state.
 export class OfferNotEditableError extends DomainError {
   constructor(public readonly currentStatus: string) {
     super(
-      `This offer cannot be edited because it is in '${currentStatus}' status. ` +
-      `Only DRAFT offers can be modified.`,
+      `This deal cannot be edited because it is in '${currentStatus}' status. ` +
+      `Only DRAFT deals can be modified.`,
     );
   }
 }
@@ -119,7 +129,7 @@ export class OfferNotEditableError extends DomainError {
 export class OfferIncompleteError extends DomainError {
   constructor(public readonly missingFields: string[]) {
     super(
-      `This offer is not ready to send. Missing or incomplete: ${missingFields.join(', ')}.`,
+      `This deal is not ready to send. Missing or incomplete: ${missingFields.join(', ')}.`,
     );
   }
 }
@@ -128,7 +138,7 @@ export class OfferIncompleteError extends DomainError {
 export class OfferNotRevocableError extends DomainError {
   constructor(public readonly currentStatus: string) {
     super(
-      `This offer cannot be revoked because it is in '${currentStatus}' status.`,
+      `This deal cannot be revoked because it is in '${currentStatus}' status.`,
     );
   }
 }
@@ -138,8 +148,8 @@ export class OfferNotRevocableError extends DomainError {
 export class OfferNotResendableError extends DomainError {
   constructor(public readonly reason: string) {
     super(
-      `This offer cannot be resent. Reason: ${reason}. ` +
-      `Only SENT offers with a valid recipient token can be resent.`,
+      `This deal cannot be resent. Reason: ${reason}. ` +
+      `Only SENT deals with a valid recipient token can be resent.`,
     );
   }
 }
@@ -148,19 +158,22 @@ export class OfferNotResendableError extends DomainError {
 
 export class OfferExpiredError extends DomainError {
   constructor() {
-    super('This offer has expired.');
+    super('This deal has expired.');
   }
 }
 
 export class OfferNotSentError extends DomainError {
   constructor() {
-    super('This offer has not been sent yet.');
+    super('This deal has not been sent yet.');
   }
 }
 
 export class OfferAlreadyAcceptedError extends DomainError {
-  constructor() {
-    super('This offer has already been accepted.');
+  constructor(
+    public readonly acceptedAt?: Date,
+    public readonly certificateId?: string,
+  ) {
+    super('This deal has already been accepted.');
   }
 }
 
@@ -179,6 +192,166 @@ export class ConcurrencyConflictError extends DomainError {
   }
 }
 
+// ─── Organization / Membership ────────────────────────────────────────────────
+
+export class OrgNotFoundError extends DomainError {
+  constructor() { super('Organization not found.'); }
+}
+
+export class NotOrgMemberError extends DomainError {
+  constructor() { super('You are not a member of this organization.'); }
+}
+
+export class InsufficientOrgRoleError extends DomainError {
+  constructor(required: string) {
+    super(`This action requires the ${required} role or higher.`);
+  }
+}
+
+export class AlreadyOrgMemberError extends DomainError {
+  constructor() { super('This user is already a member of the organization.'); }
+}
+
+export class InviteNotFoundError extends DomainError {
+  constructor() { super('Invite not found or already used.'); }
+}
+
+export class InviteExpiredError extends DomainError {
+  constructor() { super('This invitation has expired.'); }
+}
+
+export class DuplicateInviteError extends DomainError {
+  constructor() {
+    super('An active invitation for this email address already exists in this organization.');
+  }
+}
+
+export class CannotRemoveLastOwnerError extends DomainError {
+  constructor() { super('Cannot remove the last owner of an organization.'); }
+}
+
+export class CannotTransferToNonMemberError extends DomainError {
+  constructor() { super('Ownership can only be transferred to an existing member.'); }
+}
+
+// ─── TOTP (INTERNAL_SUPPORT MFA) ─────────────────────────────────────────────
+
+export class InvalidTotpCodeError extends DomainError {
+  constructor() {
+    super('The provided authenticator code is incorrect.');
+  }
+}
+
+export class TotpNotConfiguredError extends DomainError {
+  constructor() {
+    super('TOTP is not configured for this account. Complete setup first.');
+  }
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+// Email is already registered. Return the same generic message as "invalid credentials"
+// to prevent email enumeration — do NOT reveal whether the email exists.
+export class EmailAlreadyExistsError extends DomainError {
+  constructor() {
+    super('An account with this email already exists.');
+  }
+}
+
+// Login attempted with wrong credentials. Generic message prevents username enumeration.
+export class InvalidCredentialsError extends DomainError {
+  constructor() {
+    super('Invalid email or password.');
+  }
+}
+
+// Access attempted before email address is verified.
+export class EmailNotVerifiedError extends DomainError {
+  constructor() {
+    super('Please verify your email address before continuing.');
+  }
+}
+
+// Refresh token presented is valid in form but has been revoked (logout or rotation).
+export class SessionRevokedError extends DomainError {
+  constructor() {
+    super('Your session has been revoked. Please log in again.');
+  }
+}
+
+// Generic expired-or-invalid for password-reset / email-verification tokens.
+// Intentionally vague to prevent enumeration of valid vs expired tokens.
+export class AuthTokenInvalidError extends DomainError {
+  constructor() {
+    super('This link is invalid or has expired. Please request a new one.');
+  }
+}
+
+// ─── File storage ─────────────────────────────────────────────────────────────
+
+export class FileTooLargeError extends DomainError {
+  constructor(public readonly maxBytes: number) {
+    super(`File exceeds the maximum allowed size of ${maxBytes} bytes.`);
+  }
+}
+
+export class InvalidMimeTypeError extends DomainError {
+  constructor(public readonly mime: string) {
+    super(`File type '${mime}' is not allowed.`);
+  }
+}
+
+export class FileHashMismatchError extends DomainError {
+  constructor() {
+    super('File integrity check failed. The uploaded content does not match the declared hash.');
+  }
+}
+
+export class FileNotFoundError extends DomainError {
+  constructor() {
+    super('File not found.');
+  }
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+// Thrown when an organisation has reached the offer limit for their plan.
+export class PlanLimitExceededError extends DomainError {
+  constructor(
+    public readonly plan: string,
+    public readonly limit: number,
+  ) {
+    super(
+      `Your ${plan} plan allows ${limit} deal(s) per month. ` +
+      `Upgrade your plan to send more deals.`,
+    );
+  }
+}
+
+// Thrown when a Stripe operation is attempted but no customer exists for the org.
+export class BillingCustomerNotFoundError extends DomainError {
+  constructor() {
+    super('No billing customer found for this organisation. Please contact support.');
+  }
+}
+
+// ─── Enterprise (API keys + webhooks) ─────────────────────────────────────────
+
+// Thrown when an X-Api-Key header is missing, invalid, expired, or revoked.
+// Deliberately vague — same message for all failure modes to prevent enumeration.
+export class ApiKeyInvalidError extends DomainError {
+  constructor() {
+    super('API key is invalid or has been revoked.');
+  }
+}
+
+// Thrown when a webhook endpoint is not found or does not belong to the caller's org.
+export class WebhookEndpointNotFoundError extends DomainError {
+  constructor() {
+    super('Webhook endpoint not found.');
+  }
+}
+
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
 export class RateLimitExceededError extends DomainError {
@@ -187,5 +360,18 @@ export class RateLimitExceededError extends DomainError {
     public readonly resetAt: Date,
   ) {
     super('Too many requests. Please wait before trying again.');
+  }
+}
+
+/**
+ * Thrown by high-risk rate-limit profiles when Redis is unavailable.
+ * These endpoints (OTP, login, signup) must fail closed to prevent
+ * Redis downtime from becoming a brute-force bypass window.
+ *
+ * Maps to HTTP 503 Service Unavailable with Retry-After header support.
+ */
+export class RateLimitServiceUnavailableError extends DomainError {
+  constructor() {
+    super('Service temporarily unavailable. Please try again shortly.');
   }
 }

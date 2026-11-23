@@ -1,0 +1,460 @@
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { ConfigService } from '@nestjs/config';
+import { AuthRepository } from './auth.repository';
+import { PasswordService } from './password.service';
+import { SessionService } from './session.service';
+import { JwtTokenService, AccessTokenPayload } from './jwt.service';
+import { SupportTotpService } from './support-totp.service';
+import { EmailPort, EMAIL_PORT } from '../../common/email/email.port';
+import { slugify, isSlugUniqueViolation } from '../organizations/org-slug';
+import {
+  EmailAlreadyExistsError,
+  InvalidCredentialsError,
+  EmailNotVerifiedError,
+  AuthTokenInvalidError,
+  InvalidTotpCodeError,
+  TotpNotConfiguredError,
+} from '../../common/errors/domain.errors';
+
+// ─── AuthService ───────────────────────────────────────────────────────────────
+// Orchestrates all authentication use-cases:
+//   signup        — create org + user, send verification email
+//   login         — verify credentials, issue access + refresh tokens
+//   logout        — revoke session
+//   refresh       — rotate refresh token, issue new access token
+//   verifyEmail   — consume email-verification token
+//   requestPasswordReset — send reset email (fire-and-forget, always succeeds)
+//   resetPassword — consume reset token, update password, revoke all sessions
+//   changePassword — verify current password, update, revoke all other sessions
+//
+// Security invariants:
+//   - Passwords are never stored raw — always bcrypt-hashed (rounds=12)
+//   - Reset / verification tokens are never stored raw — SHA-256 in DB
+//   - Refresh tokens are never stored raw — SHA-256 in DB
+//   - requestPasswordReset always returns successfully to prevent email enumeration
+//   - Login always runs bcrypt even when user is not found (anti-timing)
+//   - emailVerified=false blocks login (returned as a specific error so the UI
+//     can prompt the user to check their inbox — not a generic 401)
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+}
+
+export interface SignupResult {
+  userId: string;
+  orgId: string;
+}
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly webBaseUrl: string;
+
+  constructor(
+    private readonly repo: AuthRepository,
+    private readonly passwordService: PasswordService,
+    private readonly sessionService: SessionService,
+    private readonly jwtService: JwtTokenService,
+    private readonly totpService: SupportTotpService,
+    @Inject(EMAIL_PORT) private readonly emailPort: EmailPort,
+    private readonly config: ConfigService,
+  ) {
+    this.webBaseUrl = this.config.getOrThrow<string>('WEB_BASE_URL');
+  }
+
+  // ── Signup ─────────────────────────────────────────────────────────────────
+
+  async signup(params: {
+    orgName: string;
+    userName: string;
+    email: string;
+    password: string;
+    // Terms of Service version the user explicitly accepted at signup (e.g. "1.1").
+    // Recorded in LegalAcceptance for compliance audit trail.
+    termsVersion: string;
+    ipAddress: string | null;
+    userAgent: string | null;
+  }): Promise<SignupResult> {
+    const existing = await this.repo.findUserByEmail(params.email);
+    if (existing) {
+      // Do NOT reveal that the email is taken to prevent enumeration.
+      // We trigger a password reset email so a legitimate user can regain access,
+      // and return a fake success response.
+      await this.requestPasswordReset(params.email);
+      return { userId: '', orgId: '' };
+    }
+
+    const hashedPassword = await this.passwordService.hash(params.password);
+    const baseSlug = slugify(params.orgName);
+    let slug = baseSlug;
+    let user: any;
+    let orgId: string = '';
+    let created = false;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const result = await this.repo.createOrgAndOwner({
+          orgName: params.orgName,
+          orgSlug: slug,
+          userName: params.userName,
+          email: params.email,
+          hashedPassword,
+        });
+        user = result.user;
+        orgId = result.orgId;
+        created = true;
+        break;
+      } catch (err: any) {
+        if (isSlugUniqueViolation(err)) {
+          slug = `${baseSlug}-${crypto.randomBytes(2).toString('hex')}`;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!created || !user) {
+      throw new Error('Failed to generate a unique organization slug after multiple attempts.');
+    }
+
+    // Record Terms of Service acceptance — immutable audit trail.
+    // Created immediately after user row is committed so userId is available.
+    await this.repo.createLegalAcceptance({
+      userId: user.id,
+      documentType: 'TERMS_OF_SERVICE',
+      documentVersion: params.termsVersion,
+      ipAddress: params.ipAddress ?? undefined,
+      userAgent: params.userAgent ?? undefined,
+    });
+
+    // Send verification email — fire after DB commit, non-blocking for the
+    // signup response. If email fails, the user can request a re-send.
+    const rawToken = await this.repo.createEmailVerificationToken(user.id);
+    const verificationUrl = `${this.webBaseUrl}/verify-email?token=${rawToken}`;
+
+    this.emailPort.sendEmailVerification({
+      to: params.email,
+      name: params.userName,
+      verificationUrl,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    }).catch((err) => {
+      // Log the error but don't fail the signup response.
+      // The user is already in the database and can request a new verification email.
+      this.logger.error(`Failed to send verification email to ${params.email}:`, err);
+    });
+
+    return { userId: user.id, orgId };
+  }
+
+  // ── Login ──────────────────────────────────────────────────────────────────
+
+  async login(
+    email: string,
+    password: string,
+    context: { ipAddress?: string; userAgent?: string },
+  ): Promise<AuthTokens> {
+    const user = await this.repo.findUserByEmail(email);
+
+    // Always run bcrypt even when user is null — prevents username-enumeration timing.
+    const valid = await this.passwordService.verify(password, user?.hashedPassword ?? null);
+
+    if (!user || !valid) {
+      throw new InvalidCredentialsError();
+    }
+
+    if (!user.emailVerified) {
+      throw new EmailNotVerifiedError();
+    }
+
+    const { rawToken, session } = await this.sessionService.create(user.id, context);
+
+    // Resolve org context exclusively from the Membership join table.
+    // The migration 20260408_backfill_memberships_from_user_org ensures every
+    // account has at least one Membership row. User.organizationId is deprecated
+    // and no longer read here.
+    const membership = await this.repo.findPrimaryMembership(user.id);
+
+    if (!membership) {
+      // Guard: a user with no Membership row cannot operate the system correctly.
+      // This should never happen after the backfill migration; if it does, it
+      // indicates a data integrity problem that must not be silently swallowed.
+      throw new Error(
+        `User ${user.id} has no Membership row — account requires data repair before login is possible.`,
+      );
+    }
+
+    const orgId   = membership.organizationId;
+    const orgRole = membership.role;
+
+    const payload: AccessTokenPayload = {
+      sub: user.id,
+      orgId,
+      orgRole,
+      role: user.role,
+      sessionId: session.id,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      refreshToken: rawToken,
+      sessionId: session.id,
+    };
+  }
+
+  // ── Switch Org ─────────────────────────────────────────────────────────────
+
+  async switchOrg(
+    userId: string,
+    targetOrgId: string,
+    sessionId: string | undefined,
+    context: { ipAddress?: string; userAgent?: string },
+  ): Promise<AuthTokens> {
+    const user = await this.loadUserById(userId);
+    if (!user) throw new InvalidCredentialsError();
+
+    const membership = await this.repo.findMembership(userId, targetOrgId);
+    if (!membership) {
+      throw new Error(`User is not a member of organization.`);
+    }
+
+    if (sessionId) {
+      await this.sessionService.revoke(sessionId);
+    }
+    const { rawToken, session } = await this.sessionService.create(userId, context);
+
+    const payload: AccessTokenPayload = {
+      sub: user.id,
+      orgId: membership.organizationId,
+      orgRole: membership.role,
+      role: user.role,
+      sessionId: session.id,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      refreshToken: rawToken,
+      sessionId: session.id,
+    };
+  }
+
+  // ── Logout ──────────────────────────────────────────────────────────────────
+
+  async logout(sessionId: string): Promise<void> {
+    await this.sessionService.revoke(sessionId);
+  }
+
+  // ── Refresh ─────────────────────────────────────────────────────────────────
+  // Validates the raw refresh token, rotates it, issues a new access token.
+  // Throws SessionRevokedError if the token was already consumed (possible replay).
+
+  async refresh(
+    rawRefreshToken: string,
+    context: { ipAddress?: string; userAgent?: string },
+  ): Promise<AuthTokens> {
+    // findByRawToken throws SessionRevokedError on revoked tokens (replay guard),
+    // returns null on not-found or expired.
+    const session = await this.sessionService.findByRawToken(rawRefreshToken);
+    if (!session) {
+      // Not found or expired — treat identically to prevent token enumeration.
+      throw new AuthTokenInvalidError();
+    }
+
+    const user = await this.loadUserById(session.userId);
+    if (!user || !user.emailVerified) {
+      await this.sessionService.revoke(session.id);
+      throw new AuthTokenInvalidError();
+    }
+
+    const { rawToken: newRawToken, session: newSession } = await this.sessionService.rotate(
+      session.id,
+      session.userId,
+      session.familyId, // propagate family so replay detection covers the full chain
+      context,
+    );
+
+    const membership = await this.repo.findPrimaryMembership(user.id);
+
+    if (!membership) {
+      await this.sessionService.revoke(session.id);
+      throw new Error(
+        `User ${user.id} has no Membership row during token refresh — account requires data repair.`,
+      );
+    }
+
+    const orgId   = membership.organizationId;
+    const orgRole = membership.role;
+
+    const payload: AccessTokenPayload = {
+      sub: user.id,
+      orgId,
+      orgRole,
+      role: user.role,
+      sessionId: newSession.id,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      refreshToken: newRawToken,
+      sessionId: newSession.id,
+    };
+  }
+
+  // ── Email verification ─────────────────────────────────────────────────────
+
+  async verifyEmail(rawToken: string): Promise<void> {
+    const token = await this.repo.findValidEmailVerificationToken(rawToken);
+    if (!token) {
+      throw new AuthTokenInvalidError();
+    }
+    await this.repo.consumeEmailVerificationToken(token.id, token.userId);
+  }
+
+  // Resend verification email. Always succeeds (even if user not found) to prevent
+  // email enumeration. Invalidates the previous token and issues a new one.
+  async resendVerificationEmail(email: string): Promise<void> {
+    const user = await this.repo.findUserByEmail(email);
+    if (!user || user.emailVerified) return; // silently no-op
+
+    const rawToken = await this.repo.createEmailVerificationToken(user.id);
+    const verificationUrl = `${this.webBaseUrl}/verify-email?token=${rawToken}`;
+
+    await this.emailPort.sendEmailVerification({
+      to: email,
+      name: user.name,
+      verificationUrl,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+  }
+
+  // ── Password reset ─────────────────────────────────────────────────────────
+
+  // Always returns successfully — never reveals whether the email exists.
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.repo.findUserByEmail(email);
+    if (!user) return; // silently no-op — prevents enumeration
+
+    const rawToken = await this.repo.createPasswordResetToken(user.id);
+    const resetUrl = `${this.webBaseUrl}/reset-password?token=${rawToken}`;
+
+    await this.emailPort.sendPasswordReset({
+      to: email,
+      name: user.name,
+      resetUrl,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+  }
+
+  async resetPassword(
+    rawToken: string,
+    newPassword: string,
+    context: { ipAddress?: string },
+  ): Promise<void> {
+    const token = await this.repo.findValidPasswordResetToken(rawToken);
+    if (!token) {
+      throw new AuthTokenInvalidError();
+    }
+
+    const newHash = await this.passwordService.hash(newPassword);
+
+    // Atomically consume token + update password
+    await this.repo.consumePasswordResetToken(token.id, token.userId, newHash);
+
+    // Revoke all active sessions — the password change is a security event
+    await this.sessionService.revokeAll(token.userId);
+
+    // Load user for notification email
+    const user = await this.loadUserById(token.userId);
+    if (user) {
+      await this.emailPort.sendPasswordChanged({
+        to: user.email,
+        name: user.name,
+        changedAt: new Date(),
+        ipAddress: context.ipAddress,
+      });
+    }
+  }
+
+  // ── Change password (authenticated) ───────────────────────────────────────
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    currentSessionId: string,
+    context: { ipAddress?: string },
+  ): Promise<void> {
+    const user = await this.loadUserById(userId);
+    if (!user) throw new InvalidCredentialsError();
+
+    const valid = await this.passwordService.verify(currentPassword, user.hashedPassword);
+    if (!valid) throw new InvalidCredentialsError();
+
+    const newHash = await this.passwordService.hash(newPassword);
+    await this.repo.updatePassword(userId, newHash);
+
+    // Revoke all sessions except the current one (keep the user logged in)
+    await this.sessionService.revokeAll(userId);
+
+    await this.emailPort.sendPasswordChanged({
+      to: user.email,
+      name: user.name,
+      changedAt: new Date(),
+      ipAddress: context.ipAddress,
+    });
+  }
+
+  // ── TOTP (INTERNAL_SUPPORT MFA) ───────────────────────────────────────────────
+  //
+  // Three-step flow:
+  //   1. setupTotp   — generates a new secret, stores it encrypted, returns otpauthUri
+  //   2. enableTotp  — verifies the first code, marks TOTP as active on the account
+  //   3. verifyTotp  — verifies a code and re-issues the access token with mfaVerifiedAt
+
+  async setupTotp(userId: string): Promise<{ otpauthUri: string }> {
+    const user = await this.repo.findUserById(userId);
+    if (!user) throw new AuthTokenInvalidError();
+
+    const { secretBase32, encryptedSecret } = this.totpService.generateSecret();
+    await this.repo.saveTotpSecret(userId, encryptedSecret);
+
+    return { otpauthUri: this.totpService.otpauthUri(user.email, secretBase32) };
+  }
+
+  async enableTotp(userId: string, code: string): Promise<void> {
+    const fields = await this.repo.findTotpFields(userId);
+    if (!fields?.totpSecret) throw new TotpNotConfiguredError();
+    if (!this.totpService.verify(code, fields.totpSecret)) throw new InvalidTotpCodeError();
+    await this.repo.enableTotp(userId);
+  }
+
+  async verifyTotp(userId: string, sessionId: string, code: string): Promise<{ accessToken: string }> {
+    const fields = await this.repo.findTotpFields(userId);
+    if (!fields?.totpSecret || !fields.totpEnabled) throw new TotpNotConfiguredError();
+    if (!this.totpService.verify(code, fields.totpSecret)) throw new InvalidTotpCodeError();
+
+    const user = await this.repo.findUserById(userId);
+    if (!user) throw new AuthTokenInvalidError();
+    const membership = await this.repo.findPrimaryMembership(userId);
+    if (!membership) throw new AuthTokenInvalidError();
+
+    const payload: AccessTokenPayload = {
+      sub: userId,
+      orgId: membership.organizationId,
+      orgRole: membership.role,
+      role: user.role,
+      sessionId,
+      mfaVerifiedAt: new Date().toISOString(),
+    };
+
+    return { accessToken: this.jwtService.sign(payload) };
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────────
+
+  private loadUserById(userId: string) {
+    return this.repo.findUserById(userId);
+  }
+}
