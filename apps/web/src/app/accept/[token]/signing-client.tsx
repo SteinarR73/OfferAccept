@@ -278,8 +278,8 @@ type Phase =
   | { name: 'otp_verifying'; ctx: OfferContext; otp: OtpResult }
   | { name: 'otp_error'; ctx: OfferContext; otp: OtpResult; message: string; locked: boolean; expired: boolean }
   | { name: 'otp_verified'; ctx: OfferContext; challengeId: string }
-  | { name: 'acceptance'; ctx: OfferContext; challengeId: string }
-  | { name: 'accepting'; ctx: OfferContext }
+  | { name: 'acceptance'; ctx: OfferContext; challengeId: string; declineError?: string }
+  | { name: 'accepting'; ctx: OfferContext; challengeId: string }
   | { name: 'completed'; acceptedAt: string; certificateId: string | null; senderName: string }
   | { name: 'declined'; senderName: string };
 
@@ -367,7 +367,7 @@ export function reducer(state: Phase, action: Action): Phase {
 
     case 'CONFIRM_ACCEPT':
       if (state.name !== 'acceptance') return state;
-      return { name: 'accepting', ctx: state.ctx };
+      return { name: 'accepting', ctx: state.ctx, challengeId: state.challengeId };
 
     case 'ACCEPTED':
       return { name: 'completed', acceptedAt: action.acceptedAt, certificateId: action.certificateId, senderName: action.senderName };
@@ -380,19 +380,20 @@ export function reducer(state: Phase, action: Action): Phase {
       // Only after email verification (the acceptance step): the session state machine
       // allows OTP_VERIFIED → DECLINED only, so declining earlier can never succeed.
       if (state.name !== 'acceptance') return state;
-      return { name: 'accepting', ctx: state.ctx };
+      return { name: 'accepting', ctx: state.ctx, challengeId: state.challengeId };
 
     case 'DECLINED':
       return { name: 'declined', senderName: action.senderName };
 
     case 'DECLINE_FAILED':
-      // API call failed — return to offer_view with an error message so the
+      // API call failed — return to acceptance with an error message so the
       // recipient knows the decline was NOT recorded and can try again.
       // Never show the "declined" success screen when the server call failed.
-      if (state.name !== 'accepting' && state.name !== 'offer_view') return state;
+      if (state.name !== 'accepting') return state;
       return {
-        name: 'offer_view',
-        ctx: (state as { ctx: OfferContext }).ctx,
+        name: 'acceptance',
+        ctx: state.ctx,
+        challengeId: state.challengeId,
         declineError: action.message,
       };
 
@@ -647,13 +648,20 @@ export function SigningClient({ token, locale = 'en' }: { token: string; locale?
         )}
 
         {phase.name === 'acceptance' && (
-          <AcceptanceView
-            ctx={phase.ctx}
-            challengeId={phase.challengeId}
-            s={s}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
-          />
+          <>
+            {phase.declineError && (
+              <Alert variant="error" className="mb-4">
+                {phase.declineError}
+              </Alert>
+            )}
+            <AcceptanceView
+              ctx={phase.ctx}
+              challengeId={phase.challengeId}
+              s={s}
+              onAccept={handleAccept}
+              onDecline={handleDecline}
+            />
+          </>
         )}
 
         {phase.name === 'accepting' && (

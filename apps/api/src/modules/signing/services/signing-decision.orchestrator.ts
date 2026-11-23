@@ -134,9 +134,6 @@ export class SigningDecisionOrchestrator {
   async decline(rawToken: string, challengeId: string, ctx: SessionContext): Promise<void> {
     const recipient = await this.tokenService.verifyToken(rawToken);
     const session = await this.getSessionFromVerifiedChallenge(challengeId, recipient.id);
-
-    if (!session) throw new SessionExpiredError();
-
     await this.acceptanceService.decline(session, ctx);
     void this.dealEventService.emit(session.offerId, 'deal_declined');
 

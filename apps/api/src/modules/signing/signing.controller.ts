@@ -108,9 +108,8 @@ export class SigningController {
 
   // POST /api/v1/signing/:token/decline
   // Requires challengeId so the session is resolved from the challenge's bound
-  // sessionId — not from a "latest resumable" lookup. The challenge may be in
-  // any status (PENDING, VERIFIED, etc.) — it only needs to exist and belong to
-  // this recipient to identify the correct session.
+  // sessionId — not from a "latest resumable" lookup. The challenge must be in
+  // VERIFIED status — same requirement as the accept endpoint.
   @Post(':token/decline')
   @HttpCode(HttpStatus.OK)
   async decline(
